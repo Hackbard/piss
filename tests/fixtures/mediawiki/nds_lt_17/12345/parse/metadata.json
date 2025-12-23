@@ -1,0 +1,15 @@
+{
+  "request_params": {
+    "action": "parse",
+    "page": "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)"
+  },
+  "response_headers": {},
+  "retrieved_at": "2024-01-01T00:00:00+00:00",
+  "sha256": "test_hash",
+  "url": "https://de.wikipedia.org/w/api.php?action=parse&page=Test",
+  "page_title": "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)",
+  "page_id": 123456,
+  "revision_id": 12345,
+  "endpoint_kind": "parse"
+}
+

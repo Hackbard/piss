@@ -1,0 +1,36 @@
+nds_lt_17:
+  key: nds_lt_17
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)"
+  expected_time_range:
+    start: "2013-01-20"
+    end: "2017-11-14"
+  hints:
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+
+nds_lt_18:
+  key: nds_lt_18
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (18. Wahlperiode)"
+  expected_time_range:
+    start: "2017-11-15"
+    end: "2022-10-08"
+  hints:
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+

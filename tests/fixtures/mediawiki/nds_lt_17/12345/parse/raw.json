@@ -1,0 +1,12 @@
+{
+  "parse": {
+    "title": "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)",
+    "pageid": 123456,
+    "revid": 12345,
+    "text": {
+      "*": "<table class=\"wikitable sortable\"><tr><th>Name</th><th>Partei</th><th>Wahlkreis</th></tr><tr><td><a href=\"/wiki/Test_Person\" title=\"Test Person\">Test Person</a></td><td>SPD</td><td>Hannover</td></tr></table>"
+    },
+    "displaytitle": "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)"
+  }
+}
+
