@@ -1,0 +1,7 @@
+overrides:
+  # Example format:
+  # "Wikipedia_Title":
+  #   dip_person_id: 12345
+  #   status: "accepted"  # or "rejected"
+  #   reason: "Manual override"
+

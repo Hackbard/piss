@@ -21,6 +21,10 @@ class Neo4jSink:
                 "CREATE CONSTRAINT legislature_id IF NOT EXISTS FOR (l:Legislature) REQUIRE l.id IS UNIQUE",
                 "CREATE CONSTRAINT mandate_id IF NOT EXISTS FOR (m:Mandate) REQUIRE m.id IS UNIQUE",
                 "CREATE CONSTRAINT evidence_id IF NOT EXISTS FOR (e:Evidence) REQUIRE e.id IS UNIQUE",
+                "CREATE CONSTRAINT canonical_person_id IF NOT EXISTS FOR (c:CanonicalPerson) REQUIRE c.id IS UNIQUE",
+                "CREATE CONSTRAINT wikipedia_person_record_id IF NOT EXISTS FOR (w:WikipediaPersonRecord) REQUIRE w.id IS UNIQUE",
+                "CREATE CONSTRAINT dip_person_record_id IF NOT EXISTS FOR (d:DipPersonRecord) REQUIRE d.id IS UNIQUE",
+                "CREATE CONSTRAINT person_link_assertion_id IF NOT EXISTS FOR (a:PersonLinkAssertion) REQUIRE a.id IS UNIQUE",
             ]
             for constraint in constraints:
                 try:
@@ -38,18 +42,22 @@ class Neo4jSink:
                         p.wikipedia_title = $wikipedia_title,
                         p.wikipedia_url = $wikipedia_url,
                         p.birth_date = $birth_date,
+                        p.birth_date_status = $birth_date_status,
                         p.death_date = $death_date,
                         p.intro = $intro,
-                        p.evidence_ids = $evidence_ids
+                        p.evidence_ids = $evidence_ids,
+                        p.data_quality_flags = $data_quality_flags
                     """,
                     id=person.id,
                     name=person.name,
                     wikipedia_title=person.wikipedia_title,
                     wikipedia_url=person.wikipedia_url,
                     birth_date=person.birth_date,
+                    birth_date_status=getattr(person, "birth_date_status", "unknown"),
                     death_date=person.death_date,
                     intro=person.intro,
                     evidence_ids=person.evidence_ids,
+                    data_quality_flags=getattr(person, "data_quality_flags", []),
                 )
 
             for party in normalized_data.get("parties", []):
@@ -148,6 +156,157 @@ class Neo4jSink:
                         start_date=mandate.start_date,
                         end_date=mandate.end_date,
                     )
+
+            # Upsert WikipediaPersonRecords
+            for wiki_record in normalized_data.get("wikipedia_person_records", []):
+                session.run(
+                    """
+                    MERGE (w:WikipediaPersonRecord {id: $id})
+                    SET w.wikipedia_title = $wikipedia_title,
+                        w.wikipedia_url = $wikipedia_url,
+                        w.page_id = $page_id,
+                        w.revision_id = $revision_id,
+                        w.name = $name,
+                        w.birth_date = $birth_date,
+                        w.death_date = $death_date,
+                        w.intro = $intro,
+                        w.evidence_ids = $evidence_ids
+                    """,
+                    id=wiki_record.id,
+                    wikipedia_title=wiki_record.wikipedia_title,
+                    wikipedia_url=wiki_record.wikipedia_url,
+                    page_id=wiki_record.page_id,
+                    revision_id=wiki_record.revision_id,
+                    name=wiki_record.name,
+                    birth_date=wiki_record.birth_date,
+                    death_date=wiki_record.death_date,
+                    intro=wiki_record.intro,
+                    evidence_ids=wiki_record.evidence_ids,
+                )
+
+            # Upsert DipPersonRecords
+            for dip_record in normalized_data.get("dip_person_records", []):
+                session.run(
+                    """
+                    MERGE (d:DipPersonRecord {id: $id})
+                    SET d.dip_person_id = $dip_person_id,
+                        d.vorname = $vorname,
+                        d.nachname = $nachname,
+                        d.namenszusatz = $namenszusatz,
+                        d.titel = $titel,
+                        d.fraktion = $fraktion,
+                        d.wahlperiode = $wahlperiode,
+                        d.evidence_ids = $evidence_ids
+                    """,
+                    id=dip_record.id,
+                    dip_person_id=dip_record.dip_person_id,
+                    vorname=dip_record.vorname,
+                    nachname=dip_record.nachname,
+                    namenszusatz=dip_record.namenszusatz,
+                    titel=dip_record.titel,
+                    fraktion=dip_record.fraktion,
+                    wahlperiode=dip_record.wahlperiode,
+                    evidence_ids=dip_record.evidence_ids,
+                )
+
+            # Upsert CanonicalPersons
+            for canonical in normalized_data.get("canonical_persons", []):
+                import json
+                session.run(
+                    """
+                    MERGE (c:CanonicalPerson {id: $id})
+                    SET c.display_name = $display_name,
+                        c.wikipedia_title = $wikipedia_title,
+                        c.wikipedia_page_id = $wikipedia_page_id,
+                        c.dip_person_id = $dip_person_id,
+                        c.created_at = $created_at,
+                        c.updated_at = $updated_at,
+                        c.evidence_ids = $evidence_ids
+                    """,
+                    id=canonical.id,
+                    display_name=canonical.display_name,
+                    wikipedia_title=canonical.identifiers.get("wikipedia_title"),
+                    wikipedia_page_id=canonical.identifiers.get("wikipedia_page_id"),
+                    dip_person_id=canonical.identifiers.get("dip_person_id"),
+                    created_at=canonical.created_at,
+                    updated_at=canonical.updated_at,
+                    evidence_ids=canonical.evidence_ids,
+                )
+
+                # Link CanonicalPerson to WikipediaPersonRecord
+                wiki_title = canonical.identifiers.get("wikipedia_title")
+                if wiki_title:
+                    session.run(
+                        """
+                        MATCH (c:CanonicalPerson {id: $canonical_id})
+                        MATCH (w:WikipediaPersonRecord {wikipedia_title: $wikipedia_title})
+                        MERGE (c)-[:HAS_SOURCE]->(w)
+                        """,
+                        canonical_id=canonical.id,
+                        wikipedia_title=wiki_title,
+                    )
+
+                # Link CanonicalPerson to DipPersonRecord
+                dip_id = canonical.identifiers.get("dip_person_id")
+                if dip_id:
+                    session.run(
+                        """
+                        MATCH (c:CanonicalPerson {id: $canonical_id})
+                        MATCH (d:DipPersonRecord {dip_person_id: $dip_person_id})
+                        MERGE (c)-[:HAS_SOURCE]->(d)
+                        """,
+                        canonical_id=canonical.id,
+                        dip_person_id=dip_id,
+                    )
+
+            # Upsert PersonLinkAssertions
+            for assertion in normalized_data.get("link_assertions", []):
+                session.run(
+                    """
+                    MERGE (a:PersonLinkAssertion {id: $id})
+                    SET a.wikipedia_person_ref = $wikipedia_person_ref,
+                        a.dip_person_ref = $dip_person_ref,
+                        a.ruleset_version = $ruleset_version,
+                        a.method = $method,
+                        a.score = $score,
+                        a.status = $status,
+                        a.reason = $reason,
+                        a.evidence_ids = $evidence_ids,
+                        a.created_at = $created_at
+                    """,
+                    id=assertion.id,
+                    wikipedia_person_ref=assertion.wikipedia_person_ref,
+                    dip_person_ref=assertion.dip_person_ref,
+                    ruleset_version=assertion.ruleset_version,
+                    method=assertion.method,
+                    score=assertion.score,
+                    status=assertion.status,
+                    reason=assertion.reason,
+                    evidence_ids=assertion.evidence_ids,
+                    created_at=assertion.created_at,
+                )
+
+                # Link Assertion to WikipediaPersonRecord
+                session.run(
+                    """
+                    MATCH (a:PersonLinkAssertion {id: $assertion_id})
+                    MATCH (w:WikipediaPersonRecord {id: $wikipedia_person_ref})
+                    MERGE (a)-[:LINKS]->(w)
+                    """,
+                    assertion_id=assertion.id,
+                    wikipedia_person_ref=assertion.wikipedia_person_ref,
+                )
+
+                # Link Assertion to DipPersonRecord
+                session.run(
+                    """
+                    MATCH (a:PersonLinkAssertion {id: $assertion_id})
+                    MATCH (d:DipPersonRecord {dip_person_id: $dip_person_ref})
+                    MERGE (a)-[:LINKS]->(d)
+                    """,
+                    assertion_id=assertion.id,
+                    dip_person_ref=assertion.dip_person_ref,
+                )
 
             for evidence in normalized_data.get("evidence", []):
                 session.run(

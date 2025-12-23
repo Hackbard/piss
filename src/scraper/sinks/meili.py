@@ -47,6 +47,12 @@ class MeiliSink:
         for person in normalized_data.get("persons", []):
             person_dict = person.model_dump()
             person_dict["_id"] = person.id
+            
+            # Validate: if intro is present, must have at least 2 evidence IDs
+            if person_dict.get("intro") and len(person_dict.get("evidence_ids", [])) < 2:
+                import sys
+                print(f"  ⚠ Warning: Person {person.wikipedia_title} in Meili has intro but only {len(person_dict.get('evidence_ids', []))} evidence ID(s). Expected at least 2.", file=sys.stderr)
+            
             persons_docs.append(person_dict)
 
         if persons_docs:
@@ -62,4 +68,50 @@ class MeiliSink:
         if mandates_docs:
             mandates_index = self.client.index("mandates")
             mandates_index.update_documents(mandates_docs, primary_key="_id")
+
+    def upsert_reconciliation(self, normalized_data: Dict[str, Any]) -> None:
+        canonical_docs = []
+        for canonical in normalized_data.get("canonical_persons", []):
+            # Build provenance summary from canonical person
+            provenance = None
+            if canonical.provenance:
+                provenance = canonical.provenance
+            elif canonical.identifiers.get("wikipedia_title"):
+                # Try to get provenance from Wikipedia source
+                from scraper.cache.mediawiki_cache import get_cached_metadata
+                from urllib.parse import quote
+                
+                metadata = get_cached_metadata(canonical.identifiers["wikipedia_title"])
+                if metadata:
+                    page_title_encoded = quote(canonical.identifiers["wikipedia_title"].replace("_", " "), safe="")
+                    source_url = f"https://de.wikipedia.org/wiki/{page_title_encoded}"
+                    if metadata.revision_id:
+                        source_url_canonical = f"{source_url}?oldid={metadata.revision_id}"
+                    else:
+                        source_url_canonical = source_url
+                    
+                    provenance = {
+                        "revision_id": metadata.revision_id,
+                        "page_id": metadata.page_id,
+                        "retrieved_at": metadata.retrieved_at,
+                        "sha256": metadata.sha256,
+                        "source_url": source_url_canonical,
+                    }
+            
+            doc = {
+                "_id": canonical.id,
+                "display_name": canonical.display_name,
+                "sources": {
+                    "wikipedia_title": canonical.identifiers.get("wikipedia_title"),
+                    "dip_person_id": canonical.identifiers.get("dip_person_id"),
+                },
+                "match_status": "accepted",
+                "evidence_ids": canonical.evidence_ids,
+                "provenance": provenance,
+            }
+            canonical_docs.append(doc)
+
+        if canonical_docs:
+            persons_index = self.client.index("persons")
+            persons_index.update_documents(canonical_docs, primary_key="_id")
 

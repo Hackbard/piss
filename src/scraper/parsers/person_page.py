@@ -45,16 +45,36 @@ def extract_infobox_keyfacts(soup: BeautifulSoup) -> Dict[str, Any]:
         value = td.get_text().strip()
 
         if "geburt" in label or "geboren" in label:
-            time_tag = td.find("time")
-            if time_tag:
-                date_str = time_tag.get("datetime") or time_tag.get_text().strip()
-            else:
-                date_str = value
-            try:
-                dt = parse_date(date_str, fuzzy=True)
-                keyfacts["birth_date"] = dt.date().isoformat()
-            except (ValueError, TypeError):
-                pass
+            # Only extract from hard sources: <span class="bday"> or <time datetime="...">
+            birth_date_extracted = False
+            
+            # Check for <span class="bday">YYYY-MM-DD</span>
+            bday_span = td.find("span", class_="bday")
+            if bday_span:
+                date_str = bday_span.get_text().strip()
+                try:
+                    dt = parse_date(date_str, fuzzy=False)
+                    keyfacts["birth_date"] = dt.date().isoformat()
+                    keyfacts["birth_date_status"] = "extracted"
+                    birth_date_extracted = True
+                except (ValueError, TypeError):
+                    pass
+            
+            # Check for <time datetime="YYYY-MM-DD">...</time>
+            if not birth_date_extracted:
+                time_tag = td.find("time")
+                if time_tag and time_tag.get("datetime"):
+                    date_str = time_tag.get("datetime")
+                    try:
+                        dt = parse_date(date_str, fuzzy=False)
+                        keyfacts["birth_date"] = dt.date().isoformat()
+                        keyfacts["birth_date_status"] = "extracted"
+                        birth_date_extracted = True
+                    except (ValueError, TypeError):
+                        pass
+            
+            if not birth_date_extracted:
+                keyfacts["birth_date_status"] = "not_present"
 
         elif "tod" in label or "gestorben" in label or "verstorben" in label:
             time_tag = td.find("time")
@@ -98,15 +118,23 @@ def parse_person_page(response: MediaWikiParseResponse) -> Person:
             }
         )
 
+    birth_date = keyfacts.get("birth_date")
+    birth_date_status = keyfacts.get("birth_date_status", "unknown")
+    data_quality_flags = []
+    if not birth_date:
+        data_quality_flags.append("missing_birth_date")
+    
     return Person(
         id=person_id,
         name=title,
         wikipedia_title=response.page_title,
         wikipedia_url=wikipedia_url,
-        birth_date=keyfacts.get("birth_date"),
+        birth_date=birth_date,
+        birth_date_status=birth_date_status,
         death_date=keyfacts.get("death_date"),
         intro=intro,
         evidence_ids=[evidence_id],
         unstructured_evidence=unstructured_evidence if unstructured_evidence else None,
+        data_quality_flags=data_quality_flags,
     )
 

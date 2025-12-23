@@ -1,0 +1,17 @@
+{
+  "numFound": 250,
+  "cursor": null,
+  "documents": [
+    {
+      "id": 11000003,
+      "vorname": "Peter",
+      "nachname": "Müller",
+      "namenszusatz": null,
+      "titel": null,
+      "fraktion": "FDP",
+      "wahlperiode": [19],
+      "person_roles": []
+    }
+  ]
+}
+

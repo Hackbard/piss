@@ -10,6 +10,17 @@ Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit
 - **Idempotenz**: Cache-basierte Refetch-Verhinderung, Upserts ohne Duplikate
 - **MediaWiki API only**: Kein Browser-Scraping, ausschließlich MediaWiki API
 - **Optional Sinks**: Neo4j und Meilisearch Integration
+- **DIP Integration**: Bundestag-Daten via DIP OpenAPI
+- **Identity Resolution**: Deterministische Zusammenführung von Wikipedia- und DIP-Personen
+- **Seed Discovery**: Automatische Entdeckung von Landtags-Mitgliederlisten aus Registry-Konfiguration
+
+## Quick Start
+
+**Siehe [QUICKSTART.md](QUICKSTART.md) für eine komplette Schritt-für-Schritt-Anleitung.**
+
+**Kurzfassung:**
+1. **Seeds entdecken**: `docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions`
+2. **Alles laden**: `docker compose run --rm scraper scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili`
 
 ## Datenfluss
 
@@ -28,6 +39,58 @@ flowchart TD
   export --> manifest
   neo4j --> manifest
   meili --> manifest
+```
+
+## Quick Start
+
+### 1. Seeds für alle Landtage automatisch entdecken
+
+```bash
+# Services starten
+docker compose up -d neo4j meilisearch
+
+# Seeds für alle 16 Landtage automatisch entdecken
+docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
+
+# Output: data/exports/seeds_landtage.yaml (167+ Seeds)
+```
+
+### 2. Bundestag + Landtag Daten laden
+
+```bash
+# Environment-Variablen setzen (falls noch nicht geschehen)
+# DIP_API_KEY in .env setzen für Bundestag-Daten
+
+# Pipeline mit Bundestag (alle Wahlperioden) + Landtag (alle Seeds) ausführen
+docker compose run --rm scraper scraper pipeline \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili \
+  --force
+
+# Oder für einen einzelnen Landtag-Seed:
+docker compose run --rm scraper scraper pipeline \
+  --seed be_ah_1 \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili
+```
+
+**Was passiert:**
+1. **DIP Ingest**: Lädt alle Bundestags-Personen (Wahlperioden 1-50, konfigurierbar via `DIP_MAX_WAHLPERIODE`)
+2. **Wikipedia Scraping**: Lädt Landtags-Mitgliederlisten aus Wikipedia
+3. **Reconciliation**: Führt Wikipedia- und DIP-Personen zusammen (Identity Resolution)
+4. **Sinks**: Speichert in Neo4j und Meilisearch
+
+**Ohne `--force` (idempotent, nutzt Cache):**
+```bash
+docker compose run --rm scraper scraper pipeline \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili
 ```
 
 ## Setup
@@ -50,6 +113,8 @@ cd wikipedia-parlamente-scraper
 ```bash
 cp .env.example .env
 # Bearbeite .env nach Bedarf
+# Wichtig: DIP_API_KEY setzen für Bundestag-Daten
+# DIP_MAX_WAHLPERIODE=50  # Maximum Wahlperiode (default: 50, lädt alle WPs 1-50)
 ```
 
 3. Services starten:
@@ -57,23 +122,30 @@ cp .env.example .env
 docker compose up -d neo4j meilisearch
 ```
 
-4. Scraper ausführen:
-```bash
-# Seeds validieren
-docker compose run --rm scraper scraper seed validate
+4. Seeds entdecken (siehe Quick Start oben)
 
-# Pipeline für einen Seed ausführen
-docker compose run --rm scraper scraper pipeline run --seed nds_lt_17 --write-neo4j --write-meili
-```
+5. Pipeline ausführen (siehe Quick Start oben)
 
 ## Verwendung
 
 ### CLI Commands
 
-#### Seeds validieren
+#### Seeds verwalten
 ```bash
-scraper seed validate
+# Seeds validieren
+scraper seed --validate
+
+# Seeds für alle Landtage automatisch entdecken
+scraper seed --discover --landtage [--registry config/landtage_registry.yaml] [--output config/seeds_landtage.yaml] [--pin-revisions] [--force]
 ```
+
+**Seed Discovery:**
+- Durchsucht Wikipedia automatisch nach Mitgliederlisten aller 16 Landtage
+- Validiert, dass gefundene Seiten tatsächlich Member-Listen mit Name/Partei/Wahlkreis enthalten
+- Erzeugt deterministische Seeds im bestehenden Format
+- Optional: Pinnt `page_id` und `revision_id` für Reproduzierbarkeit
+- Nutzt denselben Disk-Cache wie normale Fetches
+- Output: `config/seeds_landtage.yaml` (kann mit bestehenden Seeds kombiniert werden)
 
 #### Einzelne Seite fetchen
 ```bash
@@ -89,13 +161,25 @@ scraper fetch person --title "Max_Mustermann" [--force] [--revalidate]
 scraper parse legislature --seed nds_lt_17
 ```
 
+#### DIP Ingest
+```bash
+# Personen für Wahlperioden 19-20 ingestieren
+scraper dip ingest persons --from-wp 19 --to-wp 20 [--detail] [--force]
+```
+
+#### Identity Resolution (Reconciliation)
+```bash
+# Wikipedia und DIP zusammenführen
+scraper reconcile wiki-dip --seed nds_lt_17 [--use-overrides] [--write-neo4j] [--write-meili]
+```
+
 #### Pipeline ausführen
 ```bash
-# Einzelner Seed
-scraper pipeline run --seed nds_lt_17 [--write-neo4j] [--write-meili] [--force] [--revalidate]
+# Einzelner Seed mit DIP + Reconciliation
+scraper pipeline --seed nds_lt_17 --ingest-dip --reconcile --dip-wahlperiode 19 --write-neo4j --write-meili
 
-# Alle Seeds
-scraper pipeline run-all [--write-neo4j] [--write-meili] [--force] [--revalidate]
+# Standard Pipeline (nur Wikipedia)
+scraper pipeline --seed nds_lt_17 [--write-neo4j] [--write-meili] [--force] [--revalidate]
 ```
 
 #### Export
@@ -113,6 +197,12 @@ data/cache/
 │       │   └── parse/
 │       │       ├── raw.json
 │       │       └── metadata.json
+│       └── latest.json
+├── dip/
+│   └── <safe_endpoint>/
+│       ├── <params_hash>/
+│       │   ├── raw.json
+│       │   └── metadata.json
 │       └── latest.json
 └── manifests/
     └── <run_id>.json
@@ -137,6 +227,44 @@ nds_lt_17:
       - "Mitglieder"
       - "Abgeordnete"
 ```
+
+## Identity Resolution (Phase 2)
+
+### Konzept
+
+Das System führt Wikipedia-Personen und DIP-Personen (Deutscher Bundestag) deterministisch zusammen:
+
+- **CanonicalPerson**: Interne, kanonische Person-Entität mit Identifiers aus beiden Quellen
+- **Source Records**: WikipediaPersonRecord und DipPersonRecord behalten ihre Provenance
+- **LinkAssertion**: Auditierbare Verbindungen zwischen Quellen mit Status (accepted/pending/rejected)
+
+### Ruleset v1
+
+Deterministische Matching-Regeln:
+1. Name-Normalisierung (lowercase, whitespace, Umlaute)
+2. Scoring: exact match (nachname, vorname) => 1.0, partial => 0.95
+3. Entscheidung: Nur eindeutige Matches (score >= 0.95, Abstand >= 0.05) werden automatisch accepted
+4. Ambiguität => pending (keine automatische Zusammenführung)
+
+### Manual Overrides
+
+`config/link_overrides.yaml` ermöglicht manuelle Zuordnungen:
+
+```yaml
+overrides:
+  "Wikipedia_Title":
+    dip_person_id: 12345
+    status: "accepted"  # or "rejected"
+    reason: "Manual override"
+```
+
+### Workflow
+
+1. **DIP Ingest**: `scraper dip ingest persons --from-wp 19 --to-wp 20`
+2. **Wikipedia Scraping**: `scraper pipeline --seed nds_lt_17`
+3. **Reconciliation**: `scraper reconcile wiki-dip --seed nds_lt_17 --write-neo4j`
+4. **Review Pending**: Manuelle Prüfung und Overrides in `link_overrides.yaml`
+5. **Re-run**: Reconciliation erneut ausführen mit Overrides
 
 ## Provenance & Evidence
 
@@ -165,6 +293,10 @@ Tests befinden sich in `tests/`:
 - `test_parse_legislature_members_nds_17.py`: Parser-Test für 17. WP
 - `test_parse_legislature_members_nds_18.py`: Parser-Test für 18. WP
 - `test_parse_person_infobox.py`: Person-Page-Parser-Test
+- `test_dip_pagination_and_cache.py`: DIP Pagination und Cache
+- `test_reconcile_ruleset_v1_unique_match.py`: Reconciliation eindeutiger Match
+- `test_reconcile_ruleset_v1_ambiguous_pending.py`: Reconciliation Ambiguität
+- `test_link_overrides_apply.py`: Manual Overrides
 
 ## Troubleshooting
 
@@ -241,6 +373,13 @@ scraper fetch legislature --seed nds_lt_17 --force
 │       ├── json_export.py
 │       ├── neo4j.py
 │       └── meili.py
+│   ├── sources/
+│   │   └── dip/
+│   │       ├── client.py
+│   │       ├── types.py
+│   │       └── ingest.py
+│   └── reconcile/
+│       └── wiki_dip.py
 ├── tests/
 │   ├── fixtures/
 │   │   └── mediawiki/          # Gecachte Responses

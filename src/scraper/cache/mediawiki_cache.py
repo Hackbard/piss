@@ -217,6 +217,21 @@ def get_cached_parse_response(seed_key: str) -> Optional[MediaWikiParseResponse]
     return load_cached_parse_response(raw_path)
 
 
+def get_cached_metadata(page_title: str) -> Optional[CachedResponseMetadata]:
+    """Get cached metadata for a page title."""
+    latest_path = get_latest_manifest_path(page_title)
+    if not latest_path.exists():
+        return None
+
+    latest = LatestCacheManifest(**json.loads(latest_path.read_text()))
+    cache_path = get_cache_path(page_title, latest.revision_id, "parse")
+    metadata_path = cache_path / "metadata.json"
+    if not metadata_path.exists():
+        return None
+
+    return CachedResponseMetadata(**json.loads(metadata_path.read_text()))
+
+
 def fetch_legislature_page(seed_key: str, run_id: str, force: bool = False, revalidate: bool = False) -> None:
     seed = get_seed(seed_key)
     page_title = seed["page_title"]

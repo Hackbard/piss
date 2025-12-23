@@ -1,0 +1,27 @@
+{
+  "numFound": 250,
+  "cursor": "cursor_page2",
+  "documents": [
+    {
+      "id": 11000001,
+      "vorname": "Max",
+      "nachname": "Mustermann",
+      "namenszusatz": null,
+      "titel": "Dr.",
+      "fraktion": "CDU/CSU",
+      "wahlperiode": [19],
+      "person_roles": []
+    },
+    {
+      "id": 11000002,
+      "vorname": "Anna",
+      "nachname": "Schmidt",
+      "namenszusatz": null,
+      "titel": null,
+      "fraktion": "SPD",
+      "wahlperiode": [19],
+      "person_roles": []
+    }
+  ]
+}
+

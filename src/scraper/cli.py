@@ -16,16 +16,56 @@ setup_logging()
 
 
 @app.command()
-def seed() -> None:
-    """Validate seed configuration."""
-    from scraper.cache.mediawiki_cache import validate_seeds
+def seed(
+    validate: bool = Option(False, "--validate", help="Validate seed configuration"),
+    discover: bool = Option(False, "--discover", help="Discover seeds for landtage"),
+    landtage: bool = Option(False, "--landtage", help="Discover landtage seeds"),
+    registry: Optional[Path] = Option(None, "--registry", help="Path to landtage registry"),
+    output: Optional[Path] = Option(None, "--output", help="Output path for discovered seeds"),
+    pin_revisions: bool = Option(True, "--pin-revisions/--no-pin-revisions", help="Pin page_id and revision_id in seeds"),
+    force: bool = Option(False, "--force", help="Force refetch, ignore cache"),
+) -> None:
+    """Seed management commands."""
+    if discover or landtage:
+        import asyncio
+        from scraper.seeds.discover_landtage import discover_landtage_seeds
 
-    try:
-        validate_seeds()
-        typer.echo("✓ Seeds validation passed", err=True)
-        sys.exit(0)
-    except Exception as e:
-        typer.echo(f"✗ Seeds validation failed: {e}", err=True)
+        try:
+            typer.echo("Discovering landtage seeds...", err=True)
+            manifest = asyncio.run(
+                discover_landtage_seeds(
+                    registry_path=registry,
+                    output_path=output,
+                    pin_revisions=pin_revisions,
+                    force=force,
+                )
+            )
+            
+            typer.echo(f"✓ Discovery complete:", err=True)
+            typer.echo(f"  Found: {len(manifest['found_titles'])} titles", err=True)
+            typer.echo(f"  Validated: {len(manifest['validated'])} seeds", err=True)
+            typer.echo(f"  Rejected: {len(manifest['rejected'])} titles", err=True)
+            typer.echo(f"  Output: {manifest['output_file']}", err=True)
+            
+            if manifest["errors"]:
+                typer.echo(f"  Errors: {len(manifest['errors'])}", err=True)
+            
+            sys.exit(0)
+        except Exception as e:
+            typer.echo(f"✗ Discovery failed: {e}", err=True)
+            sys.exit(1)
+    elif validate:
+        from scraper.cache.mediawiki_cache import validate_seeds
+
+        try:
+            validate_seeds()
+            typer.echo("✓ Seeds validation passed", err=True)
+            sys.exit(0)
+        except Exception as e:
+            typer.echo(f"✗ Seeds validation failed: {e}", err=True)
+            sys.exit(2)
+    else:
+        typer.echo("Error: Must specify --validate or --discover --landtage", err=True)
         sys.exit(2)
 
 
@@ -91,15 +131,164 @@ def parse(
 
 
 @app.command()
+def dip(
+    ingest: bool = Option(False, "--ingest", help="Ingest DIP persons"),
+    persons: bool = Option(False, "--persons", help="Ingest persons"),
+    from_wp: Optional[int] = Option(None, "--from-wp", help="From Wahlperiode"),
+    to_wp: Optional[int] = Option(None, "--to-wp", help="To Wahlperiode"),
+    detail: bool = Option(False, "--detail", help="Fetch person details"),
+    force: bool = Option(False, "--force", help="Force refetch"),
+) -> None:
+    """DIP API operations."""
+    from scraper.sources.dip.ingest import ingest_person_list_sync
+    from uuid import uuid4
+
+    if ingest and persons:
+        run_id = str(uuid4())
+        from_wp_val = from_wp or 1
+        to_wp_val = to_wp or 20
+        wahlperiode = list(range(from_wp_val, to_wp_val + 1))
+
+        try:
+            dip_persons = ingest_person_list_sync(wahlperiode, run_id, force=force)
+            typer.echo(f"✓ Ingested {len(dip_persons)} DIP persons for WP {from_wp_val}-{to_wp_val}", err=True)
+            sys.exit(0)
+        except Exception as e:
+            typer.echo(f"✗ DIP ingest failed: {e}", err=True)
+            sys.exit(1)
+    else:
+        typer.echo("Error: Must specify --ingest --persons", err=True)
+        sys.exit(2)
+
+
+@app.command()
+def reconcile(
+    wiki_dip: bool = Option(False, "--wiki-dip", help="Reconcile Wikipedia and DIP"),
+    seed: Optional[str] = Option(None, "--seed", help="Seed key"),
+    use_overrides: bool = Option(True, "--use-overrides/--no-overrides", help="Use link overrides"),
+    write_neo4j: bool = Option(False, "--write-neo4j", help="Write to Neo4j"),
+    write_meili: bool = Option(False, "--write-meili", help="Write to Meilisearch"),
+) -> None:
+    """Reconcile data sources."""
+    if wiki_dip and seed:
+        from scraper.cache.mediawiki_cache import get_cached_parse_response, get_seed
+        from scraper.parsers.legislature_members import parse_legislature_members
+        from scraper.models.domain import WikipediaPersonRecord, DipPersonRecord
+        from scraper.reconcile.wiki_dip import reconcile_wiki_dip
+        from scraper.sources.dip.ingest import ingest_person_list_sync
+        from uuid import uuid4
+
+        try:
+            response = get_cached_parse_response(seed_key=seed)
+            if not response:
+                typer.echo(f"✗ No cached Wikipedia data for seed: {seed}", err=True)
+                sys.exit(1)
+
+            legislature_data = parse_legislature_members(response, seed_key=seed)
+            seed_data = get_seed(seed_key)
+
+            wiki_records = []
+            for person, _ in legislature_data.members:
+                wiki_record = WikipediaPersonRecord(
+                    id=person.id,
+                    wikipedia_title=person.wikipedia_title,
+                    wikipedia_url=person.wikipedia_url,
+                    page_id=0,
+                    revision_id=0,
+                    name=person.name,
+                    birth_date=person.birth_date,
+                    death_date=person.death_date,
+                    intro=person.intro,
+                    evidence_ids=person.evidence_ids,
+                )
+                wiki_records.append(wiki_record)
+
+            run_id = str(uuid4())
+            wahlperiode = [19]
+            dip_persons = ingest_person_list_sync(wahlperiode, run_id, force=False)
+
+            from scraper.models.domain import DipPersonRecord
+            from scraper.utils.ids import generate_evidence_id, NAMESPACE_PERSON
+            from scraper.utils.hashing import sha256_hash_json
+            from uuid import uuid5 as uuid5_func
+
+            dip_records = []
+            for dip_person in dip_persons:
+                evidence_id = generate_evidence_id(
+                    0, 0, "dip_person", sha256_hash_json(dip_person.model_dump())
+                )
+                dip_record = DipPersonRecord(
+                    id=str(uuid5_func(NAMESPACE_PERSON, f"dip:{dip_person.id}")),
+                    dip_person_id=dip_person.id,
+                    vorname=dip_person.vorname,
+                    nachname=dip_person.nachname,
+                    namenszusatz=dip_person.namenszusatz,
+                    titel=dip_person.titel,
+                    fraktion=dip_person.fraktion,
+                    wahlperiode=dip_person.wahlperiode,
+                    person_roles=dip_person.person_roles,
+                    evidence_ids=[evidence_id],
+                )
+                dip_records.append(dip_record)
+
+            canonical_persons, assertions = reconcile_wiki_dip(
+                wiki_records, dip_records, use_overrides=use_overrides
+            )
+
+            accepted = sum(1 for a in assertions if a.status == "accepted")
+            pending = sum(1 for a in assertions if a.status == "pending")
+            rejected = sum(1 for a in assertions if a.status == "rejected")
+
+            typer.echo(f"✓ Reconciliation complete:", err=True)
+            typer.echo(f"  Accepted: {accepted}", err=True)
+            typer.echo(f"  Pending: {pending}", err=True)
+            typer.echo(f"  Rejected: {rejected}", err=True)
+            typer.echo(f"  Canonical persons: {len(canonical_persons)}", err=True)
+
+            if write_neo4j or write_meili:
+                normalized = {
+                    "canonical_persons": canonical_persons,
+                    "link_assertions": assertions,
+                    "dip_person_records": dip_records,
+                }
+                if write_neo4j:
+                    from scraper.sinks.neo4j import Neo4jSink
+                    sink = Neo4jSink(settings)
+                    sink.init()
+                    sink.upsert_reconciliation(normalized)
+                if write_meili:
+                    from scraper.sinks.meili import MeiliSink
+                    sink = MeiliSink(settings)
+                    sink.init()
+                    sink.upsert_reconciliation(normalized)
+
+            sys.exit(0)
+        except Exception as e:
+            typer.echo(f"✗ Reconciliation failed: {e}", err=True)
+            sys.exit(1)
+    else:
+        typer.echo("Error: Must specify --wiki-dip --seed", err=True)
+        sys.exit(2)
+
+
+@app.command()
 def pipeline(
     seed: Optional[str] = Option(None, "--seed", help="Seed key (if not provided, runs all)"),
     write_neo4j: bool = Option(False, "--write-neo4j", help="Write to Neo4j"),
     write_meili: bool = Option(False, "--write-meili", help="Write to Meilisearch"),
     force: bool = Option(False, "--force", help="Force refetch"),
     revalidate: bool = Option(False, "--revalidate", help="Revalidate revisions"),
+    ingest_dip: bool = Option(False, "--ingest-dip", help="Ingest DIP data"),
+    reconcile: bool = Option(False, "--reconcile", help="Reconcile Wikipedia and DIP"),
+    dip_wahlperiode: Optional[str] = Option(None, "--dip-wahlperiode", help="DIP Wahlperiode (comma-separated)"),
+    fetch_person_pages: bool = Option(True, "--fetch-person-pages/--no-fetch-person-pages", help="Fetch individual person pages for intro, birth_date, etc."),
 ) -> None:
     """Run the complete pipeline."""
     runner = PipelineRunner(settings)
+
+    dip_wp_list = None
+    if dip_wahlperiode:
+        dip_wp_list = [int(x.strip()) for x in dip_wahlperiode.split(",")]
 
     try:
         if seed:
@@ -109,6 +298,10 @@ def pipeline(
                 write_meili=write_meili,
                 force=force,
                 revalidate=revalidate,
+                ingest_dip=ingest_dip,
+                reconcile=reconcile,
+                dip_wahlperiode=dip_wp_list,
+                fetch_person_pages=fetch_person_pages,
             )
         else:
             success = runner.run_all(

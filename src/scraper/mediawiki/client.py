@@ -77,6 +77,33 @@ class MediaWikiClient:
             response.raise_for_status()
             return response.json()
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+    )
+    async def fetch_search(
+        self, search_query: str, limit: int = 50, continue_token: Optional[str] = None
+    ) -> Dict[str, Any]:
+        await self._rate_limit()
+
+        params: Dict[str, Any] = {
+            "action": "query",
+            "list": "search",
+            "srsearch": search_query,
+            "srlimit": limit,
+            "srnamespace": 0,  # Main namespace only
+            "format": "json",
+        }
+        if continue_token:
+            params["srcontinue"] = continue_token
+
+        headers = {"User-Agent": self.user_agent}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(self.BASE_URL, params=params, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
 
 def get_client() -> MediaWikiClient:
     return MediaWikiClient(

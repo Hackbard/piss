@@ -1,0 +1,148 @@
+version: 1
+defaults:
+  expected_table_keywords:
+    - "Name"
+    - "Partei"
+    - "Wahlkreis"
+
+landtage:
+  bw:
+    key_prefix: "bw_lt_"
+    state: "Baden-Württemberg"
+    parliament: "Landtag von Baden-Württemberg"
+    wikipedia_index_title: "Landtag von Baden-Württemberg"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags von Baden-Württemberg"'
+      - 'intitle:"Liste der Mitglieder des Landtags Baden-Württemberg"'
+
+  by:
+    key_prefix: "by_lt_"
+    state: "Bayern"
+    parliament: "Bayerischer Landtag"
+    wikipedia_index_title: "Bayerischer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Bayerischen Landtags"'
+
+  be:
+    key_prefix: "be_ah_"
+    state: "Berlin"
+    parliament: "Abgeordnetenhaus von Berlin"
+    wikipedia_index_title: "Abgeordnetenhaus von Berlin"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Abgeordnetenhauses von Berlin"'
+
+  bb:
+    key_prefix: "bb_lt_"
+    state: "Brandenburg"
+    parliament: "Landtag Brandenburg"
+    wikipedia_index_title: "Landtag Brandenburg"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags Brandenburg"'
+      - 'intitle:"Liste der Mitglieder des Landtages Brandenburg"'
+
+  hb:
+    key_prefix: "hb_bb_"
+    state: "Bremen"
+    parliament: "Bremische Bürgerschaft"
+    wikipedia_index_title: "Bremische Bürgerschaft"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder der Bremischen Bürgerschaft"'
+
+  hh:
+    key_prefix: "hh_bh_"
+    state: "Hamburg"
+    parliament: "Hamburgische Bürgerschaft"
+    wikipedia_index_title: "Hamburgische Bürgerschaft"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder der Hamburgischen Bürgerschaft"'
+
+  he:
+    key_prefix: "he_lt_"
+    state: "Hessen"
+    parliament: "Hessischer Landtag"
+    wikipedia_index_title: "Hessischer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Hessischen Landtags"'
+      - 'intitle:"Liste der Mitglieder des Hessischen Landtags ("'
+
+  mv:
+    key_prefix: "mv_lt_"
+    state: "Mecklenburg-Vorpommern"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    wikipedia_index_title: "Landtag Mecklenburg-Vorpommern"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags Mecklenburg-Vorpommern"'
+      - 'intitle:"Liste der Mitglieder des Landtages Mecklenburg-Vorpommern"'
+
+  ni:
+    key_prefix: "ni_lt_"
+    state: "Niedersachsen"
+    parliament: "Niedersächsischer Landtag"
+    wikipedia_index_title: "Niedersächsischer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Niedersächsischen Landtages"'
+      - 'intitle:"Liste der Mitglieder des Niedersächsischen Landtags"'
+
+  nw:
+    key_prefix: "nw_lt_"
+    state: "Nordrhein-Westfalen"
+    parliament: "Landtag Nordrhein-Westfalen"
+    wikipedia_index_title: "Landtag Nordrhein-Westfalen"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags Nordrhein-Westfalen"'
+      - 'intitle:"Liste der Mitglieder des Landtages Nordrhein-Westfalen"'
+
+  rp:
+    key_prefix: "rp_lt_"
+    state: "Rheinland-Pfalz"
+    parliament: "Landtag Rheinland-Pfalz"
+    wikipedia_index_title: "Landtag Rheinland-Pfalz"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags Rheinland-Pfalz"'
+      - 'intitle:"Liste der Mitglieder des Landtages Rheinland-Pfalz"'
+
+  sl:
+    key_prefix: "sl_lt_"
+    state: "Saarland"
+    parliament: "Landtag des Saarlandes"
+    wikipedia_index_title: "Landtag des Saarlandes"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtags des Saarlandes"'
+      - 'intitle:"Liste der Mitglieder des Saarländischen Landtages"'
+
+  sn:
+    key_prefix: "sn_lt_"
+    state: "Sachsen"
+    parliament: "Sächsischer Landtag"
+    wikipedia_index_title: "Sächsischer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Sächsischen Landtags"'
+      - 'intitle:"Liste der Mitglieder des Sächsischen Landtages"'
+
+  st:
+    key_prefix: "st_lt_"
+    state: "Sachsen-Anhalt"
+    parliament: "Landtag von Sachsen-Anhalt"
+    wikipedia_index_title: "Landtag von Sachsen-Anhalt"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Landtages von Sachsen-Anhalt"'
+      - 'intitle:"Liste der Mitglieder des Landtags von Sachsen-Anhalt"'
+
+  sh:
+    key_prefix: "sh_lt_"
+    state: "Schleswig-Holstein"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    wikipedia_index_title: "Schleswig-Holsteinischer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Schleswig-Holsteinischen Landtags"'
+      - 'intitle:"Liste der Mitglieder des Schleswig-Holsteinischen Landtages"'
+
+  th:
+    key_prefix: "th_lt_"
+    state: "Thüringen"
+    parliament: "Thüringer Landtag"
+    wikipedia_index_title: "Thüringer Landtag"
+    member_list_search:
+      - 'intitle:"Liste der Mitglieder des Thüringer Landtags"'
+      - 'intitle:"Liste der Mitglieder des Thüringer Landtages"'
+
