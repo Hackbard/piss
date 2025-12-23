@@ -107,7 +107,10 @@ def scan_cache_for_evidence_id(evidence_id: str) -> Optional[Dict[str, any]]:
 def resolve_from_file_cache(
     evidence_id: str,
     with_snippet: bool = False,
-    snippet_max_len: int = 500
+    snippet_max_len: int = 500,
+    prefer_snippet: str = "table_row",
+    snippet_ref: Optional[Dict[str, Any]] = None,  # Row-level snippet_ref from EvidenceRef
+    purpose: Optional[str] = None,  # Purpose from EvidenceRef
 ) -> Optional[ResolvedEvidence]:
     """
     Resolve evidence from file cache using evidence index.
@@ -143,6 +146,10 @@ def resolve_from_file_cache(
     sha256 = entry.get("sha256") or metadata.get("sha256")
     source_url = metadata.get("url")
     
+    # Use snippet_ref from parameter (EvidenceRef) if provided, otherwise fallback to legacy entry
+    # Note: Evidence index no longer stores snippet_ref (page-level), but legacy entries may have it
+    effective_snippet_ref = snippet_ref if snippet_ref is not None else entry.get("snippet_ref")
+    
     # Build canonical URL
     if source_kind == "mediawiki":
         canonical_url = build_wikipedia_canonical_url(page_title or "", revision_id)
@@ -165,8 +172,8 @@ def resolve_from_file_cache(
             if source_kind == "mediawiki":
                 html = raw_data.get("parse", {}).get("text", {}).get("*", "")
             
-            snippet_ref = entry.get("snippet_ref")
-            snippet, snippet_source = extract_snippet(html, snippet_ref, snippet_max_len)
+            # snippet_ref can be Dict (new format) or string (legacy)
+            snippet, snippet_source = extract_snippet(html, effective_snippet_ref, snippet_max_len, prefer=prefer_snippet)
         except (IOError, json.JSONDecodeError, KeyError):
             pass
     
@@ -184,6 +191,7 @@ def resolve_from_file_cache(
         cache_raw_path=str(cache_raw_path) if cache_raw_path else None,
         snippet=snippet,
         snippet_source=snippet_source,
-        snippet_ref=entry.get("snippet_ref"),
+        snippet_ref=effective_snippet_ref,  # From EvidenceRef (parameter) or legacy entry
+        purpose=purpose,  # From EvidenceRef
     )
 

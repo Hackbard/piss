@@ -309,6 +309,10 @@ def pipeline(
                 write_meili=write_meili,
                 force=force,
                 revalidate=revalidate,
+                ingest_dip=ingest_dip,
+                reconcile=reconcile,
+                dip_wahlperiode=dip_wp_list,
+                fetch_person_pages=fetch_person_pages,
             )
         sys.exit(0 if success else 1)
     except Exception as e:
@@ -323,6 +327,7 @@ def evidence(
     format: str = Option("json", "--format", help="Output format: json, yaml, md"),
     with_snippets: bool = Option(False, "--with-snippets", help="Include snippets"),
     max_len: int = Option(500, "--max-len", help="Maximum snippet length"),
+    prefer: str = Option("table_row", "--prefer", help="Preferred snippet type: table_row or lead_paragraph"),
     resolve_from_meili: bool = Option(False, "--resolve-from-meili", help="Resolve from Meilisearch query"),
     query: Optional[str] = Option(None, "--query", help="Meilisearch query string"),
     index: str = Option("persons", "--index", help="Meilisearch index name"),
@@ -338,6 +343,7 @@ def evidence(
     
     resolver = EvidenceResolver(backend="file_cache")
     evidence_ids = []
+    evidence_refs = []
     
     if resolve_from_meili:
         if not query:
@@ -346,25 +352,42 @@ def evidence(
         
         # Query Meilisearch
         from scraper.sinks.meili import MeiliSink
+        from scraper.models.domain import EvidenceRef
         meili = MeiliSink(settings)
         meili.init()
         
         search_index = meili.client.index(index)
         search_results = search_index.search(query, {"limit": limit})
         
-        # Extract evidence_ids from results
+        # Prefer evidence_refs (new approach), fallback to evidence_ids (legacy)
         for hit in search_results.get("hits", []):
-            hit_evidence_ids = hit.get("evidence_ids", [])
-            if isinstance(hit_evidence_ids, list):
-                evidence_ids.extend(hit_evidence_ids)
+            # Try to get evidence_refs first (preferred)
+            hit_evidence_refs = hit.get("evidence_refs", [])
+            if isinstance(hit_evidence_refs, list) and hit_evidence_refs:
+                for ref_dict in hit_evidence_refs:
+                    try:
+                        evidence_ref = EvidenceRef(**ref_dict)
+                        evidence_refs.append(evidence_ref)
+                    except Exception:
+                        pass
+            
+            # Fallback: legacy evidence_ids (if no evidence_refs found for this hit)
+            if not hit_evidence_refs or not isinstance(hit_evidence_refs, list) or not hit_evidence_refs:
+                hit_evidence_ids = hit.get("evidence_ids", [])
+                if isinstance(hit_evidence_ids, list):
+                    evidence_ids.extend(hit_evidence_ids)
         
-        if not evidence_ids:
-            typer.echo(f"No evidence_ids found in Meilisearch results for query: {query}", err=True)
+        # Deduplicate evidence_ids (legacy fallback)
+        if evidence_ids:
+            evidence_ids = list(set(evidence_ids))
+            typer.echo(f"Found {len(evidence_ids)} unique evidence IDs from Meilisearch (legacy)", err=True)
+        
+        if evidence_refs:
+            typer.echo(f"Found {len(evidence_refs)} evidence references from Meilisearch (preferred)", err=True)
+        
+        if not evidence_refs and not evidence_ids:
+            typer.echo(f"No evidence_refs or evidence_ids found in Meilisearch results for query: {query}", err=True)
             sys.exit(1)
-        
-        # Deduplicate
-        evidence_ids = list(set(evidence_ids))
-        typer.echo(f"Found {len(evidence_ids)} unique evidence IDs from Meilisearch", err=True)
     
     elif resolve:
         if not ids:
@@ -377,16 +400,30 @@ def evidence(
         typer.echo("Error: Must specify --resolve or --resolve-from-meili", err=True)
         sys.exit(1)
     
-    if not evidence_ids:
-        typer.echo("Error: No evidence IDs to resolve", err=True)
+    if not evidence_refs and not evidence_ids:
+        typer.echo("Error: No evidence references or evidence IDs to resolve", err=True)
         sys.exit(1)
     
-    # Resolve evidence
-    resolved = resolver.resolve(
-        evidence_ids=evidence_ids,
-        with_snippets=with_snippets,
-        snippet_max_len=max_len,
-    )
+    # Validate prefer option (only used for legacy evidence_ids)
+    if prefer not in ["table_row", "lead_paragraph"]:
+        typer.echo(f"Error: --prefer must be 'table_row' or 'lead_paragraph', got: {prefer}", err=True)
+        sys.exit(1)
+    
+    # Resolve evidence: prefer evidence_refs (new approach), fallback to evidence_ids (legacy)
+    resolved = []
+    if evidence_refs:
+        resolved = resolver.resolve_refs(
+            evidence_refs=evidence_refs,
+            with_snippets=with_snippets,
+            snippet_max_len=max_len,
+        )
+    elif evidence_ids:
+        resolved = resolver.resolve(
+            evidence_ids=evidence_ids,
+            with_snippets=with_snippets,
+            snippet_max_len=max_len,
+            prefer_snippet=prefer,
+        )
     
     if not resolved:
         typer.echo(f"Warning: No evidence resolved for {len(evidence_ids)} IDs", err=True)

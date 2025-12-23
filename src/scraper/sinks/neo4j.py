@@ -35,6 +35,11 @@ class Neo4jSink:
     def upsert(self, normalized_data: Dict[str, Any]) -> None:
         with self.driver.session() as session:
             for person in normalized_data.get("persons", []):
+                # Ensure evidence_ids is derived from evidence_refs if not set
+                evidence_ids = person.evidence_ids
+                if not evidence_ids and person.evidence_refs:
+                    evidence_ids = list(set([ref.evidence_id for ref in person.evidence_refs]))
+                
                 session.run(
                     """
                     MERGE (p:Person {id: $id})
@@ -56,9 +61,29 @@ class Neo4jSink:
                     birth_date_status=getattr(person, "birth_date_status", "unknown"),
                     death_date=person.death_date,
                     intro=person.intro,
-                    evidence_ids=person.evidence_ids,
+                    evidence_ids=evidence_ids,
                     data_quality_flags=getattr(person, "data_quality_flags", []),
                 )
+                
+                # Create EvidenceRef relationships with snippet_ref as property
+                for evidence_ref in person.evidence_refs:
+                    import json
+                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else None
+                    
+                    session.run(
+                        """
+                        MATCH (p:Person {id: $person_id})
+                        MERGE (e:Evidence {id: $evidence_id})
+                        MERGE (p)-[r:SUPPORTED_BY {
+                            purpose: $purpose,
+                            snippet_ref_json: $snippet_ref_json
+                        }]->(e)
+                        """,
+                        person_id=person.id,
+                        evidence_id=evidence_ref.evidence_id,
+                        purpose=evidence_ref.purpose or "",
+                        snippet_ref_json=snippet_ref_json,
+                    )
 
             for party in normalized_data.get("parties", []):
                 session.run(
@@ -93,6 +118,11 @@ class Neo4jSink:
                 )
 
             for mandate in normalized_data.get("mandates", []):
+                # Ensure evidence_ids is derived from evidence_refs if not set
+                mandate_evidence_ids = mandate.evidence_ids
+                if not mandate_evidence_ids and mandate.evidence_refs:
+                    mandate_evidence_ids = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
+                
                 session.run(
                     """
                     MERGE (m:Mandate {id: $id})
@@ -115,8 +145,28 @@ class Neo4jSink:
                     end_date=mandate.end_date,
                     role=mandate.role,
                     notes=mandate.notes,
-                    evidence_ids=mandate.evidence_ids,
+                    evidence_ids=mandate_evidence_ids,
                 )
+                
+                # Create EvidenceRef relationships with snippet_ref as property
+                for evidence_ref in mandate.evidence_refs:
+                    import json
+                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else None
+                    
+                    session.run(
+                        """
+                        MATCH (m:Mandate {id: $mandate_id})
+                        MERGE (e:Evidence {id: $evidence_id})
+                        MERGE (m)-[r:SUPPORTED_BY {
+                            purpose: $purpose,
+                            snippet_ref_json: $snippet_ref_json
+                        }]->(e)
+                        """,
+                        mandate_id=mandate.id,
+                        evidence_id=evidence_ref.evidence_id,
+                        purpose=evidence_ref.purpose or "",
+                        snippet_ref_json=snippet_ref_json,
+                    )
 
                 session.run(
                     """

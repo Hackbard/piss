@@ -20,7 +20,10 @@ Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit
 
 **Kurzfassung:**
 1. **Seeds entdecken**: `docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions`
-2. **Alles laden**: `docker compose run --rm scraper scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili`
+2. **ALLE Daten laden**: `docker compose run --rm scraper scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili --fetch-person-pages`
+   - Lädt automatisch **ALLE** Seeds (167+ Landtags-Mitgliederlisten)
+   - Lädt automatisch **ALLE** DIP Wahlperioden (1-50)
+   - Lädt **ALLE** Personenseiten für vollständige Daten
 
 ## Datenfluss
 
@@ -55,42 +58,49 @@ docker compose run --rm scraper scraper seed --discover --landtage --pin-revisio
 # Output: data/exports/seeds_landtage.yaml (167+ Seeds)
 ```
 
-### 2. Bundestag + Landtag Daten laden
+### 2. ALLE Daten laden (Bundestag + alle Landtage)
 
+**Schnellste Variante - lädt ALLES automatisch:**
 ```bash
 # Environment-Variablen setzen (falls noch nicht geschehen)
 # DIP_API_KEY in .env setzen für Bundestag-Daten
 
-# Pipeline mit Bundestag (alle Wahlperioden) + Landtag (alle Seeds) ausführen
+# Pipeline OHNE --seed = lädt ALLE Seeds automatisch (167+ Landtags-Mitgliederlisten)
 docker compose run --rm scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
   --write-meili \
-  --force
-
-# Oder für einen einzelnen Landtag-Seed:
-docker compose run --rm scraper scraper pipeline \
-  --seed be_ah_1 \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili
+  --fetch-person-pages
 ```
 
 **Was passiert:**
-1. **DIP Ingest**: Lädt alle Bundestags-Personen (Wahlperioden 1-50, konfigurierbar via `DIP_MAX_WAHLPERIODE`)
-2. **Wikipedia Scraping**: Lädt Landtags-Mitgliederlisten aus Wikipedia
-3. **Reconciliation**: Führt Wikipedia- und DIP-Personen zusammen (Identity Resolution)
-4. **Sinks**: Speichert in Neo4j und Meilisearch
+1. **DIP Ingest**: Lädt **ALLE** Bundestags-Personen (Wahlperioden 1-50, konfigurierbar via `DIP_MAX_WAHLPERIODE`)
+2. **Wikipedia Scraping**: Lädt **ALLE** Landtags-Mitgliederlisten aus Wikipedia (alle 167+ Seeds automatisch)
+3. **Personenseiten**: Lädt für **ALLE** Personen die individuellen Wikipedia-Seiten (Intro, Geburtsdatum, etc.)
+4. **Reconciliation**: Führt Wikipedia- und DIP-Personen zusammen (Identity Resolution)
+5. **Sinks**: Speichert alles in Neo4j und Meilisearch
 
-**Ohne `--force` (idempotent, nutzt Cache):**
+**Mit `--force` (ignoriert Cache, lädt alles neu):**
 ```bash
 docker compose run --rm scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
-  --write-meili
+  --write-meili \
+  --fetch-person-pages \
+  --force
+```
+
+**Für einen einzelnen Landtag-Seed:**
+```bash
+docker compose run --rm scraper scraper pipeline \
+  --seed be_ah_1 \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages
 ```
 
 ## Setup
@@ -175,10 +185,16 @@ scraper reconcile wiki-dip --seed nds_lt_17 [--use-overrides] [--write-neo4j] [-
 
 #### Pipeline ausführen
 ```bash
-# Einzelner Seed mit DIP + Reconciliation
-scraper pipeline --seed nds_lt_17 --ingest-dip --reconcile --dip-wahlperiode 19 --write-neo4j --write-meili
+# ALLES laden (ALLE Seeds + ALLE DIP Wahlperioden) - EMPFOHLEN
+scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili --fetch-person-pages
 
-# Standard Pipeline (nur Wikipedia)
+# Einzelner Seed mit DIP + Reconciliation
+scraper pipeline --seed nds_lt_17 --ingest-dip --reconcile --dip-wahlperiode "19,20" --write-neo4j --write-meili --fetch-person-pages
+
+# Standard Pipeline (nur Wikipedia, alle Seeds)
+scraper pipeline --write-neo4j --write-meili --fetch-person-pages
+
+# Einzelner Seed (nur Wikipedia)
 scraper pipeline --seed nds_lt_17 [--write-neo4j] [--write-meili] [--force] [--revalidate]
 ```
 
@@ -190,19 +206,25 @@ scraper export json --out /data/exports/<run_id>/
 #### Evidence Resolver
 ```bash
 # Resolve evidence IDs to canonical URLs and snippets
-scraper evidence --resolve --ids <id1,id2,...> [--format json|yaml|md] [--with-snippets] [--max-len 500]
+scraper evidence --resolve --ids <id1,id2,...> [--format json|yaml|md] [--with-snippets] [--max-len 500] [--prefer table_row|lead_paragraph]
 
-# Resolve evidence from Meilisearch query
-scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5] [--with-snippets]
+# Resolve evidence from Meilisearch query (mit Row-level Citations)
+scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5] [--with-snippets] [--prefer table_row] [--format md]
 ```
 
 **Beispiele:**
 ```bash
-# Resolve two evidence IDs with snippets in Markdown format
-docker compose run --rm scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets
+# Resolve two evidence IDs with snippets in Markdown format (mit table_row preference)
+docker compose run --rm scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets --prefer table_row
 
-# Resolve evidence from Meilisearch search results
-docker compose run --rm scraper scraper evidence --resolve-from-meili --query "Stephan Weil" --index persons --limit 1 --with-snippets --format json
+# Resolve evidence from Meilisearch search results (mit Row-level Citations)
+docker compose run --rm scraper scraper evidence --resolve-from-meili \
+  --query "Stephan Weil" \
+  --index persons \
+  --limit 1 \
+  --prefer table_row \
+  --with-snippets \
+  --format md
 ```
 
 ## Evidence Resolver
@@ -214,6 +236,114 @@ Der Evidence Resolver löst Evidence-IDs in zitierfähige Quellenobjekte auf:
   - Canonical URLs (Wikipedia mit `oldid` für Reproduzierbarkeit)
   - Snippets (optional, aus gecachtem HTML extrahiert)
   - Vollständige Provenance (revision_id, page_id, sha256, retrieved_at)
+  - **Row-level Citations**: Für Mitgliederlisten werden Snippets aus der exakten Tabellenzeile extrahiert
+
+### Row-level Citations (EvidenceRef Architecture)
+
+Das System verwendet eine **zweistufige Architektur** für Evidence und Row-level Citations:
+
+#### Architektur
+
+1. **Evidence (page-level)**: Unveränderlich, repräsentiert die gesamte Seite/Response
+   - Enthält: `id`, `page_title`, `page_id`, `revision_id`, `sha256`, `source_url`
+   - **KEIN** `snippet_ref` (Evidence ist page-level)
+
+2. **EvidenceRef (entity-level)**: Entity-spezifische Referenz mit Row-level `snippet_ref`
+   - Enthält: `evidence_id`, `snippet_ref` (optional), `purpose`, `confidence`
+   - Gespeichert auf: `Person.evidence_refs[]`, `Mandate.evidence_refs[]`
+   - `snippet_ref` enthält Row-Level-Informationen (`table_index`, `row_index`, `match`)
+
+#### Warum diese Architektur?
+
+- **Problem gelöst**: Vorher wurde `snippet_ref` am Evidence-Objekt gespeichert. Da Evidence page-level ist, überschrieb jede weitere Tabellenzeile den `snippet_ref` → Resolver lieferte zufällige/falsche Personenzeile.
+- **Lösung**: Evidence bleibt unveränderlich (page-level). Row-level Referenz ist entity-specific (EvidenceRef).
+
+#### Beispiel: Stephan Weil
+
+**Mitgliederlisten-Evidence** (page-level):
+- Evidence-ID: `98a37cb9-1cc5-51a1-a51e-5992856c4fa0`
+- Page: "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)"
+- **Kein** `snippet_ref` (page-level)
+
+**Mandate EvidenceRef** (entity-level):
+- `evidence_id`: `98a37cb9-1cc5-51a1-a51e-5992856c4fa0`
+- `purpose`: `"membership_row"`
+- `snippet_ref`: 
+  ```json
+  {
+    "version": 1,
+    "type": "table_row",
+    "table_index": 0,
+    "row_index": 5,
+    "row_kind": "data",
+    "match": {
+      "person_title": "Stephan_Weil",
+      "name_cell": "Stephan Weil"
+    }
+  }
+  ```
+
+**Resolver Output:**
+```bash
+docker compose run --rm scraper scraper evidence --resolve-from-meili \
+  --query "Stephan Weil" \
+  --index persons \
+  --limit 1 \
+  --with-snippets \
+  --format md
+```
+
+**Output:**
+```
+Found 2 evidence references from Meilisearch (preferred)
+
+- Evidence `98a37cb9-1cc5-51a1-a51e-5992856c4fa0`
+  - **Source**: mediawiki
+  - **Page**: Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)
+  - **Revision**: 256198867
+  - **URL**: https://de.wikipedia.org/w/index.php?title=...&oldid=256198867
+  - **Snippet**: "Stephan Weil | SPD | Wahlkreis Hannover-Linden | ..."
+  - **Snippet Source**: table_row
+  - **Purpose**: membership_row
+  - **Snippet Ref**: ```json
+    {
+        "version": 1,
+        "type": "table_row",
+        "table_index": 0,
+        "row_index": 5,
+        "row_kind": "data",
+        "match": {
+            "person_title": "Stephan_Weil",
+            "name_cell": "Stephan Weil"
+        }
+    }
+    ```
+
+- Evidence `b2c3d4e5-f6a7-89b0-c1d2-e3f4a5b6c7d8`
+  - **Source**: mediawiki
+  - **Page**: Stephan Weil
+  - **Snippet Source**: lead_paragraph
+  - **Purpose**: person_page_intro
+  - **Snippet**: "Stephan Weil (* 15. März 1958 in Hamburg) ist ein deutscher Politiker (SPD)..."
+```
+
+#### Backward Compatibility
+
+- **Legacy `evidence_ids`**: Bleiben nutzbar (Fallback `lead_paragraph`)
+- **Neue `evidence_refs`**: Werden bevorzugt verwendet (mit `snippet_ref` für `table_row`)
+- **Meilisearch**: Enthält beide (`evidence_ids` + `evidence_refs`)
+
+#### CLI Optionen
+
+- `--prefer table_row` (default): Wird ignoriert wenn `evidence_refs` vorhanden (nutzt `snippet_ref` aus EvidenceRef)
+- `--prefer lead_paragraph`: Fallback für legacy `evidence_ids` ohne `evidence_refs`
+
+#### Stabilität
+
+- `snippet_ref` ist deterministisch bei gleicher `oldid`
+- Wenn Wikipedia die Tabellenstruktur ändert, bleibt die gepinnte Revision (`oldid`) reproduzierbar
+- `table_index` und `row_index` beziehen sich auf die gepinnte Revision
+- **Wichtig**: Bei `resolve-from-meili` wird die **korrekte Tabellenzeile** geliefert (nicht die letzte verarbeitete Zeile)
 
 ### Warum `oldid` URLs wichtig sind
 

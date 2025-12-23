@@ -24,7 +24,6 @@ def update_evidence_index(
     page_id: Optional[int] = None,
     revision_id: Optional[int] = None,
     sha256: Optional[str] = None,
-    snippet_ref: Optional[str] = None,
     endpoint: Optional[str] = None,
     params: Optional[Dict[str, Any]] = None,
 ) -> None:
@@ -32,6 +31,9 @@ def update_evidence_index(
     Update evidence index with new entry (idempotent: overwrites if exists).
     
     Writes to evidence_index.jsonl (JSONL format, one entry per line).
+    
+    Note: snippet_ref is no longer stored in evidence index (Evidence is page-level).
+    Row-level snippet_refs are stored in EvidenceRef on entities (Person, Mandate, etc.).
     """
     index_path = get_evidence_index_path()
     
@@ -44,7 +46,6 @@ def update_evidence_index(
         "page_id": page_id,
         "revision_id": revision_id,
         "sha256": sha256,
-        "snippet_ref": snippet_ref,
         "endpoint": endpoint,
         "params": params,
     }

@@ -20,6 +20,15 @@ class Event(BaseModel):
     date: Optional[str] = Field(None, description="Event date (ISO format)")
 
 
+class EvidenceRef(BaseModel):
+    """Entity-level reference to Evidence with optional row-level snippet reference."""
+    evidence_id: str = Field(..., description="Evidence ID (page-level)")
+    snippet_ref: Optional[Dict[str, Any]] = Field(None, description="Row-level snippet reference (e.g. table_row with table_index, row_index)")
+    purpose: Optional[str] = Field(None, description="Purpose of this evidence reference: membership_row, person_page_intro, etc.")
+    confidence: Optional[float] = Field(None, description="Confidence score 0..1")
+    created_at: Optional[str] = Field(None, description="Creation timestamp (UTC ISO)")
+
+
 class Person(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
     name: str = Field(..., description="Full name")
@@ -29,12 +38,18 @@ class Person(BaseModel):
     birth_date_status: str = Field(default="unknown", description="Birth date extraction status: unknown, extracted, not_present")
     death_date: Optional[str] = Field(None, description="Death date (ISO format)")
     intro: Optional[str] = Field(None, description="Introduction text from Wikipedia")
-    evidence_ids: List[str] = Field(default_factory=list, description="Evidence IDs (must include both member list and person page if intro present)")
+    evidence_refs: List[EvidenceRef] = Field(default_factory=list, description="Entity-level evidence references with row-level snippet_refs")
+    evidence_ids: List[str] = Field(default_factory=list, description="Legacy: Evidence IDs (derived from evidence_refs for backward compatibility)")
     unstructured_evidence: Optional[List[Dict[str, Any]]] = Field(
         None, description="Unstructured evidence snippets"
     )
     provenance: Optional[Provenance] = Field(None, description="Provenance information")
     data_quality_flags: List[str] = Field(default_factory=list, description="Data quality flags, e.g. ['missing_birth_date']")
+    
+    def model_post_init(self, __context: Any) -> None:
+        """Derive evidence_ids from evidence_refs if not set (backward compatibility)."""
+        if not self.evidence_ids and self.evidence_refs:
+            self.evidence_ids = list(set([ref.evidence_id for ref in self.evidence_refs]))
 
 
 class Party(BaseModel):
@@ -66,11 +81,18 @@ class Mandate(BaseModel):
     role: str = Field(default="member", description="Role in legislature")
     events: List[Event] = Field(default_factory=list, description="Events related to mandate")
     notes: Optional[str] = Field(None, description="Additional notes")
-    evidence_ids: List[str] = Field(default_factory=list, description="Evidence IDs")
+    evidence_refs: List[EvidenceRef] = Field(default_factory=list, description="Entity-level evidence references (preferred: membership_row with table_row snippet_ref)")
+    evidence_ids: List[str] = Field(default_factory=list, description="Legacy: Evidence IDs (derived from evidence_refs for backward compatibility)")
     provenance: Optional[Provenance] = Field(None, description="Provenance information")
+    
+    def model_post_init(self, __context: Any) -> None:
+        """Derive evidence_ids from evidence_refs if not set (backward compatibility)."""
+        if not self.evidence_ids and self.evidence_refs:
+            self.evidence_ids = list(set([ref.evidence_id for ref in self.evidence_refs]))
 
 
 class Evidence(BaseModel):
+    """Page-level Evidence (immutable, represents entire page/response)."""
     id: str = Field(..., description="Deterministic UUID5 ID")
     endpoint_kind: str = Field(..., description="parse or query")
     page_title: str = Field(..., description="Page title")
@@ -79,7 +101,7 @@ class Evidence(BaseModel):
     source_url: str = Field(..., description="Source URL")
     retrieved_at: str = Field(..., description="UTC timestamp")
     sha256: str = Field(..., description="SHA256 hash")
-    snippet_ref: Optional[str] = Field(None, description="Reference to snippet (CSS selector, row index, etc.)")
+    # snippet_ref removed: Evidence is page-level, row-level refs belong to EvidenceRef
 
 
 class LegislatureMember(BaseModel):

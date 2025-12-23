@@ -245,7 +245,18 @@ def get_cached_metadata(page_title: str) -> Optional[CachedResponseMetadata]:
     if not metadata_path.exists():
         return None
 
-    return CachedResponseMetadata(**json.loads(metadata_path.read_text()))
+    metadata_dict = json.loads(metadata_path.read_text())
+    # Handle old cache format that might not have 'url' field
+    if "url" not in metadata_dict:
+        # Reconstruct URL from page_title if available
+        page_title = metadata_dict.get("page_title", "")
+        if page_title:
+            from urllib.parse import quote
+            page_title_encoded = quote(page_title.replace("_", " "), safe="")
+            metadata_dict["url"] = f"https://de.wikipedia.org/wiki/{page_title_encoded}"
+        else:
+            metadata_dict["url"] = ""
+    return CachedResponseMetadata(**metadata_dict)
 
 
 def fetch_legislature_page(seed_key: str, run_id: str, force: bool = False, revalidate: bool = False) -> None:

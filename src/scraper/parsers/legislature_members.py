@@ -117,7 +117,10 @@ def extract_person_from_row(
     headers: Dict[str, int],
     seed_data: Dict[str, Any],
     evidence_id: str,
-) -> Optional[Person]:
+    table_index: int = 0,
+    row_index: int = 0,
+    page_title: str = "",
+) -> Optional[tuple[Person, Any]]:
     cells = row.find_all(["td", "th"])
     if len(cells) <= max(headers.values(), default=0):
         return None
@@ -143,13 +146,41 @@ def extract_person_from_row(
     person_id = generate_person_id(wikipedia_title)
     wikipedia_url = f"https://de.wikipedia.org/wiki/{wikipedia_title}"
 
-    return Person(
+    # Create snippet_ref for table_row citation (will be stored in EvidenceRef on Mandate)
+    snippet_ref = {
+        "version": 1,
+        "type": "table_row",
+        "table_index": table_index,
+        "row_index": row_index,
+        "row_kind": "data",
+        "title_hint": page_title,
+        "match": {
+            "person_title": wikipedia_title,
+            "name_cell": name,
+        }
+    }
+
+    # Create EvidenceRef for membership row (will be attached to Mandate, not Person)
+    from scraper.models.domain import EvidenceRef
+    from scraper.utils.time import utc_now_iso
+    
+    membership_evidence_ref = EvidenceRef(
+        evidence_id=evidence_id,
+        snippet_ref=snippet_ref,
+        purpose="membership_row",
+        created_at=utc_now_iso(),
+    )
+
+    person = Person(
         id=person_id,
         name=name,
         wikipedia_title=wikipedia_title,
         wikipedia_url=wikipedia_url,
-        evidence_ids=[evidence_id],
+        evidence_ids=[evidence_id],  # Legacy: will be derived from evidence_refs in model_post_init
+        evidence_refs=[],  # Membership row EvidenceRef goes to Mandate, not Person
     )
+    
+    return person, membership_evidence_ref
 
 
 def extract_mandate_from_row(
@@ -158,6 +189,7 @@ def extract_mandate_from_row(
     person: Person,
     seed_data: Dict[str, Any],
     evidence_id: str,
+    membership_evidence_ref: Any,
 ) -> Optional[Mandate]:
     cells = row.find_all(["td", "th"])
 
@@ -218,6 +250,11 @@ def extract_mandate_from_row(
         role="member",
     )
 
+    # Attach membership EvidenceRef to Mandate (not Person)
+    from scraper.models.domain import EvidenceRef
+    
+    mandate_evidence_refs = [membership_evidence_ref] if membership_evidence_ref else []
+    
     return Mandate(
         id=mandate_id,
         person_id=person.id,
@@ -229,8 +266,26 @@ def extract_mandate_from_row(
         role="member",
         events=events,
         notes=notes,
-        evidence_ids=[evidence_id],
+        evidence_refs=mandate_evidence_refs,  # Row-level reference with table_row snippet_ref
+        evidence_ids=[evidence_id],  # Legacy: will be derived from evidence_refs
     )
+
+
+def find_table_index(soup: BeautifulSoup, target_table: Any) -> int:
+    """
+    Find the index of target_table among all wikitable tables in the page.
+    Returns 0-based index.
+    """
+    all_tables = soup.find_all("table", class_=lambda x: x and "wikitable" in x)
+    if not all_tables:
+        # Fallback: all tables
+        all_tables = soup.find_all("table")
+    
+    for idx, table in enumerate(all_tables):
+        if table == target_table:
+            return idx
+    
+    return 0  # Default to first table if not found
 
 
 def parse_legislature_members(
@@ -249,6 +304,9 @@ def parse_legislature_members(
     if not headers:
         raise ValueError("Could not extract table headers")
 
+    # Determine table_index (which table in the page)
+    table_index = find_table_index(soup, table)
+
     # Use sha256 from metadata if available, otherwise compute from parse
     # This ensures consistency with the evidence index
     from scraper.cache.mediawiki_cache import get_cached_metadata
@@ -263,13 +321,18 @@ def parse_legislature_members(
     )
 
     members = []
-    rows = table.find_all("tr")[1:]
-    for row in rows:
-        person = extract_person_from_row(row, headers, seed_data, evidence_id)
-        if not person:
+    all_rows = table.find_all("tr")
+    data_rows = all_rows[1:]  # Skip header row
+    
+    for row_index, row in enumerate(data_rows):
+        # Extract person and membership EvidenceRef
+        result = extract_person_from_row(row, headers, seed_data, evidence_id, table_index, row_index, response.page_title)
+        if not result:
             continue
+        
+        person, membership_evidence_ref = result
 
-        mandate = extract_mandate_from_row(row, headers, person, seed_data, evidence_id)
+        mandate = extract_mandate_from_row(row, headers, person, seed_data, evidence_id, membership_evidence_ref)
         if mandate:
             members.append((person, mandate))
 

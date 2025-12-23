@@ -41,6 +41,12 @@ def format_resolved_evidence_markdown(resolved: List[ResolvedEvidence]) -> str:
             lines.append(f"  - **Snippet**: \"{e.snippet}\"")
         if e.snippet_source:
             lines.append(f"  - **Snippet Source**: {e.snippet_source}")
+        if e.purpose:
+            lines.append(f"  - **Purpose**: {e.purpose}")
+        if e.snippet_ref:
+            import json
+            snippet_ref_str = json.dumps(e.snippet_ref, ensure_ascii=False, indent=4)
+            lines.append(f"  - **Snippet Ref**: ```json\n{snippet_ref_str}\n```")
         lines.append("")
     
     return "\n".join(lines)

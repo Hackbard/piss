@@ -230,9 +230,16 @@ class PipelineRunner:
             manifest["status"] = "success"
 
         except Exception as e:
-            manifest["errors"].append(str(e))
+            import traceback
+            import sys
+            error_msg = str(e)
+            traceback_str = traceback.format_exc()
+            manifest["errors"].append(error_msg)
+            manifest["error_traceback"] = traceback_str
             manifest["status"] = "error"
             manifest["completed_at"] = utc_now_iso()
+            print(f"✗ Pipeline error: {error_msg}", file=sys.stderr)
+            print(f"Traceback:\n{traceback_str}", file=sys.stderr)
             return False
         finally:
             manifest_path = self.settings.scraper_cache_dir / "manifests" / f"{run_id}.json"
@@ -247,6 +254,10 @@ class PipelineRunner:
         write_meili: bool = False,
         force: bool = False,
         revalidate: bool = False,
+        ingest_dip: bool = False,
+        reconcile: bool = False,
+        dip_wahlperiode: Optional[List[int]] = None,
+        fetch_person_pages: bool = True,
     ) -> bool:
         seeds = load_seeds()
         all_success = True
@@ -257,6 +268,10 @@ class PipelineRunner:
                 write_meili=write_meili,
                 force=force,
                 revalidate=revalidate,
+                ingest_dip=ingest_dip,
+                reconcile=reconcile,
+                dip_wahlperiode=dip_wahlperiode,
+                fetch_person_pages=fetch_person_pages,
             )
             if not success:
                 all_success = False
@@ -292,8 +307,39 @@ class PipelineRunner:
             )
             legislatures[legislature_id] = legislature
 
-        person_enrichment_stats = {"total": 0, "cached": 0, "fetched": 0, "failed": 0, "enriched": 0}
+        # Update evidence index (page-level, no snippet_ref)
+        from scraper.cache.evidence_index import update_evidence_index
+        from scraper.cache.mediawiki_cache import get_cache_path
         
+        member_list_evidence_id = legislature_data.evidence_id
+        cache_path = get_cache_path(response.page_title, response.revision_id, "parse")
+        metadata_path = cache_path / "metadata.json"
+        raw_path = cache_path / "raw.json"
+        
+        # Load metadata for sha256
+        metadata_sha256 = None
+        if metadata_path.exists():
+            try:
+                import json as json_module
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    metadata = json_module.load(f)
+                    metadata_sha256 = metadata.get("sha256")
+            except (IOError, json_module.JSONDecodeError):
+                pass
+        
+        # Update evidence index once (page-level, no snippet_ref)
+        if metadata_path.exists() and raw_path.exists():
+            update_evidence_index(
+                evidence_id=member_list_evidence_id,
+                source_kind="mediawiki",
+                cache_metadata_path=metadata_path,
+                cache_raw_path=raw_path,
+                page_title=response.page_title,
+                page_id=response.page_id,
+                revision_id=response.revision_id,
+                sha256=metadata_sha256,
+            )
+
         person_enrichment_stats = {"total": 0, "cached": 0, "fetched": 0, "failed": 0, "enriched": 0}
         
         for person, mandate in legislature_data.members:
@@ -360,8 +406,20 @@ class PipelineRunner:
                         # Merge data quality flags
                         person.data_quality_flags = list(set(person.data_quality_flags + parsed_person.data_quality_flags))
                         
-                        # Merge evidence IDs (CRITICAL: must include both member list and person page if intro present)
-                        person.evidence_ids = list(set(person.evidence_ids + parsed_person.evidence_ids))
+                        # Merge evidence_refs (preferred) and evidence_ids (legacy)
+                        # Deduplicate by evidence_id + purpose + snippet_ref hash
+                        existing_refs = {(ref.evidence_id, ref.purpose, str(ref.snippet_ref)): ref for ref in person.evidence_refs}
+                        for ref in parsed_person.evidence_refs:
+                            key = (ref.evidence_id, ref.purpose, str(ref.snippet_ref))
+                            if key not in existing_refs:
+                                existing_refs[key] = ref
+                        person.evidence_refs = list(existing_refs.values())
+                        
+                        # Update legacy evidence_ids from merged evidence_refs
+                        all_evidence_ids = set(person.evidence_ids)  # Keep existing legacy IDs
+                        for ref in person.evidence_refs:
+                            all_evidence_ids.add(ref.evidence_id)
+                        person.evidence_ids = list(all_evidence_ids)
                         
                         # Validate: if intro is present, we must have at least 2 evidence IDs
                         # (one from member list, one from person page)
@@ -388,6 +446,9 @@ class PipelineRunner:
                     pass
             
             persons[person.id] = person
+            
+            # Note: snippet_refs are stored in EvidenceRef on Mandate (membership_row), not in Evidence index
+            # Evidence index is page-level only, row-level references are entity-level (EvidenceRef)
 
             if mandate.party_name:
                 from scraper.utils.ids import generate_party_id

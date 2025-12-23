@@ -17,5 +17,6 @@ class ResolvedEvidence(BaseModel):
     cache_raw_path: Optional[str] = Field(None, description="Path to raw.json in cache")
     snippet: Optional[str] = Field(None, description="Extracted snippet (cleaned)")
     snippet_source: Optional[str] = Field(None, description="Snippet source: lead_paragraph, table_row, etc.")
-    snippet_ref: Optional[str] = Field(None, description="Original snippet_ref from Evidence")
+    snippet_ref: Optional[Dict[str, Any]] = Field(None, description="Row-level snippet_ref from EvidenceRef (Dict for table_row or None)")
+    purpose: Optional[str] = Field(None, description="Purpose of this evidence reference: membership_row, person_page_intro, etc.")
 

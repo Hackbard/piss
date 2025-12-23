@@ -130,6 +130,17 @@ def parse_person_page(response: MediaWikiParseResponse) -> Person:
     if not birth_date:
         data_quality_flags.append("missing_birth_date")
     
+    # Create EvidenceRef for person page intro
+    from scraper.models.domain import EvidenceRef
+    from scraper.utils.time import utc_now_iso
+    
+    person_page_evidence_ref = EvidenceRef(
+        evidence_id=evidence_id,
+        snippet_ref=None,  # Lead paragraph, no specific row reference
+        purpose="person_page_intro",
+        created_at=utc_now_iso(),
+    )
+    
     return Person(
         id=person_id,
         name=title,
@@ -139,7 +150,8 @@ def parse_person_page(response: MediaWikiParseResponse) -> Person:
         birth_date_status=birth_date_status,
         death_date=keyfacts.get("death_date"),
         intro=intro,
-        evidence_ids=[evidence_id],
+        evidence_refs=[person_page_evidence_ref],  # Person page EvidenceRef
+        evidence_ids=[evidence_id],  # Legacy: will be derived from evidence_refs
         unstructured_evidence=unstructured_evidence if unstructured_evidence else None,
         data_quality_flags=data_quality_flags,
     )

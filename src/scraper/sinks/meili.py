@@ -48,6 +48,14 @@ class MeiliSink:
             person_dict = person.model_dump()
             person_dict["_id"] = person.id
             
+            # Ensure evidence_ids is derived from evidence_refs if not set
+            if not person_dict.get("evidence_ids") and person.evidence_refs:
+                person_dict["evidence_ids"] = list(set([ref.evidence_id for ref in person.evidence_refs]))
+            
+            # Serialize evidence_refs for Meilisearch (JSON-serializable)
+            if person.evidence_refs:
+                person_dict["evidence_refs"] = [ref.model_dump() for ref in person.evidence_refs]
+            
             # Validate: if intro is present, must have at least 2 evidence IDs
             if person_dict.get("intro") and len(person_dict.get("evidence_ids", [])) < 2:
                 import sys
@@ -63,6 +71,15 @@ class MeiliSink:
         for mandate in normalized_data.get("mandates", []):
             mandate_dict = mandate.model_dump()
             mandate_dict["_id"] = mandate.id
+            
+            # Ensure evidence_ids is derived from evidence_refs if not set
+            if not mandate_dict.get("evidence_ids") and mandate.evidence_refs:
+                mandate_dict["evidence_ids"] = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
+            
+            # Serialize evidence_refs for Meilisearch (JSON-serializable)
+            if mandate.evidence_refs:
+                mandate_dict["evidence_refs"] = [ref.model_dump() for ref in mandate.evidence_refs]
+            
             mandates_docs.append(mandate_dict)
 
         if mandates_docs:
