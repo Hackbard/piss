@@ -317,6 +317,96 @@ def pipeline(
 
 
 @app.command()
+def evidence(
+    resolve: bool = Option(False, "--resolve", help="Resolve evidence IDs"),
+    ids: Optional[str] = Option(None, "--ids", help="Comma-separated evidence IDs"),
+    format: str = Option("json", "--format", help="Output format: json, yaml, md"),
+    with_snippets: bool = Option(False, "--with-snippets", help="Include snippets"),
+    max_len: int = Option(500, "--max-len", help="Maximum snippet length"),
+    resolve_from_meili: bool = Option(False, "--resolve-from-meili", help="Resolve from Meilisearch query"),
+    query: Optional[str] = Option(None, "--query", help="Meilisearch query string"),
+    index: str = Option("persons", "--index", help="Meilisearch index name"),
+    limit: int = Option(5, "--limit", help="Limit results from Meilisearch"),
+) -> None:
+    """Evidence resolver commands."""
+    from scraper.evidence.resolver import EvidenceResolver
+    from scraper.evidence.formatters import (
+        format_resolved_evidence_json,
+        format_resolved_evidence_yaml,
+        format_resolved_evidence_markdown,
+    )
+    
+    resolver = EvidenceResolver(backend="file_cache")
+    evidence_ids = []
+    
+    if resolve_from_meili:
+        if not query:
+            typer.echo("Error: --query required when using --resolve-from-meili", err=True)
+            sys.exit(1)
+        
+        # Query Meilisearch
+        from scraper.sinks.meili import MeiliSink
+        meili = MeiliSink(settings)
+        meili.init()
+        
+        search_index = meili.client.index(index)
+        search_results = search_index.search(query, {"limit": limit})
+        
+        # Extract evidence_ids from results
+        for hit in search_results.get("hits", []):
+            hit_evidence_ids = hit.get("evidence_ids", [])
+            if isinstance(hit_evidence_ids, list):
+                evidence_ids.extend(hit_evidence_ids)
+        
+        if not evidence_ids:
+            typer.echo(f"No evidence_ids found in Meilisearch results for query: {query}", err=True)
+            sys.exit(1)
+        
+        # Deduplicate
+        evidence_ids = list(set(evidence_ids))
+        typer.echo(f"Found {len(evidence_ids)} unique evidence IDs from Meilisearch", err=True)
+    
+    elif resolve:
+        if not ids:
+            typer.echo("Error: --ids required when using --resolve", err=True)
+            sys.exit(1)
+        
+        evidence_ids = [eid.strip() for eid in ids.split(",")]
+    
+    else:
+        typer.echo("Error: Must specify --resolve or --resolve-from-meili", err=True)
+        sys.exit(1)
+    
+    if not evidence_ids:
+        typer.echo("Error: No evidence IDs to resolve", err=True)
+        sys.exit(1)
+    
+    # Resolve evidence
+    resolved = resolver.resolve(
+        evidence_ids=evidence_ids,
+        with_snippets=with_snippets,
+        snippet_max_len=max_len,
+    )
+    
+    if not resolved:
+        typer.echo(f"Warning: No evidence resolved for {len(evidence_ids)} IDs", err=True)
+        sys.exit(0)  # Exit 0, but warn
+    
+    # Format output
+    if format == "json":
+        output = format_resolved_evidence_json(resolved)
+    elif format == "yaml":
+        output = format_resolved_evidence_yaml(resolved)
+    elif format == "md":
+        output = format_resolved_evidence_markdown(resolved)
+    else:
+        typer.echo(f"Error: Unknown format: {format}", err=True)
+        sys.exit(1)
+    
+    print(output)
+
+
+@app.command()
 def export(
     json: bool = Option(False, "--json", help="Export as JSON"),
     out: Optional[Path] = Option(None, "--out", help="Output directory"),

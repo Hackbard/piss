@@ -187,6 +187,74 @@ scraper pipeline --seed nds_lt_17 [--write-neo4j] [--write-meili] [--force] [--r
 scraper export json --out /data/exports/<run_id>/
 ```
 
+#### Evidence Resolver
+```bash
+# Resolve evidence IDs to canonical URLs and snippets
+scraper evidence --resolve --ids <id1,id2,...> [--format json|yaml|md] [--with-snippets] [--max-len 500]
+
+# Resolve evidence from Meilisearch query
+scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5] [--with-snippets]
+```
+
+**Beispiele:**
+```bash
+# Resolve two evidence IDs with snippets in Markdown format
+docker compose run --rm scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets
+
+# Resolve evidence from Meilisearch search results
+docker compose run --rm scraper scraper evidence --resolve-from-meili --query "Stephan Weil" --index persons --limit 1 --with-snippets --format json
+```
+
+## Evidence Resolver
+
+Der Evidence Resolver löst Evidence-IDs in zitierfähige Quellenobjekte auf:
+
+- **Input**: Liste von Evidence-IDs (aus Meilisearch, Neo4j, Exports)
+- **Output**: ResolvedEvidence Objekte mit:
+  - Canonical URLs (Wikipedia mit `oldid` für Reproduzierbarkeit)
+  - Snippets (optional, aus gecachtem HTML extrahiert)
+  - Vollständige Provenance (revision_id, page_id, sha256, retrieved_at)
+
+### Warum `oldid` URLs wichtig sind
+
+Wikipedia-Seiten ändern sich. Eine URL ohne `oldid` zeigt immer die aktuelle Version. Mit `oldid=<revision_id>` ist die URL reproduzierbar und zeigt exakt die Version, die beim Scraping vorhanden war.
+
+**Format:**
+- Mit `oldid`: `https://de.wikipedia.org/w/index.php?title=Stephan_Weil&oldid=123456789`
+- Ohne `oldid`: `https://de.wikipedia.org/wiki/Stephan_Weil` (zeigt aktuelle Version)
+
+### Evidence Index
+
+Der Resolver nutzt einen Evidence Index (`/data/cache/index/evidence_index.jsonl`), der automatisch beim Schreiben in den Disk-Cache aktualisiert wird:
+
+- **MediaWiki**: Beim Cachen von `action=parse` Responses
+- **DIP**: Beim Cachen von DIP API Responses
+
+Jede Zeile im Index enthält:
+- `evidence_id`: Deterministische UUID5-ID
+- `source_kind`: `mediawiki` oder `dip`
+- `cache_metadata_path`: Pfad zu `metadata.json`
+- `cache_raw_path`: Pfad zu `raw.json`
+- `page_title`, `page_id`, `revision_id` (für MediaWiki)
+- `sha256`: Hash des Response-Payloads
+
+**Idempotenz**: Der Index wird idempotent aktualisiert (gleiche `evidence_id` überschreibt nicht, sondern aktualisiert).
+
+### Offline-Verhalten
+
+Der Resolver arbeitet vollständig offline:
+- Liest aus dem Disk-Cache (keine HTTP-Requests)
+- Nutzt den Evidence Index für schnelle Lookups
+- Falls Index fehlt: Optionaler "best effort" Scan (langsam, nicht empfohlen)
+
+### Snippet-Extraktion
+
+Snippets werden aus dem gecachten HTML extrahiert:
+- **Lead Paragraph**: Erster `<p>` mit ausreichend Inhalt (>= 80 Zeichen)
+- **Table Row**: Falls `snippet_ref` vorhanden (z.B. `table_row:0:1`)
+- **Cleaning**: Entfernt Fußnoten-Marker `[1]`, `[2]`, normalisiert Whitespace
+- **Truncation**: Maximal `--max-len` Zeichen (default: 500)
+
 ## Cache-Struktur
 
 ```
@@ -204,6 +272,8 @@ data/cache/
 │       │   ├── raw.json
 │       │   └── metadata.json
 │       └── latest.json
+├── index/
+│   └── evidence_index.jsonl    # Evidence ID → Cache Path Mapping
 └── manifests/
     └── <run_id>.json
 ```

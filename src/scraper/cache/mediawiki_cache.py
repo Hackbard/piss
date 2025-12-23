@@ -154,6 +154,22 @@ async def fetch_and_cache_parse(
         endpoint_kind="parse",
     )
     latest_path.write_text(latest_manifest.model_dump_json(indent=2), encoding="utf-8")
+    
+    # Update evidence index
+    from scraper.cache.evidence_index import update_evidence_index
+    from scraper.utils.ids import generate_evidence_id
+    
+    evidence_id = generate_evidence_id(page_id, revision_id, "parse", sha256)
+    update_evidence_index(
+        evidence_id=evidence_id,
+        source_kind="mediawiki",
+        cache_metadata_path=metadata_path,
+        cache_raw_path=raw_path,
+        page_title=page_title,
+        page_id=page_id,
+        revision_id=revision_id,
+        sha256=sha256,
+    )
 
     return MediaWikiParseResponse(
         parse=parse_data,

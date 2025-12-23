@@ -98,11 +98,17 @@ def parse_person_page(response: MediaWikiParseResponse) -> Person:
     intro = extract_intro(soup)
     keyfacts = extract_infobox_keyfacts(soup)
 
+    # Use sha256 from metadata if available, otherwise compute from parse
+    # This ensures consistency with the evidence index
+    from scraper.cache.mediawiki_cache import get_cached_metadata
+    metadata = get_cached_metadata(response.page_title)
+    sha256 = metadata.sha256 if metadata and metadata.sha256 else sha256_hash_json(response.parse)
+    
     evidence_id = generate_evidence_id(
         response.page_id,
         response.revision_id,
         "parse",
-        sha256_hash_json(response.parse),
+        sha256,
     )
 
     person_id = generate_person_id(response.page_title)

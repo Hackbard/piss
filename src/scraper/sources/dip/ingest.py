@@ -93,6 +93,34 @@ async def ingest_person_list(
                 "cursor": cursor,
             }
             metadata_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # Update evidence index for DIP responses (both cache hit and miss)
+        from scraper.cache.evidence_index import update_evidence_index
+        from scraper.utils.ids import generate_evidence_id
+        
+        # Load metadata to get sha256 if cache hit
+        if not force and raw_path.exists():
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata_loaded = json.load(f)
+                sha256 = metadata_loaded.get("sha256")
+        
+        # Generate evidence_id for this DIP response
+        evidence_id = generate_evidence_id(
+            page_id=0,  # DIP has no page_id
+            revision_id=0,  # DIP has no revision_id
+            endpoint_kind="dip_person_list",
+            sha256=sha256,
+        )
+        
+        update_evidence_index(
+            evidence_id=evidence_id,
+            source_kind="dip",
+            cache_metadata_path=metadata_path,
+            cache_raw_path=raw_path,
+            sha256=sha256,
+            endpoint=endpoint,
+            params=params,
+        )
 
         for doc in response_json.get("documents", []):
             if "fraktion" in doc and isinstance(doc["fraktion"], list):

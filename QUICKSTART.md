@@ -139,6 +139,25 @@ Nach Änderungen: Discovery erneut ausführen.
 
 ## Troubleshooting
 
+### Container-Rebuild nach Code-Änderungen
+
+Wenn Code geändert wurde, muss der Container neu gebaut werden:
+```bash
+docker compose build scraper
+```
+
+**Warum:** Der Python-Code wird beim Build in das Image kopiert. Änderungen am Code sind erst nach einem Rebuild aktiv.
+
+### Evidence Resolver findet keine Evidence-IDs
+
+Wenn der Evidence Resolver keine Evidence-IDs findet:
+1. **Pipeline neu laufen:** Die Evidence-IDs müssen erst generiert und im Index gespeichert werden
+2. **Meilisearch leeren:** Falls alte Evidence-IDs vorhanden sind, die nicht mehr im Cache sind:
+   ```bash
+   docker compose exec meilisearch curl -X DELETE "http://localhost:7700/indexes/persons" -H "Authorization: Bearer masterKey"
+   ```
+3. **Pipeline erneut ausführen:** Siehe "Vollständiger Befehl zum Neuaufbau" oben
+
 ### DIP_API_KEY fehlt
 ```bash
 # Fehler: "DIP_API_KEY not set"
@@ -157,22 +176,50 @@ rm -rf data/cache/*
 cat config/seeds.yaml data/exports/seeds_landtage.yaml > config/seeds_combined.yaml
 ```
 
-## Vollständiger Befehl zum Neuaufbau
+## Vollständiger Befehl zum Neuaufbau (alle Phasen)
+
+**Wichtig:** Nach Code-Änderungen muss der Container neu gebaut werden!
 
 ```bash
-# 1. Services starten
+# 1. Container neu bauen (wichtig nach Code-Änderungen!)
+docker compose build scraper
+
+# 2. Services starten
 docker compose up -d neo4j meilisearch
 
-# 2. Seeds entdecken
-docker compose build scraper && docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
+# 3. Seeds entdecken (nutzt Cache)
+docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
 
-# 3. Alles laden (Bundestag + Landtag + Personenseiten)
+# 4. Alles laden (Phase 1 + 2 + 3)
 docker compose run --rm scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
   --write-meili \
-  --fetch-person-pages \
-  --force
+  --fetch-person-pages
+
+# 5. Evidence Resolver testen (Phase 3)
+docker compose run --rm scraper scraper evidence --resolve-from-meili \
+  --query "Stephan Weil" \
+  --index persons \
+  --limit 1 \
+  --with-snippets \
+  --format md
+```
+
+**Erwartete Ausgabe des Evidence Resolvers:**
+- Zwei Evidence-IDs werden gefunden (Mitgliederliste + Personenseite)
+- Canonical URLs mit `oldid` Parameter für Reproduzierbarkeit
+- Snippets werden extrahiert und bereinigt (ohne Fußnoten-Marker)
+- Markdown-Format mit vollständiger Provenance (revision_id, sha256, retrieved_at)
+
+**Beispiel-Output:**
+```
+- Evidence `98a37cb9-1cc5-51a1-a51e-5992856c4fa0`
+  - **Source**: mediawiki
+  - **Page**: Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)
+  - **Revision**: 256198867
+  - **URL**: https://de.wikipedia.org/w/index.php?title=...&oldid=256198867
+  - **Snippet**: "Liste der Mitglieder des 17. niedersächsischen Landtages..."
 ```
 
