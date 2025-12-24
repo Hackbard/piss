@@ -445,10 +445,26 @@ class PipelineRunner:
                     print(f"  Traceback: {traceback.format_exc()}", file=sys.stderr)
                     pass
             
+            # Copy evidence_refs from mandate to person (so they're available when searching persons in Meilisearch)
+            # Deduplicate by evidence_id + purpose + snippet_ref hash
+            existing_refs = {(ref.evidence_id, ref.purpose, str(ref.snippet_ref)): ref for ref in person.evidence_refs}
+            for ref in mandate.evidence_refs:
+                key = (ref.evidence_id, ref.purpose, str(ref.snippet_ref))
+                if key not in existing_refs:
+                    existing_refs[key] = ref
+            person.evidence_refs = list(existing_refs.values())
+            
+            # Update legacy evidence_ids from merged evidence_refs
+            all_evidence_ids = set(person.evidence_ids)
+            for ref in person.evidence_refs:
+                all_evidence_ids.add(ref.evidence_id)
+            person.evidence_ids = list(all_evidence_ids)
+            
             persons[person.id] = person
             
             # Note: snippet_refs are stored in EvidenceRef on Mandate (membership_row), not in Evidence index
             # Evidence index is page-level only, row-level references are entity-level (EvidenceRef)
+            # We also copy them to Person so they're available when searching persons in Meilisearch
 
             if mandate.party_name:
                 from scraper.utils.ids import generate_party_id

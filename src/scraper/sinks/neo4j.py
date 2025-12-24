@@ -68,7 +68,9 @@ class Neo4jSink:
                 # Create EvidenceRef relationships with snippet_ref as property
                 for evidence_ref in person.evidence_refs:
                     import json
-                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else None
+                    # Always set snippet_ref_json: empty string if None (for consistency)
+                    # This makes the data structure consistent and queries simpler
+                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else ""
                     
                     session.run(
                         """
@@ -151,7 +153,9 @@ class Neo4jSink:
                 # Create EvidenceRef relationships with snippet_ref as property
                 for evidence_ref in mandate.evidence_refs:
                     import json
-                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else None
+                    # Always set snippet_ref_json: empty string if None (for consistency)
+                    # This makes the data structure consistent and queries simpler
+                    snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else ""
                     
                     session.run(
                         """

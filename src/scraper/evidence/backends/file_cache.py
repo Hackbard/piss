@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from scraper.config import get_settings
 from scraper.evidence.types import ResolvedEvidence

@@ -359,7 +359,7 @@ def evidence(
         search_index = meili.client.index(index)
         search_results = search_index.search(query, {"limit": limit})
         
-        # Prefer evidence_refs (new approach), fallback to evidence_ids (legacy)
+        # Prefer evidence_refs (new approach), fallback to evidence_snippet_refs (old format), then evidence_ids (legacy)
         for hit in search_results.get("hits", []):
             # Try to get evidence_refs first (preferred)
             hit_evidence_refs = hit.get("evidence_refs", [])
@@ -371,8 +371,25 @@ def evidence(
                     except Exception:
                         pass
             
-            # Fallback: legacy evidence_ids (if no evidence_refs found for this hit)
-            if not hit_evidence_refs or not isinstance(hit_evidence_refs, list) or not hit_evidence_refs:
+            # Fallback: evidence_snippet_refs (old format) - convert to EvidenceRef
+            if (not hit_evidence_refs or not isinstance(hit_evidence_refs, list) or not hit_evidence_refs):
+                hit_evidence_snippet_refs = hit.get("evidence_snippet_refs", {})
+                if isinstance(hit_evidence_snippet_refs, dict) and hit_evidence_snippet_refs:
+                    for evidence_id, snippet_ref in hit_evidence_snippet_refs.items():
+                        if snippet_ref and isinstance(snippet_ref, dict):
+                            try:
+                                evidence_ref = EvidenceRef(
+                                    evidence_id=evidence_id,
+                                    snippet_ref=snippet_ref,
+                                    purpose="membership_row" if snippet_ref.get("type") == "table_row" else None,
+                                )
+                                evidence_refs.append(evidence_ref)
+                            except Exception:
+                                pass
+            
+            # Final fallback: legacy evidence_ids (if no evidence_refs or evidence_snippet_refs found)
+            if (not hit_evidence_refs or not isinstance(hit_evidence_refs, list) or not hit_evidence_refs) and \
+               (not hit.get("evidence_snippet_refs") or not isinstance(hit.get("evidence_snippet_refs"), dict) or not hit.get("evidence_snippet_refs")):
                 hit_evidence_ids = hit.get("evidence_ids", [])
                 if isinstance(hit_evidence_ids, list):
                     evidence_ids.extend(hit_evidence_ids)
@@ -383,7 +400,7 @@ def evidence(
             typer.echo(f"Found {len(evidence_ids)} unique evidence IDs from Meilisearch (legacy)", err=True)
         
         if evidence_refs:
-            typer.echo(f"Found {len(evidence_refs)} evidence references from Meilisearch (preferred)", err=True)
+            typer.echo(f"Found {len(evidence_refs)} evidence references from Meilisearch", err=True)
         
         if not evidence_refs and not evidence_ids:
             typer.echo(f"No evidence_refs or evidence_ids found in Meilisearch results for query: {query}", err=True)

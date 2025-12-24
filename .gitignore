@@ -38,3 +38,4 @@ htmlcov/
 *.swo
 *~
 
+smoketest_reports/
