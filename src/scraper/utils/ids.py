@@ -18,8 +18,8 @@ def generate_parliament_id(name: str, level: str, state_code: Optional[str] = No
     return str(uuid.uuid5(NAMESPACE_PARLIAMENT, key))
 
 
-def generate_legislature_id(parliament_id: str, name: str) -> str:
-    key = f"{parliament_id}|{name}"
+def generate_legislature_id(parliament_id_code: str, legislature_number: int) -> str:
+    key = f"{parliament_id_code}|{legislature_number}"
     return str(uuid.uuid5(NAMESPACE_LEGISLATURE, key))
 
 
@@ -27,8 +27,10 @@ def generate_party_id(party_code: str) -> str:
     return str(uuid.uuid5(NAMESPACE_PARTY, party_code.strip().upper()))
 
 
-def generate_mandate_id(person_id: str, legislature_id: str, start: str, end: str, role: str = "") -> str:
-    key = f"{person_id}|{legislature_id}|{start}|{end}|{role}"
+def generate_mandate_id(person_id: str, legislature_id: str, start: str, end: str, role: str = "", party_code: Optional[str] = None) -> str:
+    normalized_end = end if end and end != "unknown" else ""
+    normalized_party = (party_code or "").strip().upper()
+    key = f"{person_id}|{legislature_id}|{start}|{normalized_end}|{role}|{normalized_party}"
     return str(uuid.uuid5(NAMESPACE_MANDATE, key))
 
 

@@ -17,10 +17,16 @@
       "type": ["string", "null"]
     },
     "start_date": {
-      "$ref": "common.schema.json#/definitions/Date"
+      "anyOf": [
+        { "$ref": "common.schema.json#/definitions/Date" },
+        { "type": "null" }
+      ]
     },
     "end_date": {
-      "$ref": "common.schema.json#/definitions/Date"
+      "anyOf": [
+        { "$ref": "common.schema.json#/definitions/Date" },
+        { "type": "null" }
+      ]
     },
     "total_seats": {
       "type": ["integer", "null"]

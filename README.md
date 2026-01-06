@@ -483,8 +483,19 @@ Evidence-Objekte enthalten:
 
 Alle Tests sind offline und verwenden gecachte Fixtures:
 
+**Lokal (mit Python/uv):**
 ```bash
 pytest -q
+```
+
+**Im Docker-Container:**
+```bash
+docker compose run --rm scraper pytest -q
+```
+
+**Spezifische Tests:**
+```bash
+docker compose run --rm scraper pytest tests/test_parse_legislature_members_nds_17.py tests/test_parse_legislature_members_nds_18.py -v
 ```
 
 Tests befinden sich in `tests/`:
@@ -497,6 +508,76 @@ Tests befinden sich in `tests/`:
 - `test_reconcile_ruleset_v1_unique_match.py`: Reconciliation eindeutiger Match
 - `test_reconcile_ruleset_v1_ambiguous_pending.py`: Reconciliation Ambiguität
 - `test_link_overrides_apply.py`: Manual Overrides
+
+## Reset & Reimport Workflow
+
+Nach Code-Änderungen am Datenmodell (z.B. Parliament-Identifier, Evidence-Properties) kann ein vollständiger Reset + Reimport nötig sein:
+
+### 1. Datenbank zurücksetzen
+
+```bash
+# Neo4j und Meilisearch zurücksetzen (mit Bestätigung)
+docker compose run --rm scraper scraper reset-db --neo4j --meili
+
+# Ohne Bestätigung (für Scripts)
+docker compose run --rm scraper scraper reset-db --neo4j --meili --yes
+```
+
+**Was passiert:**
+- **Neo4j**: Löscht alle Nodes und Relationships unserer Labels (Person, Parliament, Party, Legislature, Mandate, Evidence, etc.)
+- **Meilisearch**: Löscht alle Indizes (persons, mandates)
+
+**Wichtig:** Cache bleibt erhalten - Wikipedia/DIP-Responses werden nicht neu geladen.
+
+### 2. Daten neu importieren
+
+```bash
+# Pipeline mit allen Seeds ausführen
+docker compose run --rm scraper scraper pipeline \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages
+```
+
+**Mit DIP + Reconciliation:**
+```bash
+docker compose run --rm scraper scraper pipeline \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages
+```
+
+### 3. Smoke-Test (Laravel Tool API)
+
+Nach dem Reimport sollte die Laravel Tool API `mandates.search` mit `strict_evidence=true` funktionieren:
+
+```bash
+# Beispiel: Mandate für Niedersachsen suchen
+curl -X POST http://localhost:8000/tools/mandates.search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parliament_id": "NI",
+    "strict_evidence": true,
+    "limit": 10
+  }'
+```
+
+**Erwartetes Ergebnis:**
+- Keine `EVIDENCE_MISSING` Fehler
+- `evidence_urls` pro Row enthalten Wikipedia-URLs mit `oldid`
+- `parliament_id` Filter funktioniert zuverlässig
+
+### 4. Validierung
+
+```bash
+# Datenqualität prüfen
+docker compose run --rm scraper scraper validate --strict
+
+# Spezifischen Parliament prüfen
+docker compose run --rm scraper scraper validate --parliament NI --strict
+```
 
 ## Troubleshooting
 

@@ -11,7 +11,11 @@ RUN pip install uv
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 COPY config/ ./config/
-RUN uv pip install --system -e .
+COPY tests/ ./tests/
+COPY contracts/ ./contracts/
+COPY langgraph_app/ ./langgraph_app/
+COPY langgraph_tools/ ./langgraph_tools/
+RUN uv pip install --system -e ".[dev]"
 
 CMD ["scraper", "--help"]
 

@@ -32,6 +32,7 @@ nds_lt_17:
     start: "2013-01-20"
     end: "2017-11-14"
   hints:
+    parliament_id: "NI"
     parliament: "Niedersächsischer Landtag"
     state: "Niedersachsen"
     legislature_number: 17
@@ -47,6 +48,7 @@ nds_lt_17:
     person, mandate = result.members[0]
     assert person.name == "Test Person"
     assert person.wikipedia_title == "Test_Person"
-    assert mandate.party_name == "SPD"
+    assert mandate.party_code == "SPD"
+    assert mandate.parliament_id == "NI"
     assert mandate.wahlkreis == "Hannover"
 

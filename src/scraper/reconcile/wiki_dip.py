@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from scraper.models.domain import (
@@ -105,7 +106,6 @@ def generate_link_assertion_id(
 
 
 def load_link_overrides() -> Dict[str, Dict[str, Any]]:
-    from pathlib import Path
     import yaml
 
     overrides_path = Path("config/link_overrides.yaml")

@@ -25,10 +25,23 @@ class MandateQueryFilter(BaseModel):
     to_date: Optional[date] = Field(None, description="End date filter (inclusive)")
     person_id: Optional[str] = Field(None, description="Person ID filter")
     person_name_contains: Optional[str] = Field(None, description="Person name contains filter (case-insensitive)")
-    limit: int = Field(default=200, ge=1, le=1000, description="Maximum number of results")
+    limit: int = Field(default=200, ge=1, description="Maximum number of results (clamped to 1000)")
     offset: int = Field(default=0, ge=0, description="Offset for pagination")
     sort: SortField = Field(default=SortField.PERSON_NAME, description="Sort field")
     sort_direction: SortDirection = Field(default=SortDirection.ASC, description="Sort direction")
+
+    @field_validator("limit", mode="before")
+    @classmethod
+    def clamp_limit(cls, v: int | None) -> int:
+        if v is None:
+            return 200
+        try:
+            limit = int(v)
+        except (TypeError, ValueError):
+            return 200
+        if limit < 1:
+            return 1
+        return min(limit, 1000)
 
     @field_validator("from_date", "to_date", mode="before")
     @classmethod

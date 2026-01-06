@@ -36,6 +36,7 @@ nds_lt_18:
     start: "2017-11-15"
     end: "2022-10-08"
   hints:
+    parliament_id: "NI"
     parliament: "Niedersächsischer Landtag"
     state: "Niedersachsen"
     legislature_number: 18
@@ -50,5 +51,6 @@ nds_lt_18:
     assert len(result.members) > 0
     person, mandate = result.members[0]
     assert "Test Person 18" in person.name
-    assert mandate.party_name == "CDU"
+    assert mandate.party_code == "CDU"
+    assert mandate.parliament_id == "NI"
 

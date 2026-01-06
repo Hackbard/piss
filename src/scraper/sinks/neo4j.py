@@ -107,10 +107,12 @@ class Neo4jSink:
                 session.run(
                     """
                     MERGE (p:Party {id: $id})
-                    SET p.name = $name,
+                    SET p.code = $code,
+                        p.name = $name,
                         p.evidence_ids = $evidence_ids
                     """,
                     id=party.id,
+                    code=party.code,
                     name=party.name,
                     evidence_ids=party.evidence_ids,
                 )
@@ -134,7 +136,6 @@ class Neo4jSink:
                 )
 
             for mandate in normalized_data.get("mandates", []):
-                # Ensure evidence_ids is derived from evidence_refs if not set
                 mandate_evidence_ids = mandate.evidence_ids
                 if not mandate_evidence_ids and mandate.evidence_refs:
                     mandate_evidence_ids = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
@@ -143,6 +144,7 @@ class Neo4jSink:
                     """
                     MERGE (m:Mandate {id: $id})
                     SET m.person_id = $person_id,
+                        m.parliament_id = $parliament_id,
                         m.legislature_id = $legislature_id,
                         m.party_code = $party_code,
                         m.wahlkreis = $wahlkreis,
@@ -154,6 +156,7 @@ class Neo4jSink:
                     """,
                     id=mandate.id,
                     person_id=mandate.person_id,
+                    parliament_id=mandate.parliament_id,
                     legislature_id=mandate.legislature_id,
                     party_code=mandate.party_code,
                     wahlkreis=mandate.wahlkreis,
@@ -380,15 +383,18 @@ class Neo4jSink:
                 session.run(
                     """
                     MERGE (e:Evidence {id: $id})
-                    SET e.endpoint_kind = $endpoint_kind,
+                    SET e.url = $url,
+                        e.endpoint_kind = $endpoint_kind,
                         e.page_title = $page_title,
                         e.page_id = $page_id,
                         e.revision_id = $revision_id,
                         e.source_url = $source_url,
                         e.retrieved_at = $retrieved_at,
-                        e.sha256 = $sha256
+                        e.sha256 = $sha256,
+                        e.content_hash = $content_hash
                     """,
                     id=evidence.id,
+                    url=evidence.url,
                     endpoint_kind=evidence.endpoint_kind,
                     page_title=evidence.page_title,
                     page_id=evidence.page_id,
@@ -396,6 +402,7 @@ class Neo4jSink:
                     source_url=evidence.source_url,
                     retrieved_at=evidence.retrieved_at,
                     sha256=evidence.sha256,
+                    content_hash=evidence.content_hash,
                 )
 
     def close(self) -> None:

@@ -287,19 +287,32 @@ class PipelineRunner:
         evidence_list = []
 
         hints = seed_data.get("hints") or {}
-        parliament = hints.get("parliament", "")
+        parliament_name = hints.get("parliament", "")
+        parliament_id_code = hints.get("parliament_id")
         state = hints.get("state", "")
         legislature_number = hints.get("legislature_number")
         time_range = seed_data.get("expected_time_range") or {}
 
-        if parliament and state and legislature_number:
+        from scraper.utils.parliament_codes import get_parliament_code, get_parliament_name
+
+        if parliament_id_code:
+            parliament_id = parliament_id_code
+            parliament_display_name = get_parliament_name(parliament_id_code) or parliament_name
+        elif parliament_name:
+            parliament_id = get_parliament_code(parliament_name) or parliament_name
+            parliament_display_name = parliament_name
+        else:
+            parliament_id = "unknown"
+            parliament_display_name = ""
+
+        if parliament_id and legislature_number:
             from scraper.utils.ids import generate_legislature_id
 
-            legislature_name = f"{legislature_number}. Landtag {state}"
-            legislature_id = generate_legislature_id(parliament, legislature_name)
+            legislature_id = generate_legislature_id(parliament_id, int(legislature_number))
+            legislature_name = f"{legislature_number}. Landtag {state}" if state else f"{legislature_number}. Wahlperiode"
             legislature = Legislature(
                 id=legislature_id,
-                parliament_id=parliament,
+                parliament_id=parliament_id,
                 name=legislature_name,
                 start_date=time_range.get("start", ""),
                 end_date=time_range.get("end", ""),

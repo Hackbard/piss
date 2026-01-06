@@ -2,7 +2,8 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from uuid import uuid4
+from typing import Optional
+from uuid import UUID, uuid4
 
 from scraper.api.models import ToolMeta
 

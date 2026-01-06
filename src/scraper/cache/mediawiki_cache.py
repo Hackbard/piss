@@ -66,12 +66,12 @@ def validate_seeds() -> None:
             if field not in seed_data:
                 raise ValueError(f"Seed {seed_key} missing required field: {field}")
 
-        if seed_data["key"] != seed_key:
-            raise ValueError(f"Seed {seed_key} key mismatch: {seed_data['key']}")
-
         if seed_data["key"] in seen_keys:
             raise ValueError(f"Duplicate seed key: {seed_data['key']}")
         seen_keys.add(seed_data["key"])
+
+        if seed_data["key"] != seed_key:
+            raise ValueError(f"Seed {seed_key} key mismatch: {seed_data['key']}")
 
         time_range = seed_data["expected_time_range"]
         if not isinstance(time_range, dict) or "start" not in time_range or "end" not in time_range:

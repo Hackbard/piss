@@ -7,9 +7,10 @@ from dateutil.parser import parse as parse_date
 
 from scraper.mediawiki.types import MediaWikiParseResponse
 from scraper.models.domain import Event, LegislatureMember, Mandate, Person
-from scraper.utils.ids import generate_evidence_id, generate_mandate_id, generate_person_id
+from scraper.utils.ids import generate_evidence_id, generate_mandate_id, generate_person_id, generate_legislature_id
 from scraper.utils.hashing import sha256_hash_json
 from scraper.utils.time import utc_now_iso
+from scraper.utils.parliament_codes import get_parliament_code
 
 
 def normalize_header(text: str) -> str:
@@ -235,18 +236,22 @@ def extract_mandate_from_row(
 
     legislature_id = None
     parliament_id = None
-    parliament = seed_data.get("hints", {}).get("parliament", "")
+    parliament_name = seed_data.get("hints", {}).get("parliament", "")
+    parliament_id_code = seed_data.get("hints", {}).get("parliament_id")
     state = seed_data.get("hints", {}).get("state", "")
     legislature_number = seed_data.get("hints", {}).get("legislature_number")
     
-    if parliament:
-        parliament_id = parliament
+    if parliament_id_code:
+        parliament_id = parliament_id_code
+    elif parliament_name:
+        parliament_id = get_parliament_code(parliament_name) or parliament_name
     
-    if parliament and state and legislature_number:
-        from scraper.utils.ids import generate_legislature_id
+    if parliament_id and legislature_number:
+        legislature_id = generate_legislature_id(parliament_id, legislature_number)
 
-        legislature_name = f"{legislature_number}. Landtag {state}"
-        legislature_id = generate_legislature_id(parliament, legislature_name)
+    party_code = None
+    if party_name:
+        party_code = party_name.strip().upper()
 
     mandate_id = generate_mandate_id(
         person.id,
@@ -254,11 +259,8 @@ def extract_mandate_from_row(
         start_date or "unknown",
         end_date or "unknown",
         role="member",
+        party_code=party_code,
     )
-
-    party_code = None
-    if party_name:
-        party_code = party_name.strip().upper()
 
     # Attach membership EvidenceRef to Mandate (not Person)
     from scraper.models.domain import EvidenceRef
@@ -277,8 +279,8 @@ def extract_mandate_from_row(
         role="member",
         events=events,
         notes=notes,
-        evidence_refs=mandate_evidence_refs,  # Row-level reference with table_row snippet_ref
-        evidence_ids=[evidence_id],  # Legacy: will be derived from evidence_refs
+        evidence_refs=mandate_evidence_refs,
+        evidence_ids=[evidence_id],
     )
 
 

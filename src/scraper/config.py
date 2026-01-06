@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
         self.scraper_export_dir.mkdir(parents=True, exist_ok=True)
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 

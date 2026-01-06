@@ -11,12 +11,15 @@ class TestDataValidator:
         validator = DataValidator()
         result = ValidationResult()
         
+        # Create mandate with empty start_date (which should be caught by validator)
+        # Note: Mandate model requires start_date as string, so we use empty string
+        # The validator checks `if not mandate.start_date:` which catches empty strings
         mandate = Mandate(
             id="test-1",
             person_id="person-1",
             parliament_id="parliament-1",
             legislature_id="legislature-1",
-            start_date=None,
+            start_date="",
             end_date="2020-12-31",
         )
         

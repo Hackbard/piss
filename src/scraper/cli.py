@@ -791,6 +791,81 @@ def person(
 
 
 @app.command()
+def reset_db(
+    neo4j: bool = Option(False, "--neo4j", help="Reset Neo4j database (delete all nodes/relationships)"),
+    meili: bool = Option(False, "--meili", help="Reset Meilisearch indexes (delete all indexes)"),
+    yes: bool = Option(False, "--yes", help="Skip confirmation prompt"),
+) -> None:
+    """Reset database: delete all nodes/relationships in Neo4j and/or all indexes in Meilisearch."""
+    if not neo4j and not meili:
+        typer.echo("Error: Must specify at least --neo4j or --meili", err=True)
+        sys.exit(2)
+    
+    if not yes:
+        if neo4j:
+            typer.echo("⚠ WARNING: This will delete ALL nodes and relationships in Neo4j!", err=True)
+        if meili:
+            typer.echo("⚠ WARNING: This will delete ALL indexes in Meilisearch!", err=True)
+        typer.echo("", err=True)
+        confirm = typer.prompt("Type 'yes' to confirm", default="no")
+        if confirm.lower() != "yes":
+            typer.echo("Aborted.", err=True)
+            sys.exit(0)
+    
+    if neo4j:
+        try:
+            from scraper.sinks.neo4j import Neo4jSink
+            
+            sink = Neo4jSink(settings)
+            with sink.driver.session() as session:
+                labels = [
+                    "Person", "Parliament", "Party", "Legislature", "Mandate", "Evidence",
+                    "CanonicalPerson", "WikipediaPersonRecord", "DipPersonRecord", "PersonLinkAssertion"
+                ]
+                
+                for label in labels:
+                    result = session.run(f"MATCH (n:{label}) DETACH DELETE n RETURN count(n) as count")
+                    record = result.single()
+                    count = record["count"] if record else 0
+                    if count > 0:
+                        typer.echo(f"✓ Deleted {count} {label} node(s)", err=True)
+                
+                typer.echo("✓ Neo4j reset complete", err=True)
+            sink.close()
+        except Exception as e:
+            typer.echo(f"✗ Neo4j reset failed: {e}", err=True)
+            import traceback
+            typer.echo(traceback.format_exc(), err=True)
+            sys.exit(1)
+    
+    if meili:
+        try:
+            from scraper.sinks.meili import MeiliSink
+            
+            sink = MeiliSink(settings)
+            indexes = ["persons", "mandates"]
+            
+            for index_name in indexes:
+                try:
+                    index = sink.client.get_index(index_name)
+                    if index:
+                        sink.client.delete_index(index_name)
+                        typer.echo(f"✓ Deleted Meilisearch index: {index_name}", err=True)
+                except Exception:
+                    typer.echo(f"  Index {index_name} does not exist (skipping)", err=True)
+            
+            typer.echo("✓ Meilisearch reset complete", err=True)
+        except Exception as e:
+            typer.echo(f"✗ Meilisearch reset failed: {e}", err=True)
+            import traceback
+            typer.echo(traceback.format_exc(), err=True)
+            sys.exit(1)
+    
+    typer.echo("✓ Database reset complete", err=True)
+    sys.exit(0)
+
+
+@app.command()
 def api(
     host: str = Option("0.0.0.0", "--host", help="Host to bind"),
     port: int = Option(8000, "--port", help="Port to bind"),
