@@ -42,7 +42,7 @@ Sucht Mandate mit Filtern.
 **Request:**
 ```json
 {
-  "parliament_id": "parliament-nds",
+  "parliament_id": "NI",
   "party_code": "SPD",
   "from_date": "2014-01-01",
   "to_date": "2020-12-31",
@@ -62,7 +62,7 @@ Sucht Mandate mit Filtern.
     {
       "person_name": "Stephan Weil",
       "mandate_id": "mandate-456",
-      "legislature_id": "legislature-nds-17",
+      "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
       "start_date": "2013-01-20",
       "party_code": "SPD",
       "evidence_urls": ["https://de.wikipedia.org/w/index.php?title=...&oldid=256198867"]
@@ -78,7 +78,8 @@ Holt Statistiken für eine Legislature.
 **Request:**
 ```json
 {
-  "legislature_id": "legislature-nds-17",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "strict_evidence": true
 }
 ```
@@ -90,7 +91,7 @@ Holt Statistiken für eine Legislature.
     "tool": "legislature.stats",
     "request_id": "550e8400-e29b-41d4-a716-446655440001"
   },
-  "legislature_id": "legislature-nds-17",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "total_seats": 137,
   "party_seats": {
     "SPD": 49,
@@ -189,7 +190,7 @@ langgraph dev
 **Frage:** "Alle Mitglieder der SPD im Landtag Niedersachsen zwischen 2014-01-01 und 2020-12-31."
 
 **Intent:** `MANDATES_LIST`
-- `parliament_id`: "parliament-nds"
+- `parliament_id`: "NI"
 - `party_code`: "SPD"
 - `from_date`: "2014-01-01"
 - `to_date`: "2020-12-31"
@@ -203,7 +204,7 @@ langgraph dev
 **Frage:** "Wie hoch war der Sitzanteil der SPD im 17. Landtag Niedersachsen?"
 
 **Intent:** `LEGISLATURE_STATS`
-- `legislature_id`: "legislature-nds-17"
+- `legislature_id`: "7219e8b8-3d63-59ae-823e-df5a7a0d2253"
 - `metrics`: ["SEAT_SHARE_PERCENT"]
 
 **Tool Call:** `legislature.stats`

@@ -555,8 +555,9 @@ Nach dem Reimport sollte die Laravel Tool API `mandates.search` mit `strict_evid
 
 ```bash
 # Beispiel: Mandate für Niedersachsen suchen
-curl -X POST http://localhost:8000/tools/mandates.search \
+curl -X POST "http://localhost:8000/api/tools/mandates/search" \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
   -d '{
     "parliament_id": "NI",
     "strict_evidence": true,

@@ -27,7 +27,7 @@ Sucht Mandate mit Evidence-by-default.
 **Request:**
 ```json
 {
-  "parliament_id": "parliament-nds",
+  "parliament_id": "NI",
   "party_code": "SPD",
   "from_date": "2014-01-01",
   "to_date": "2020-12-31",
@@ -58,8 +58,8 @@ Sucht Mandate mit Evidence-by-default.
       "person_name": "Stephan Weil",
       "wikipedia_title": "Stephan_Weil",
       "mandate_id": "mandate-456",
-      "parliament_id": "parliament-nds",
-      "legislature_id": "legislature-nds-17",
+      "parliament_id": "NI",
+      "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
       "legislature": "17. Landtag Niedersachsen",
       "start_date": "2013-01-20",
       "end_date": "2017-11-14",
@@ -79,7 +79,7 @@ Holt Statistiken für eine Legislature.
 **Request:**
 ```json
 {
-  "legislature_id": "legislature-nds-17",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "strict_evidence": true
 }
 ```
@@ -93,7 +93,7 @@ Holt Statistiken für eine Legislature.
     "request_id": "550e8400-e29b-41d4-a716-446655440001",
     "data_version": "git:abc123def456"
   },
-  "legislature_id": "legislature-nds-17",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "legislature_name": "17. Landtag Niedersachsen",
   "total_seats": 137,
   "party_seats": {
@@ -254,7 +254,7 @@ from langgraph_tools import mandates_search, legislature_stats, person_lookup
 
 # Async usage
 result = await mandates_search(
-    parliament_id="parliament-nds",
+    parliament_id="NI",
     party_code="SPD",
     from_date="2014-01-01",
     to_date="2020-12-31",
@@ -262,7 +262,7 @@ result = await mandates_search(
     strict_evidence=True,
 )
 
-stats = await legislature_stats("legislature-nds-17")
+stats = await legislature_stats("7219e8b8-3d63-59ae-823e-df5a7a0d2253")
 
 persons = await person_lookup(name_contains="Weil", limit=10)
 ```

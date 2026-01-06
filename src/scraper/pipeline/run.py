@@ -3,7 +3,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
 
-from scraper.cache.mediawiki_cache import get_cached_parse_response, get_seed, load_seeds
+from scraper.cache.mediawiki_cache import (
+    get_cached_metadata,
+    get_cached_parse_response,
+    get_seed,
+    load_seeds,
+)
 from scraper.config import Settings
 from scraper.models.domain import Evidence, Legislature, Party
 from scraper.parsers.legislature_members import parse_legislature_members
@@ -11,9 +16,10 @@ from scraper.sinks.json_export import export_json
 from scraper.sinks.meili import MeiliSink
 from scraper.sinks.neo4j import Neo4jSink
 from scraper.utils.time import utc_now_iso
+from scraper.utils.url import build_wikipedia_canonical_url
 from typing import Optional, List, Any
 from uuid import uuid5
-from scraper.utils.ids import NAMESPACE_PERSON
+from scraper.utils.ids import NAMESPACE_PERSON, generate_evidence_id
 
 
 class PipelineRunner:
@@ -284,7 +290,7 @@ class PipelineRunner:
         legislatures = {}
         persons = {}
         mandates = []
-        evidence_list = []
+        evidence_by_id: dict[str, Evidence] = {}
 
         hints = seed_data.get("hints") or {}
         parliament_name = hints.get("parliament", "")
@@ -397,6 +403,34 @@ class PipelineRunner:
                         # Parse person page to get intro, birth_date, etc.
                         parsed_person = parse_person_page(person_response)
                         
+                        # Ensure person page Evidence exists as fully populated Evidence node in Neo4j.
+                        # fetch_and_cache_parse already updates the evidence index and writes metadata with sha256/retrieved_at.
+                        person_metadata = get_cached_metadata(person_response.page_title)
+                        person_sha256 = person_metadata.sha256 if person_metadata else ""
+                        person_retrieved_at = person_metadata.retrieved_at if person_metadata else utc_now_iso()
+                        person_canonical_url = build_wikipedia_canonical_url(
+                            person_response.page_title, person_response.revision_id
+                        )
+                        person_effective_sha256 = person_sha256 or sha256_hash_json(person_response.parse)
+                        person_evidence = Evidence(
+                            id=generate_evidence_id(
+                                person_response.page_id,
+                                person_response.revision_id,
+                                "parse",
+                                person_effective_sha256,
+                            ),
+                            url=person_canonical_url,
+                            retrieved_at=person_retrieved_at,
+                            content_hash=person_effective_sha256,
+                            endpoint_kind="parse",
+                            page_title=person_response.page_title,
+                            page_id=person_response.page_id,
+                            revision_id=person_response.revision_id,
+                            source_url=person_canonical_url,
+                            sha256=person_effective_sha256,
+                        )
+                        evidence_by_id[person_evidence.id] = person_evidence
+                        
                         # Check if we got new data
                         has_new_data = False
                         if parsed_person.birth_date:
@@ -503,7 +537,6 @@ class PipelineRunner:
                   f"{person_enrichment_stats['failed']} failed", file=sys.stderr)
 
         # Get metadata to retrieve sha256 and retrieved_at
-        from scraper.cache.mediawiki_cache import get_cached_metadata
         from urllib.parse import quote
         
         metadata = get_cached_metadata(response.page_title)
@@ -530,13 +563,13 @@ class PipelineRunner:
             source_url=source_url_canonical,
             sha256=sha256,
         )
-        evidence_list.append(evidence)
+        evidence_by_id[evidence.id] = evidence
 
         return {
             "persons": list(persons.values()),
             "parties": list(parties.values()),
             "legislatures": list(legislatures.values()),
             "mandates": mandates,
-            "evidence": evidence_list,
+            "evidence": list(evidence_by_id.values()),
         }
 

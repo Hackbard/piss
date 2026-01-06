@@ -118,7 +118,7 @@ Standardmäßig werden keine raw Payloads ausgegeben. Nur wenn `PISS_DEBUG_INCLU
 ### Intent
 Type: MANDATES_LIST
 Filters:
-  parliament_id: "nds"
+  parliament_id: "NI"
   party_code: "SPD"
   from_date: "2014-01-01"
   to_date: "2020-12-31"
@@ -126,7 +126,7 @@ Filters:
 ### Tool Calls
 1. mandates.search
    Params:
-     parliament_id: "nds"
+     parliament_id: "NI"
      party_code: "SPD"
      from_date: "2014-01-01"
      to_date: "2020-12-31"

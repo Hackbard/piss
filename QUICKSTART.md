@@ -80,7 +80,7 @@ docker compose run --rm scraper scraper validate
 docker compose run --rm scraper scraper validate --from 2014-01-01 --to 2020-12-31
 
 # Mit Parliament-Filter
-docker compose run --rm scraper scraper validate --parliament parliament-nds
+docker compose run --rm scraper scraper validate --parliament NI
 
 # Strict Mode (Missing Evidence = ERROR)
 docker compose run --rm scraper scraper validate --strict

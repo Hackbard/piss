@@ -11,6 +11,7 @@ from scraper.utils.ids import generate_evidence_id, generate_mandate_id, generat
 from scraper.utils.hashing import sha256_hash_json
 from scraper.utils.time import utc_now_iso
 from scraper.utils.parliament_codes import get_parliament_code
+from scraper.utils.url import build_wikipedia_canonical_url
 
 
 def normalize_header(text: str) -> str:
@@ -145,7 +146,7 @@ def extract_person_from_row(
         return None
 
     person_id = generate_person_id(wikipedia_title)
-    wikipedia_url = f"https://de.wikipedia.org/wiki/{wikipedia_title}"
+    wikipedia_url = build_wikipedia_canonical_url(wikipedia_title)
 
     # Create snippet_ref for table_row citation (will be stored in EvidenceRef on Mandate)
     snippet_ref = {

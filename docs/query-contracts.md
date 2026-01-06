@@ -18,7 +18,7 @@ Filter-DTO für Mandats-Abfragen.
 
 ```python
 class MandateQueryFilter:
-    parliament_id: Optional[str]          # Parliament ID Filter
+    parliament_id: Optional[str]          # Parliament-Code Filter (z.B. 'NI', 'BY', 'BT', 'BR')
     legislature_id: Optional[str]         # Legislature ID Filter
     party_code: Optional[str]             # Party code (z.B. 'SPD', 'CDU')
     from_date: Optional[date]             # Start-Datum (inclusive)
@@ -41,7 +41,7 @@ class MandateQueryFilter:
 ### Validierung
 
 - `from_date <= to_date` wenn beide gesetzt
-- `limit` wird automatisch auf max 1000 geklemmt
+- `limit` wird im Service-Layer automatisch auf max 1000 geklemmt
 - `offset >= 0`
 
 ### Beispiel
@@ -51,7 +51,7 @@ from datetime import date
 from scraper.models.query import MandateQueryFilter, SortField, SortDirection
 
 filter_obj = MandateQueryFilter(
-    parliament_id="parliament-nds",
+    parliament_id="NI",
     party_code="SPD",
     from_date=date(2014, 1, 1),
     to_date=date(2020, 12, 31),
@@ -248,7 +248,7 @@ def search_by_name(needle: str, limit: int = 20) -> list[PersonDTO]:
 ```bash
 # SPD-Mandate im Landtag Niedersachsen 2014-2020
 docker compose run --rm scraper scraper mandates \
-  --parliament parliament-nds \
+  --parliament NI \
   --party SPD \
   --from 2014-01-01 \
   --to 2020-12-31 \
@@ -256,7 +256,7 @@ docker compose run --rm scraper scraper mandates \
 
 # JSON Output
 docker compose run --rm scraper scraper mandates \
-  --parliament parliament-nds \
+  --parliament NI \
   --party SPD \
   --json
 
@@ -271,7 +271,7 @@ docker compose run --rm scraper scraper mandates \
 ```bash
 # Statistiken für eine Legislature
 docker compose run --rm scraper scraper legislature-stats \
-  --legislature-id legislature-nds-17 \
+  --legislature-id 7219e8b8-3d63-59ae-823e-df5a7a0d2253 \
   --json
 ```
 
@@ -300,9 +300,9 @@ docker compose run --rm scraper scraper person \
       "person_name": "Stephan Weil",
       "wikipedia_title": "Stephan_Weil",
       "mandate_id": "mandate-456",
-      "legislature_id": "legislature-nds-17",
+      "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
       "legislature_name": "17. Landtag Niedersachsen",
-      "parliament_id": "parliament-nds",
+      "parliament_id": "NI",
       "start_date": "2013-01-20",
       "end_date": "2017-11-14",
       "party_code": "SPD",
@@ -313,7 +313,7 @@ docker compose run --rm scraper scraper person \
   ],
   "total": 1,
   "applied_filter": {
-    "parliament_id": "parliament-nds",
+    "parliament_id": "NI",
     "party_code": "SPD",
     "from_date": "2014-01-01",
     "to_date": "2020-12-31",

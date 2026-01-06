@@ -77,7 +77,7 @@ RETURN m, r.purpose, r.snippet_ref_json, e.url
 
 ```cypher
 MATCH (l:Legislature)-[r:SUPPORTED_BY]->(e:Evidence)
-WHERE l.id = "legislature-nds-17"
+WHERE l.id = "7219e8b8-3d63-59ae-823e-df5a7a0d2253"
 RETURN l, e.url
 ```
 
@@ -96,8 +96,8 @@ Jede Ergebniszeile muss `evidence_urls: string[]` enthalten:
 ```cypher
 MATCH (m:Mandate)-[r:SUPPORTED_BY]->(e:Evidence)
 WHERE m.party_code = "SPD"
-  AND m.parliament_id = "parliament-nds"
-RETURN m.id, m.party_code, collect(DISTINCT e.url) as evidence_urls
+  AND m.parliament_id = "NI"
+RETURN m.id, m.party_code, collect(DISTINCT coalesce(e.url, e.source_url)) as evidence_urls
 ```
 
 ### Erweiterte Query mit EvidenceRef

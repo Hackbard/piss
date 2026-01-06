@@ -34,7 +34,7 @@
 
 - **id** (string, UUID, required): Stabile, deterministische UUID5-ID
 - **person_id** (string, required): Person-ID
-- **parliament_id** (string, required): Parliament-ID
+- **parliament_id** (string, required): Parliament-Code (z.B. `NI`, `BY`, `BT`, `BR`)
 - **legislature_id** (string, required): Legislature-ID
 - **party_code** (string, optional): Parteikürzel (z.B. "SPD", "CDU")
 - **start_date** (string, required): Startdatum (ISO-Format: YYYY-MM-DD)
@@ -47,8 +47,8 @@
 {
   "id": "mandate-123",
   "person_id": "person-456",
-  "parliament_id": "parliament-nds",
-  "legislature_id": "legislature-nds-17",
+  "parliament_id": "NI",
+  "legislature_id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "party_code": "SPD",
   "start_date": "2013-01-20",
   "end_date": "2017-11-14",
@@ -70,7 +70,7 @@
 ### Legislature
 
 - **id** (string, UUID, required): Stabile, deterministische UUID5-ID
-- **parliament_id** (string, required): Parliament-ID
+- **parliament_id** (string, required): Parliament-Code (z.B. `NI`, `BY`, `BT`, `BR`)
 - **name** (string, required): Name (z.B. "17. Landtag Niedersachsen")
 - **start_date** (string, required): Startdatum (ISO-Format)
 - **end_date** (string, required): Enddatum (ISO-Format)
@@ -79,8 +79,8 @@
 **Beispiel:**
 ```json
 {
-  "id": "legislature-nds-17",
-  "parliament_id": "parliament-nds",
+  "id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
+  "parliament_id": "NI",
   "name": "17. Landtag Niedersachsen",
   "start_date": "2013-01-20",
   "end_date": "2017-11-14"
@@ -98,7 +98,7 @@
 **Beispiel:**
 ```json
 {
-  "id": "parliament-nds",
+  "id": "3b1b2c6e-3b8f-5d7c-9c44-4ff0d2d4c2fb",
   "name": "Niedersächsischer Landtag",
   "level": "state",
   "state_code": "NI"
@@ -203,10 +203,17 @@ from scraper.utils.ids import (
 )
 
 person_id = generate_person_id("Stephan_Weil")
-parliament_id = generate_parliament_id("Niedersächsischer Landtag", "state", "NI")
-legislature_id = generate_legislature_id(parliament_id, "17. Landtag Niedersachsen")
+parliament_node_id = generate_parliament_id("Niedersächsischer Landtag", "state", "NI")
+legislature_id = generate_legislature_id("NI", 17)
 party_id = generate_party_id("SPD")
-mandate_id = generate_mandate_id(person_id, legislature_id, "2013-01-20", "2017-11-14", "MdL")
+mandate_id = generate_mandate_id(
+    person_id,
+    legislature_id,
+    "2013-01-20",
+    "2017-11-14",
+    role="MdL",
+    party_code="SPD",
+)
 ```
 
 ## Abfrage-Beispiele
@@ -216,7 +223,7 @@ mandate_id = generate_mandate_id(person_id, legislature_id, "2013-01-20", "2017-
 ```cypher
 MATCH (m:Mandate)
 WHERE m.party_code = "SPD"
-  AND m.parliament_id = "parliament-nds"
+  AND m.parliament_id = "NI"
   AND m.start_date <= "2020-12-31"
   AND (m.end_date IS NULL OR m.end_date >= "2014-01-01")
 RETURN m

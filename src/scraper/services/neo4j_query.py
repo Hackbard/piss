@@ -143,8 +143,8 @@ class Neo4jMandateQueryService(MandateQueryServiceInterface):
         OPTIONAL MATCH (m)-[:SUPPORTED_BY]->(e:Evidence)
         OPTIONAL MATCH (m)-[:IN]->(l:Legislature)
         WHERE {where_clause}
-        WITH p, m, l, collect(DISTINCT e.source_url) as evidence_urls
-        WITH p, m, l, [u IN evidence_urls WHERE u IS NOT NULL] as urls
+        WITH p, m, l, collect(DISTINCT coalesce(e.url, e.source_url)) as evidence_urls
+        WITH p, m, l, [u IN evidence_urls WHERE u IS NOT NULL AND u <> ""] as urls
         ORDER BY {sort_field} {sort_direction}, m.start_date ASC
         SKIP $offset
         LIMIT $limit
@@ -286,7 +286,7 @@ class Neo4jLegislatureStatsService(LegislatureStatsServiceInterface):
                 OPTIONAL MATCH (m)-[:SUPPORTED_BY]->(e:Evidence)
                 WITH l, m, e
                 WHERE m IS NOT NULL AND m.party_code IS NOT NULL
-                WITH m.party_code as code, count(DISTINCT m) as seats, collect(DISTINCT e.source_url) as evidence_urls
+                WITH m.party_code as code, count(DISTINCT m) as seats, collect(DISTINCT coalesce(e.url, e.source_url)) as evidence_urls
                 RETURN code, seats, evidence_urls
                 """
                 
@@ -320,8 +320,8 @@ class Neo4jLegislatureStatsService(LegislatureStatsServiceInterface):
                 MATCH (l:Legislature {id: $legislature_id})
                 OPTIONAL MATCH (m:Mandate)-[:IN]->(l)
                 OPTIONAL MATCH (m)-[:SUPPORTED_BY]->(e:Evidence)
-                WITH collect(DISTINCT e.source_url) as all_urls
-                RETURN [u IN all_urls WHERE u IS NOT NULL] as evidence_urls
+                WITH collect(DISTINCT coalesce(e.url, e.source_url)) as all_urls
+                RETURN [u IN all_urls WHERE u IS NOT NULL AND u <> ""] as evidence_urls
                 """
                 evidence_result = session.run(query_evidence, {"legislature_id": legislature_id})
                 evidence_record = evidence_result.single()
@@ -360,7 +360,7 @@ class Neo4jPersonLookupService(PersonLookupServiceInterface):
                 query = """
                 MATCH (p:Person {id: $person_id})
                 OPTIONAL MATCH (p)-[:SUPPORTED_BY]->(e:Evidence)
-                WITH p, collect(DISTINCT e.source_url) as evidence_urls
+                WITH p, collect(DISTINCT coalesce(e.url, e.source_url)) as evidence_urls
                 RETURN 
                     p.id as person_id,
                     p.name as name,
@@ -369,7 +369,7 @@ class Neo4jPersonLookupService(PersonLookupServiceInterface):
                     p.birth_date as birth_date,
                     p.death_date as death_date,
                     p.intro as intro,
-                    [u IN evidence_urls WHERE u IS NOT NULL] as evidence_urls
+                    [u IN evidence_urls WHERE u IS NOT NULL AND u <> ""] as evidence_urls
                 LIMIT 1
                 """
                 
@@ -411,7 +411,7 @@ class Neo4jPersonLookupService(PersonLookupServiceInterface):
                 MATCH (p:Person)
                 WHERE toLower(p.name) CONTAINS toLower($needle)
                 OPTIONAL MATCH (p)-[:SUPPORTED_BY]->(e:Evidence)
-                WITH p, collect(DISTINCT e.source_url) as evidence_urls
+                WITH p, collect(DISTINCT coalesce(e.url, e.source_url)) as evidence_urls
                 ORDER BY p.name ASC
                 LIMIT $limit
                 RETURN 
@@ -422,7 +422,7 @@ class Neo4jPersonLookupService(PersonLookupServiceInterface):
                     p.birth_date as birth_date,
                     p.death_date as death_date,
                     p.intro as intro,
-                    [u IN evidence_urls WHERE u IS NOT NULL] as evidence_urls
+                    [u IN evidence_urls WHERE u IS NOT NULL AND u <> ""] as evidence_urls
                 """
                 
                 result = session.run(query, {"needle": needle, "limit": limit})

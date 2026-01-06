@@ -61,10 +61,10 @@ scraper validate
 scraper validate --from 2014-01-01 --to 2020-12-31
 
 # Filter nach Parliament
-scraper validate --parliament parliament-nds
+scraper validate --parliament NI
 
 # Kombiniert
-scraper validate --from 2014-01-01 --to 2020-12-31 --parliament parliament-nds
+scraper validate --from 2014-01-01 --to 2020-12-31 --parliament NI
 ```
 
 ### Strict Mode
@@ -200,7 +200,7 @@ result = validator.validate_all(
     parties=parties,
     from_date=date(2014, 1, 1),
     to_date=date(2020, 12, 31),
-    parliament_id="parliament-nds",
+    parliament_id="NI",
 )
 
 if result.has_errors():

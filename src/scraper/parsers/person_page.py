@@ -8,6 +8,7 @@ from scraper.mediawiki.types import MediaWikiParseResponse
 from scraper.models.domain import Person
 from scraper.utils.ids import generate_evidence_id, generate_person_id
 from scraper.utils.hashing import sha256_hash_json
+from scraper.utils.url import build_wikipedia_canonical_url
 
 
 def extract_intro(soup: BeautifulSoup) -> str:
@@ -112,7 +113,7 @@ def parse_person_page(response: MediaWikiParseResponse) -> Person:
     )
 
     person_id = generate_person_id(response.page_title)
-    wikipedia_url = f"https://de.wikipedia.org/wiki/{response.page_title}"
+    wikipedia_url = build_wikipedia_canonical_url(response.page_title)
 
     unstructured_evidence = []
     if intro:
