@@ -17,7 +17,9 @@ class Neo4jSink:
         with self.driver.session() as session:
             constraints = [
                 "CREATE CONSTRAINT person_id IF NOT EXISTS FOR (p:Person) REQUIRE p.id IS UNIQUE",
+                "CREATE CONSTRAINT parliament_id IF NOT EXISTS FOR (p:Parliament) REQUIRE p.id IS UNIQUE",
                 "CREATE CONSTRAINT party_id IF NOT EXISTS FOR (p:Party) REQUIRE p.id IS UNIQUE",
+                "CREATE CONSTRAINT party_code IF NOT EXISTS FOR (p:Party) REQUIRE p.code IS UNIQUE",
                 "CREATE CONSTRAINT legislature_id IF NOT EXISTS FOR (l:Legislature) REQUIRE l.id IS UNIQUE",
                 "CREATE CONSTRAINT mandate_id IF NOT EXISTS FOR (m:Mandate) REQUIRE m.id IS UNIQUE",
                 "CREATE CONSTRAINT evidence_id IF NOT EXISTS FOR (e:Evidence) REQUIRE e.id IS UNIQUE",
@@ -29,6 +31,20 @@ class Neo4jSink:
             for constraint in constraints:
                 try:
                     session.run(constraint)
+                except Exception:
+                    pass
+            
+            indexes = [
+                "CREATE INDEX mandate_person_id IF NOT EXISTS FOR (m:Mandate) ON (m.person_id)",
+                "CREATE INDEX mandate_legislature_id IF NOT EXISTS FOR (m:Mandate) ON (m.legislature_id)",
+                "CREATE INDEX mandate_parliament_id IF NOT EXISTS FOR (m:Mandate) ON (m.parliament_id)",
+                "CREATE INDEX mandate_party_code IF NOT EXISTS FOR (m:Mandate) ON (m.party_code)",
+                "CREATE INDEX mandate_start_date IF NOT EXISTS FOR (m:Mandate) ON (m.start_date)",
+                "CREATE INDEX mandate_end_date IF NOT EXISTS FOR (m:Mandate) ON (m.end_date)",
+            ]
+            for index in indexes:
+                try:
+                    session.run(index)
                 except Exception:
                     pass
 
@@ -103,17 +119,15 @@ class Neo4jSink:
                 session.run(
                     """
                     MERGE (l:Legislature {id: $id})
-                    SET l.parliament = $parliament,
-                        l.state = $state,
-                        l.number = $number,
+                    SET l.parliament_id = $parliament_id,
+                        l.name = $name,
                         l.start_date = $start_date,
                         l.end_date = $end_date,
                         l.evidence_ids = $evidence_ids
                     """,
                     id=legislature.id,
-                    parliament=legislature.parliament,
-                    state=legislature.state,
-                    number=legislature.number,
+                    parliament_id=legislature.parliament_id,
+                    name=legislature.name,
                     start_date=legislature.start_date,
                     end_date=legislature.end_date,
                     evidence_ids=legislature.evidence_ids,
@@ -130,7 +144,7 @@ class Neo4jSink:
                     MERGE (m:Mandate {id: $id})
                     SET m.person_id = $person_id,
                         m.legislature_id = $legislature_id,
-                        m.party_name = $party_name,
+                        m.party_code = $party_code,
                         m.wahlkreis = $wahlkreis,
                         m.start_date = $start_date,
                         m.end_date = $end_date,
@@ -141,7 +155,7 @@ class Neo4jSink:
                     id=mandate.id,
                     person_id=mandate.person_id,
                     legislature_id=mandate.legislature_id,
-                    party_name=mandate.party_name,
+                    party_code=mandate.party_code,
                     wahlkreis=mandate.wahlkreis,
                     start_date=mandate.start_date,
                     end_date=mandate.end_date,
@@ -193,10 +207,10 @@ class Neo4jSink:
                         legislature_id=mandate.legislature_id,
                     )
 
-                if mandate.party_name:
+                if mandate.party_code:
                     from scraper.utils.ids import generate_party_id
 
-                    party_id = generate_party_id(mandate.party_name)
+                    party_id = generate_party_id(mandate.party_code)
                     session.run(
                         """
                         MATCH (m:Mandate {id: $mandate_id})

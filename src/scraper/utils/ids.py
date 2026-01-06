@@ -1,24 +1,30 @@
 import uuid
-from typing import Literal
+from typing import Literal, Optional
 
 NAMESPACE_PERSON = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 NAMESPACE_LEGISLATURE = uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
 NAMESPACE_PARTY = uuid.UUID("6ba7b812-9dad-11d1-80b4-00c04fd430c8")
 NAMESPACE_MANDATE = uuid.UUID("6ba7b813-9dad-11d1-80b4-00c04fd430c8")
 NAMESPACE_EVIDENCE = uuid.UUID("6ba7b814-9dad-11d1-80b4-00c04fd430c8")
+NAMESPACE_PARLIAMENT = uuid.UUID("6ba7b815-9dad-11d1-80b4-00c04fd430c8")
 
 
 def generate_person_id(wikipedia_title: str) -> str:
     return str(uuid.uuid5(NAMESPACE_PERSON, wikipedia_title.lower().strip()))
 
 
-def generate_legislature_id(parliament: str, state: str, number: int) -> str:
-    key = f"{parliament}|{state}|{number}"
+def generate_parliament_id(name: str, level: str, state_code: Optional[str] = None) -> str:
+    key = f"{name}|{level}|{state_code or ''}"
+    return str(uuid.uuid5(NAMESPACE_PARLIAMENT, key))
+
+
+def generate_legislature_id(parliament_id: str, name: str) -> str:
+    key = f"{parliament_id}|{name}"
     return str(uuid.uuid5(NAMESPACE_LEGISLATURE, key))
 
 
-def generate_party_id(party_name: str) -> str:
-    return str(uuid.uuid5(NAMESPACE_PARTY, party_name.strip().lower()))
+def generate_party_id(party_code: str) -> str:
+    return str(uuid.uuid5(NAMESPACE_PARTY, party_code.strip().upper()))
 
 
 def generate_mandate_id(person_id: str, legislature_id: str, start: str, end: str, role: str = "") -> str:

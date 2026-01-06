@@ -1,0 +1,12 @@
+{
+  "parliament_id": "parliament-nds",
+  "party_code": "SPD",
+  "from_date": "2014-01-01",
+  "to_date": "2020-12-31",
+  "limit": 50,
+  "offset": 0,
+  "sort": "start_date",
+  "sort_dir": "ASC",
+  "strict_evidence": true
+}
+

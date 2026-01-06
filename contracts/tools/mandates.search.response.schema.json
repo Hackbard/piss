@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "mandates.search.response.schema.json",
+  "type": "object",
+  "required": ["meta", "applied_filter", "rows"],
+  "properties": {
+    "meta": {
+      "$ref": "common.schema.json#/definitions/ToolMeta"
+    },
+    "applied_filter": {
+      "type": "object",
+      "description": "Normalized filter that was applied"
+    },
+    "total": {
+      "type": ["integer", "null"],
+      "description": "Total count (if available)"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "person_id",
+          "person_name",
+          "mandate_id",
+          "parliament_id",
+          "legislature_id",
+          "legislature",
+          "start_date",
+          "party_code",
+          "evidence_urls"
+        ],
+        "properties": {
+          "person_id": {
+            "type": "string"
+          },
+          "person_name": {
+            "type": "string"
+          },
+          "wikipedia_title": {
+            "type": ["string", "null"]
+          },
+          "mandate_id": {
+            "type": "string"
+          },
+          "parliament_id": {
+            "type": "string"
+          },
+          "legislature_id": {
+            "type": "string"
+          },
+          "legislature": {
+            "type": "string",
+            "description": "Legislature name"
+          },
+          "start_date": {
+            "$ref": "common.schema.json#/definitions/Date"
+          },
+          "end_date": {
+            "oneOf": [
+              {"$ref": "common.schema.json#/definitions/Date"},
+              {"type": "null"}
+            ]
+          },
+          "party_code": {
+            "type": ["string", "null"]
+          },
+          "evidence_urls": {
+            "$ref": "common.schema.json#/definitions/UrlArray"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "legislature.stats.request.schema.json",
+  "type": "object",
+  "required": ["legislature_id"],
+  "properties": {
+    "legislature_id": {
+      "type": "string",
+      "description": "Legislature ID"
+    },
+    "strict_evidence": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, require evidence_urls minItems: 1"
+    }
+  },
+  "additionalProperties": false
+}
+

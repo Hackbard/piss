@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "legislature.stats.response.schema.json",
+  "type": "object",
+  "required": ["meta", "legislature_id", "legislature_name", "evidence_urls"],
+  "properties": {
+    "meta": {
+      "$ref": "common.schema.json#/definitions/ToolMeta"
+    },
+    "legislature_id": {
+      "type": "string"
+    },
+    "legislature_name": {
+      "type": "string"
+    },
+    "parliament_id": {
+      "type": ["string", "null"]
+    },
+    "start_date": {
+      "$ref": "common.schema.json#/definitions/Date"
+    },
+    "end_date": {
+      "$ref": "common.schema.json#/definitions/Date"
+    },
+    "total_seats": {
+      "type": ["integer", "null"]
+    },
+    "party_seats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Party code -> seat count"
+    },
+    "party_vote_share": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "description": "Party code -> vote share (0.0-1.0)"
+    },
+    "evidence_urls": {
+      "$ref": "common.schema.json#/definitions/UrlArray"
+    }
+  },
+  "additionalProperties": false
+}
+

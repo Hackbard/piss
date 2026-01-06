@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "tool": "person.lookup",
+    "executed_at": "2024-01-15T10:30:00Z",
+    "request_id": "550e8400-e29b-41d4-a716-446655440002",
+    "data_version": "git:abc123def456"
+  },
+  "persons": [
+    {
+      "person_id": "person-123",
+      "name": "Stephan Weil",
+      "wikipedia_title": "Stephan_Weil",
+      "wikipedia_url": "https://de.wikipedia.org/wiki/Stephan_Weil",
+      "birth_date": "1958-03-15",
+      "death_date": null,
+      "intro": "Stephan Weil (* 15. März 1958 in Hamburg) ist ein deutscher Politiker (SPD)...",
+      "evidence_urls": [
+        "https://de.wikipedia.org/w/index.php?title=Stephan_Weil&oldid=245123456"
+      ]
+    }
+  ]
+}
+

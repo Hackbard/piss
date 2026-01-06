@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "person.lookup.request.schema.json",
+  "type": "object",
+  "oneOf": [
+    {
+      "required": ["person_id"],
+      "properties": {
+        "person_id": {
+          "type": "string",
+          "description": "Person ID for lookup"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "required": ["name_contains"],
+      "properties": {
+        "name_contains": {
+          "type": "string",
+          "description": "Search by name (case-insensitive contains)"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "Maximum results"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
+

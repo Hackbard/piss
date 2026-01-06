@@ -70,7 +70,39 @@ docker compose run --rm scraper scraper pipeline \
 - `--fetch-person-pages` (default: aktiviert) lädt auch einzelne Personenseiten für Intro, Geburtsdatum, etc.
 - Ohne `--no-fetch-person-pages` ist es schneller, aber weniger Daten
 
-### Schritt 3: Daten prüfen
+### Schritt 3: Daten validieren
+
+```bash
+# Validator ausführen (prüft Datenqualität)
+docker compose run --rm scraper scraper validate
+
+# Mit Datumsfilter
+docker compose run --rm scraper scraper validate --from 2014-01-01 --to 2020-12-31
+
+# Mit Parliament-Filter
+docker compose run --rm scraper scraper validate --parliament parliament-nds
+
+# Strict Mode (Missing Evidence = ERROR)
+docker compose run --rm scraper scraper validate --strict
+
+# JSON Output (für CI/CD)
+docker compose run --rm scraper scraper validate --json
+```
+
+**Was wird geprüft:**
+- ✅ Fehlende `start_date` → ERROR
+- ✅ `end_date < start_date` → ERROR
+- ✅ Doppelte Mandate → ERROR
+- ✅ Überlappende Mandate (gleiche Partei) → ERROR
+- ✅ Überlappende Mandate (verschiedene Parteien) → WARN (Parteiwechsel)
+- ✅ Unbekannte `party_code` → WARN
+- ✅ Fehlende Evidence → WARN (oder ERROR im strict mode)
+
+**Exit Codes:**
+- `0` = Keine Errors (Warnings sind OK)
+- `1` = Mindestens ein ERROR (CI-tauglich)
+
+### Schritt 4: Daten prüfen
 
 ```bash
 # Neo4j: Canonical Persons zählen
@@ -187,6 +219,15 @@ Die Registry `config/landtage_registry.yaml` kann angepasst werden:
 
 Nach Änderungen: Discovery erneut ausführen.
 
+## Dokumentation
+
+Weitere Details zu den neuen Features:
+
+- **Data Contract**: `docs/data-contract.md` - Entities, Zeitlogik, Constraints
+- **Provenance**: `docs/provenance.md` - Evidence-Modell, Hashing, Reproduzierbarkeit
+- **QA-Gates**: `docs/qa-gates.md` - Validator-Regeln, CLI, CI/CD Integration
+- **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md` - Übersicht aller Änderungen
+
 ## Troubleshooting
 
 ### Container-Rebuild nach Code-Änderungen
@@ -197,6 +238,17 @@ docker compose build scraper
 ```
 
 **Warum:** Der Python-Code wird beim Build in das Image kopiert. Änderungen am Code sind erst nach einem Rebuild aktiv.
+
+### Validator findet Legacy-Daten
+
+Wenn der Validator Legacy-Daten findet (ohne `parliament_id` oder `code`):
+```bash
+# Validator zeigt Warnungen für übersprungene Legacy-Daten
+⚠ Skipped 274 mandate(s) without parliament_id (legacy data)
+⚠ Skipped 5 party/parties without code (legacy data)
+```
+
+**Lösung:** Daten migrieren (siehe `docs/IMPLEMENTATION_SUMMARY.md` für Migrationsschritte) oder neue Daten importieren.
 
 ### Evidence Resolver findet keine Evidence-IDs
 
@@ -214,11 +266,23 @@ Wenn der Evidence Resolver keine Evidence-IDs findet:
 # Lösung: In .env setzen
 ```
 
-### Cache leeren
+### Cache leeren (nur wenn nötig)
+
 ```bash
-# Cache-Verzeichnis löschen
+# Cache komplett löschen (alle gecachten Wikipedia/DIP-Responses)
 rm -rf data/cache/*
+
+# Nur MediaWiki-Cache löschen
+rm -rf data/cache/mediawiki/*
+
+# Nur DIP-Cache löschen
+rm -rf data/cache/dip/*
 ```
+
+**Wann Cache löschen:**
+- Wenn Cache korrupt ist
+- Wenn man sicherstellen will, dass alles neu geladen wird
+- **Normalerweise nicht nötig** - Pipeline nutzt Cache automatisch intelligent
 
 ### Seeds kombinieren
 ```bash
@@ -241,6 +305,7 @@ docker compose up -d neo4j meilisearch
 docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
 
 # 4. ALLES laden (ALLE Seeds + ALLE DIP Wahlperioden + ALLE Personenseiten)
+#    Cache wird automatisch genutzt - keine Duplikate!
 docker compose run --rm scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
@@ -248,7 +313,10 @@ docker compose run --rm scraper scraper pipeline \
   --write-meili \
   --fetch-person-pages
 
-# 5. Evidence Resolver testen (Phase 3) - mit Row-level Citations
+# 5. Daten validieren
+docker compose run --rm scraper scraper validate
+
+# 6. Evidence Resolver testen - mit Row-level Citations
 docker compose run --rm scraper scraper evidence --resolve-from-meili \
   --query "Stephan Weil" \
   --index persons \
@@ -257,6 +325,82 @@ docker compose run --rm scraper scraper evidence --resolve-from-meili \
   --with-snippets \
   --format md
 ```
+
+## Daten regenerieren (ohne Cache zu verlieren)
+
+**Cache wird automatisch genutzt** - keine Duplikate, idempotente Imports!
+
+### Option 1: Nur Neo4j/Meilisearch neu schreiben (nutzt Cache)
+
+```bash
+# Container neu bauen (falls Code geändert wurde)
+docker compose build scraper
+
+# Pipeline läuft - nutzt automatisch Cache, schreibt nur in Neo4j/Meili neu
+docker compose run --rm scraper scraper pipeline \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages
+
+# Validieren
+docker compose run --rm scraper scraper validate
+```
+
+**Vorteil:** Schnell, nutzt gecachte Wikipedia/DIP-Responses. Nur Neo4j/Meilisearch werden aktualisiert.
+
+### Option 2: Alles neu laden (mit --force, ignoriert Cache)
+
+```bash
+# Container neu bauen
+docker compose build scraper
+
+# Pipeline mit --force (lädt ALLES neu, ignoriert Cache)
+docker compose run --rm scraper scraper pipeline \
+  --ingest-dip \
+  --reconcile \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages \
+  --force
+
+# Validieren
+docker compose run --rm scraper scraper validate
+```
+
+**Vorteil:** Vollständig aktuelle Daten. **Nachteil:** Langsam (30-60 Minuten), Rate-Limiting.
+
+### Option 3: Nur bestimmte Seeds neu laden
+
+```bash
+# Einzelner Seed neu laden (nutzt Cache für andere Seeds)
+docker compose run --rm scraper scraper pipeline \
+  --seed nds_lt_17 \
+  --write-neo4j \
+  --write-meili \
+  --fetch-person-pages
+
+# Validieren
+docker compose run --rm scraper scraper validate
+```
+
+**Vorteil:** Selektiv, schnell für einzelne Landtage.
+
+### Cache-Verhalten
+
+- **Ohne `--force`**: Cache wird automatisch genutzt
+  - Gecachte Wikipedia-Seiten werden nicht neu geladen
+  - Gecachte DIP-Responses werden nicht neu geladen
+  - Neo4j/Meilisearch werden aktualisiert (Upsert, keine Duplikate)
+  
+- **Mit `--force`**: Cache wird ignoriert
+  - Alle Wikipedia-Seiten werden neu geladen
+  - Alle DIP-Responses werden neu geladen
+  - Cache wird aktualisiert
+  - Neo4j/Meilisearch werden aktualisiert
+
+**Cache-Pfad:** `./data/cache/` (wird nicht gelöscht bei Pipeline-Runs)
 
 **Was wird geladen:**
 - ✅ **167+ Landtags-Mitgliederlisten** (alle 16 Bundesländer, alle Wahlperioden)

@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "common.schema.json",
+  "definitions": {
+    "Date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "ISO date string (YYYY-MM-DD)"
+    },
+    "DateTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 datetime string"
+    },
+    "UrlArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "uniqueItems": true,
+      "description": "Array of unique URLs"
+    },
+    "ToolMeta": {
+      "type": "object",
+      "required": ["tool", "executed_at", "request_id"],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "description": "Tool name (e.g. 'mandates.search')"
+        },
+        "executed_at": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID v4 request identifier"
+        },
+        "result_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 hash of canonical JSON response (without meta.executed_at)"
+        },
+        "data_version": {
+          "type": "string",
+          "description": "Data version identifier (e.g. git sha, import run id)"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional warnings"
+        }
+      }
+    }
+  }
+}
+

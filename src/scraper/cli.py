@@ -482,6 +482,329 @@ def export(
         sys.exit(2)
 
 
+@app.command()
+def validate(
+    from_date: Optional[str] = Option(None, "--from", help="Filter from date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Option(None, "--to", help="Filter to date (YYYY-MM-DD)"),
+    parliament: Optional[str] = Option(None, "--parliament", help="Filter by parliament ID"),
+    strict: bool = Option(False, "--strict", help="Strict mode: missing evidence is ERROR"),
+    json_output: bool = Option(False, "--json", help="Output as JSON"),
+) -> None:
+    """Validate data quality."""
+    from datetime import date as date_type
+    from scraper.validation.validator import DataValidator
+    from scraper.sinks.neo4j import Neo4jSink
+    from scraper.models.domain import Mandate, Party
+    
+    try:
+        from_date_obj = date_type.fromisoformat(from_date) if from_date else None
+        to_date_obj = date_type.fromisoformat(to_date) if to_date else None
+    except ValueError as e:
+        typer.echo(f"✗ Invalid date format: {e}", err=True)
+        sys.exit(1)
+    
+    sink = Neo4jSink(settings)
+    sink.init()
+    
+    with sink.driver.session() as session:
+        mandates_result = session.run("""
+            MATCH (m:Mandate)
+            RETURN m.id as id, m.person_id as person_id, m.parliament_id as parliament_id,
+                   m.legislature_id as legislature_id, m.party_code as party_code,
+                   m.start_date as start_date, m.end_date as end_date, m.role as role,
+                   m.evidence_ids as evidence_ids
+        """)
+        
+        mandates = []
+        skipped_count = 0
+        for record in mandates_result:
+            parliament_id = record.get("parliament_id")
+            if not parliament_id:
+                skipped_count += 1
+                continue
+            
+            mandate = Mandate(
+                id=record["id"],
+                person_id=record["person_id"],
+                parliament_id=parliament_id,
+                legislature_id=record["legislature_id"],
+                party_code=record.get("party_code"),
+                start_date=record.get("start_date"),
+                end_date=record.get("end_date"),
+                role=record.get("role"),
+                evidence_ids=record.get("evidence_ids", []),
+            )
+            mandates.append(mandate)
+        
+        if skipped_count > 0:
+            typer.echo(f"⚠ Skipped {skipped_count} mandate(s) without parliament_id (legacy data)", err=True)
+        
+        parties_result = session.run("""
+            MATCH (p:Party)
+            RETURN p.id as id, p.code as code, p.name as name
+        """)
+        
+        parties = []
+        skipped_parties_count = 0
+        for record in parties_result:
+            code = record.get("code")
+            if not code:
+                skipped_parties_count += 1
+                continue
+            
+            party = Party(
+                id=record["id"],
+                code=code,
+                name=record.get("name", ""),
+            )
+            parties.append(party)
+        
+        if skipped_parties_count > 0:
+            typer.echo(f"⚠ Skipped {skipped_parties_count} party/parties without code (legacy data)", err=True)
+    
+    validator = DataValidator(strict_mode=strict)
+    result = validator.validate_all(
+        mandates=mandates,
+        parties=parties,
+        from_date=from_date_obj,
+        to_date=to_date_obj,
+        parliament_id=parliament,
+    )
+    
+    if json_output:
+        import json
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        if result.errors:
+            typer.echo(f"✗ Validation failed: {len(result.errors)} errors, {len(result.warnings)} warnings", err=True)
+            for error in result.errors:
+                typer.echo(f"  ERROR [{error['code']}]: {error['message']}", err=True)
+        else:
+            typer.echo(f"✓ Validation passed: {len(result.warnings)} warnings", err=True)
+        
+        if result.warnings:
+            for warning in result.warnings:
+                typer.echo(f"  WARN [{warning['code']}]: {warning['message']}", err=True)
+    
+    sys.exit(1 if result.has_errors() else 0)
+
+
+@app.command()
+def mandates(
+    parliament: Optional[str] = Option(None, "--parliament", help="Parliament ID filter"),
+    legislature: Optional[str] = Option(None, "--legislature", help="Legislature ID filter"),
+    party: Optional[str] = Option(None, "--party", help="Party code filter (e.g. 'SPD', 'CDU')"),
+    from_date: Optional[str] = Option(None, "--from", help="Start date filter (YYYY-MM-DD)"),
+    to_date: Optional[str] = Option(None, "--to", help="End date filter (YYYY-MM-DD)"),
+    person_id: Optional[str] = Option(None, "--person-id", help="Person ID filter"),
+    person_name: Optional[str] = Option(None, "--person-name", help="Person name contains filter"),
+    limit: int = Option(200, "--limit", help="Maximum results (1-1000)"),
+    offset: int = Option(0, "--offset", help="Offset for pagination"),
+    sort: str = Option("person_name", "--sort", help="Sort field: person_name, start_date, end_date, party_code"),
+    sort_direction: str = Option("ASC", "--sort-direction", help="Sort direction: ASC or DESC"),
+    json_output: bool = Option(False, "--json", help="Output as JSON"),
+) -> None:
+    """Query mandates with evidence-by-default."""
+    from datetime import date
+    
+    from scraper.models.query import MandateQueryFilter, SortDirection, SortField
+    from scraper.services.neo4j_query import Neo4jMandateQueryService
+    
+    try:
+        from_date_obj = date.fromisoformat(from_date) if from_date else None
+        to_date_obj = date.fromisoformat(to_date) if to_date else None
+    except ValueError as e:
+        typer.echo(f"✗ Invalid date format: {e}", err=True)
+        sys.exit(1)
+    
+    try:
+        sort_field = SortField(sort)
+    except ValueError:
+        typer.echo(f"✗ Invalid sort field: {sort}. Valid: person_name, start_date, end_date, party_code", err=True)
+        sys.exit(1)
+    
+    try:
+        sort_dir = SortDirection(sort_direction.upper())
+    except ValueError:
+        typer.echo(f"✗ Invalid sort direction: {sort_direction}. Valid: ASC, DESC", err=True)
+        sys.exit(1)
+    
+    filter_obj = MandateQueryFilter(
+        parliament_id=parliament,
+        legislature_id=legislature,
+        party_code=party,
+        from_date=from_date_obj,
+        to_date=to_date_obj,
+        person_id=person_id,
+        person_name_contains=person_name,
+        limit=limit,
+        offset=offset,
+        sort=sort_field,
+        sort_direction=sort_dir,
+    )
+    
+    try:
+        service = Neo4jMandateQueryService(settings)
+        result = service.search(filter_obj)
+        service.close()
+        
+        if json_output:
+            import json
+            print(json.dumps(result.model_dump(mode="json"), indent=2, default=str))
+        else:
+            typer.echo(f"Found {len(result.rows)} mandate(s)", err=True)
+            if result.total is not None:
+                typer.echo(f"Total: {result.total}", err=True)
+            typer.echo("", err=True)
+            
+            for row in result.rows:
+                end_date_str = row.end_date.isoformat() if row.end_date else "open"
+                evidence_count = len(row.evidence_urls)
+                typer.echo(f"  {row.person_name} ({row.person_id})", err=False)
+                typer.echo(f"    Mandate: {row.mandate_id}", err=False)
+                typer.echo(f"    Legislature: {row.legislature_name or row.legislature_id}", err=False)
+                typer.echo(f"    Party: {row.party_code or 'N/A'}", err=False)
+                typer.echo(f"    Period: {row.start_date.isoformat()} - {end_date_str}", err=False)
+                typer.echo(f"    Evidence: {evidence_count} URL(s)", err=False)
+                if row.evidence_urls:
+                    for url in row.evidence_urls[:3]:
+                        typer.echo(f"      - {url}", err=False)
+                    if len(row.evidence_urls) > 3:
+                        typer.echo(f"      ... and {len(row.evidence_urls) - 3} more", err=False)
+                typer.echo("", err=False)
+        
+        sys.exit(0)
+    except Exception as e:
+        typer.echo(f"✗ Query failed: {e}", err=True)
+        import traceback
+        if settings.scraper_cache_dir:
+            typer.echo(traceback.format_exc(), err=True)
+        sys.exit(1)
+
+
+@app.command()
+def legislature_stats(
+    legislature_id: str = Option(..., "--legislature-id", help="Legislature ID"),
+    json_output: bool = Option(False, "--json", help="Output as JSON"),
+) -> None:
+    """Get statistics for a legislature."""
+    from scraper.services.neo4j_query import Neo4jLegislatureStatsService
+    
+    try:
+        service = Neo4jLegislatureStatsService(settings)
+        stats = service.get_legislature_stats(legislature_id)
+        service.close()
+        
+        if json_output:
+            import json
+            print(json.dumps(stats.model_dump(mode="json"), indent=2, default=str))
+        else:
+            typer.echo(f"Legislature: {stats.legislature_name} ({stats.legislature_id})", err=False)
+            typer.echo(f"Total Seats: {stats.total_seats or 'N/A'}", err=False)
+            typer.echo("", err=False)
+            typer.echo("Party Seats:", err=False)
+            for party_code, seats in sorted(stats.party_seats.items()):
+                typer.echo(f"  {party_code}: {seats}", err=False)
+            typer.echo("", err=False)
+            typer.echo(f"Evidence: {len(stats.evidence_urls)} URL(s)", err=False)
+            if stats.evidence_urls:
+                for url in stats.evidence_urls[:3]:
+                    typer.echo(f"  - {url}", err=False)
+                if len(stats.evidence_urls) > 3:
+                    typer.echo(f"  ... and {len(stats.evidence_urls) - 3} more", err=False)
+        
+        sys.exit(0)
+    except Exception as e:
+        typer.echo(f"✗ Query failed: {e}", err=True)
+        import traceback
+        typer.echo(traceback.format_exc(), err=True)
+        sys.exit(1)
+
+
+@app.command()
+def person(
+    person_id: Optional[str] = Option(None, "--id", help="Person ID"),
+    name: Optional[str] = Option(None, "--name", help="Search by name (contains)"),
+    limit: int = Option(20, "--limit", help="Maximum results for name search (1-100)"),
+    json_output: bool = Option(False, "--json", help="Output as JSON"),
+) -> None:
+    """Lookup person by ID or search by name."""
+    from scraper.services.neo4j_query import Neo4jPersonLookupService
+    
+    if not person_id and not name:
+        typer.echo("✗ Must specify either --id or --name", err=True)
+        sys.exit(1)
+    
+    if person_id and name:
+        typer.echo("✗ Cannot specify both --id and --name", err=True)
+        sys.exit(1)
+    
+    try:
+        service = Neo4jPersonLookupService(settings)
+        
+        if person_id:
+            person = service.find_by_id(person_id)
+            service.close()
+            
+            if not person:
+                typer.echo(f"✗ Person not found: {person_id}", err=True)
+                sys.exit(1)
+            
+            if json_output:
+                import json
+                print(json.dumps(person.model_dump(mode="json"), indent=2, default=str))
+            else:
+                typer.echo(f"Person: {person.name} ({person.person_id})", err=False)
+                if person.wikipedia_title:
+                    typer.echo(f"Wikipedia: {person.wikipedia_title}", err=False)
+                if person.birth_date:
+                    typer.echo(f"Birth Date: {person.birth_date.isoformat()}", err=False)
+                if person.death_date:
+                    typer.echo(f"Death Date: {person.death_date.isoformat()}", err=False)
+                if person.intro:
+                    intro_preview = person.intro[:200] + "..." if len(person.intro) > 200 else person.intro
+                    typer.echo(f"Intro: {intro_preview}", err=False)
+                typer.echo(f"Evidence: {len(person.evidence_urls)} URL(s)", err=False)
+                if person.evidence_urls:
+                    for url in person.evidence_urls[:3]:
+                        typer.echo(f"  - {url}", err=False)
+                    if len(person.evidence_urls) > 3:
+                        typer.echo(f"  ... and {len(person.evidence_urls) - 3} more", err=False)
+        else:
+            persons = service.search_by_name(name, limit=limit)
+            service.close()
+            
+            if json_output:
+                import json
+                print(json.dumps([p.model_dump(mode="json") for p in persons], indent=2, default=str))
+            else:
+                typer.echo(f"Found {len(persons)} person(s)", err=False)
+                for p in persons:
+                    typer.echo(f"  {p.name} ({p.person_id})", err=False)
+        
+        sys.exit(0)
+    except Exception as e:
+        typer.echo(f"✗ Query failed: {e}", err=True)
+        import traceback
+        typer.echo(traceback.format_exc(), err=True)
+        sys.exit(1)
+
+
+@app.command()
+def api(
+    host: str = Option("0.0.0.0", "--host", help="Host to bind"),
+    port: int = Option(8000, "--port", help="Port to bind"),
+    reload: bool = Option(False, "--reload", help="Enable auto-reload"),
+) -> None:
+    """Start FastAPI tool gateway server."""
+    import uvicorn
+    
+    from scraper.api.app import create_app
+    
+    api_app = create_app()
+    uvicorn.run(api_app, host=host, port=port, reload=reload)
+
+
 if __name__ == "__main__":
     app()
 

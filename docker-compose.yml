@@ -11,6 +11,8 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+    networks:
+      - piss-network
 
   neo4j:
     image: neo4j:5
@@ -27,6 +29,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - piss-network
 
   meilisearch:
     image: getmeili/meilisearch:latest
@@ -43,4 +47,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - piss-network
+
+networks:
+  piss-network:
+    external: true
 

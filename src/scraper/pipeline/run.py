@@ -295,12 +295,12 @@ class PipelineRunner:
         if parliament and state and legislature_number:
             from scraper.utils.ids import generate_legislature_id
 
-            legislature_id = generate_legislature_id(parliament, state, legislature_number)
+            legislature_name = f"{legislature_number}. Landtag {state}"
+            legislature_id = generate_legislature_id(parliament, legislature_name)
             legislature = Legislature(
                 id=legislature_id,
-                parliament=parliament,
-                state=state,
-                number=legislature_number,
+                parliament_id=parliament,
+                name=legislature_name,
                 start_date=time_range.get("start", ""),
                 end_date=time_range.get("end", ""),
                 evidence_ids=[legislature_data.evidence_id],
@@ -466,14 +466,15 @@ class PipelineRunner:
             # Evidence index is page-level only, row-level references are entity-level (EvidenceRef)
             # We also copy them to Person so they're available when searching persons in Meilisearch
 
-            if mandate.party_name:
+            if mandate.party_code:
                 from scraper.utils.ids import generate_party_id
 
-                party_id = generate_party_id(mandate.party_name)
+                party_id = generate_party_id(mandate.party_code)
                 if party_id not in parties:
                     parties[party_id] = Party(
                         id=party_id,
-                        name=mandate.party_name,
+                        code=mandate.party_code,
+                        name=mandate.party_code,
                         evidence_ids=mandate.evidence_ids,
                     )
 
@@ -506,12 +507,14 @@ class PipelineRunner:
         
         evidence = Evidence(
             id=legislature_data.evidence_id,
+            url=source_url_canonical,
+            retrieved_at=retrieved_at,
+            content_hash=sha256,
             endpoint_kind="parse",
             page_title=response.page_title,
             page_id=response.page_id,
             revision_id=response.revision_id,
             source_url=source_url_canonical,
-            retrieved_at=retrieved_at,
             sha256=sha256,
         )
         evidence_list.append(evidence)

@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "tool": "legislature.stats",
+    "executed_at": "2024-01-15T10:30:00Z",
+    "request_id": "550e8400-e29b-41d4-a716-446655440001",
+    "data_version": "git:abc123def456"
+  },
+  "legislature_id": "legislature-nds-17",
+  "legislature_name": "17. Landtag Niedersachsen",
+  "parliament_id": "parliament-nds",
+  "start_date": "2013-01-20",
+  "end_date": "2017-11-14",
+  "total_seats": 137,
+  "party_seats": {
+    "SPD": 49,
+    "CDU": 54,
+    "B90/GRÜNE": 20,
+    "FDP": 14
+  },
+  "party_vote_share": {},
+  "evidence_urls": [
+    "https://de.wikipedia.org/w/index.php?title=Liste_der_Mitglieder_des_Niedersächsischen_Landtages_(17._Wahlperiode)&oldid=256198867"
+  ]
+}
+

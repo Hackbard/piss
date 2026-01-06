@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "person.lookup.response.schema.json",
+  "type": "object",
+  "required": ["meta", "persons"],
+  "properties": {
+    "meta": {
+      "$ref": "common.schema.json#/definitions/ToolMeta"
+    },
+    "persons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["person_id", "name", "evidence_urls"],
+        "properties": {
+          "person_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wikipedia_title": {
+            "type": ["string", "null"]
+          },
+          "wikipedia_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "birth_date": {
+            "oneOf": [
+              {"$ref": "common.schema.json#/definitions/Date"},
+              {"type": "null"}
+            ]
+          },
+          "death_date": {
+            "oneOf": [
+              {"$ref": "common.schema.json#/definitions/Date"},
+              {"type": "null"}
+            ]
+          },
+          "intro": {
+            "type": ["string", "null"]
+          },
+          "evidence_urls": {
+            "$ref": "common.schema.json#/definitions/UrlArray"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

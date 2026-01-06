@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "tool": "mandates.search",
+    "executed_at": "2024-01-15T10:30:00Z",
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "result_hash": "a1b2c3d4e5f6...",
+    "data_version": "git:abc123def456",
+    "warnings": []
+  },
+  "applied_filter": {
+    "parliament_id": "parliament-nds",
+    "party_code": "SPD",
+    "from_date": "2014-01-01",
+    "to_date": "2020-12-31",
+    "limit": 50,
+    "offset": 0,
+    "sort": "start_date",
+    "sort_dir": "ASC",
+    "strict_evidence": true
+  },
+  "total": 42,
+  "rows": [
+    {
+      "person_id": "person-123",
+      "person_name": "Stephan Weil",
+      "wikipedia_title": "Stephan_Weil",
+      "mandate_id": "mandate-456",
+      "parliament_id": "parliament-nds",
+      "legislature_id": "legislature-nds-17",
+      "legislature": "17. Landtag Niedersachsen",
+      "start_date": "2013-01-20",
+      "end_date": "2017-11-14",
+      "party_code": "SPD",
+      "evidence_urls": [
+        "https://de.wikipedia.org/w/index.php?title=Liste_der_Mitglieder_des_Niedersächsischen_Landtages_(17._Wahlperiode)&oldid=256198867"
+      ]
+    }
+  ]
+}
+

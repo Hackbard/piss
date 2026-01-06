@@ -234,13 +234,19 @@ def extract_mandate_from_row(
         events = parse_event_from_notes(notes, evidence_id)
 
     legislature_id = None
+    parliament_id = None
     parliament = seed_data.get("hints", {}).get("parliament", "")
     state = seed_data.get("hints", {}).get("state", "")
     legislature_number = seed_data.get("hints", {}).get("legislature_number")
+    
+    if parliament:
+        parliament_id = parliament
+    
     if parliament and state and legislature_number:
         from scraper.utils.ids import generate_legislature_id
 
-        legislature_id = generate_legislature_id(parliament, state, legislature_number)
+        legislature_name = f"{legislature_number}. Landtag {state}"
+        legislature_id = generate_legislature_id(parliament, legislature_name)
 
     mandate_id = generate_mandate_id(
         person.id,
@@ -250,6 +256,10 @@ def extract_mandate_from_row(
         role="member",
     )
 
+    party_code = None
+    if party_name:
+        party_code = party_name.strip().upper()
+
     # Attach membership EvidenceRef to Mandate (not Person)
     from scraper.models.domain import EvidenceRef
     
@@ -258,10 +268,11 @@ def extract_mandate_from_row(
     return Mandate(
         id=mandate_id,
         person_id=person.id,
-        legislature_id=legislature_id,
-        party_name=party_name,
+        parliament_id=parliament_id or "unknown",
+        legislature_id=legislature_id or "unknown",
+        party_code=party_code,
         wahlkreis=wahlkreis,
-        start_date=start_date,
+        start_date=start_date or "unknown",
         end_date=end_date,
         role="member",
         events=events,

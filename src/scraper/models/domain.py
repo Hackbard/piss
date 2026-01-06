@@ -32,8 +32,9 @@ class EvidenceRef(BaseModel):
 class Person(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
     name: str = Field(..., description="Full name")
-    wikipedia_title: str = Field(..., description="Wikipedia page title")
-    wikipedia_url: str = Field(..., description="Wikipedia URL")
+    wikipedia_title: Optional[str] = Field(None, description="Wikipedia page title")
+    wikipedia_url: Optional[str] = Field(None, description="Wikipedia URL")
+    normalized_name: Optional[str] = Field(None, description="Normalized name for deduplication")
     birth_date: Optional[str] = Field(None, description="Birth date (ISO format, only if extracted from hard sources: span.bday or time datetime)")
     birth_date_status: str = Field(default="unknown", description="Birth date extraction status: unknown, extracted, not_present")
     death_date: Optional[str] = Field(None, description="Death date (ISO format)")
@@ -52,8 +53,18 @@ class Person(BaseModel):
             self.evidence_ids = list(set([ref.evidence_id for ref in self.evidence_refs]))
 
 
+class Parliament(BaseModel):
+    id: str = Field(..., description="Deterministic UUID5 ID")
+    name: str = Field(..., description="Parliament name")
+    level: str = Field(..., description="Level: federal or state")
+    state_code: Optional[str] = Field(None, description="State code (e.g. 'NI' for Niedersachsen)")
+    evidence_ids: List[str] = Field(default_factory=list, description="Evidence IDs")
+    provenance: Optional[Provenance] = Field(None, description="Provenance information")
+
+
 class Party(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
+    code: str = Field(..., description="Party code (e.g. 'SPD', 'CDU')")
     name: str = Field(..., description="Party name")
     evidence_ids: List[str] = Field(default_factory=list, description="Evidence IDs")
     provenance: Optional[Provenance] = Field(None, description="Provenance information")
@@ -61,9 +72,8 @@ class Party(BaseModel):
 
 class Legislature(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
-    parliament: str = Field(..., description="Parliament name")
-    state: str = Field(..., description="State/region")
-    number: int = Field(..., description="Legislature number")
+    parliament_id: str = Field(..., description="Parliament ID")
+    name: str = Field(..., description="Legislature name (e.g. '17. Landtag Niedersachsen')")
     start_date: str = Field(..., description="Start date (ISO format)")
     end_date: str = Field(..., description="End date (ISO format)")
     evidence_ids: List[str] = Field(default_factory=list, description="Evidence IDs")
@@ -73,12 +83,13 @@ class Legislature(BaseModel):
 class Mandate(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
     person_id: str = Field(..., description="Person ID")
-    legislature_id: Optional[str] = Field(None, description="Legislature ID")
-    party_name: Optional[str] = Field(None, description="Party name")
+    parliament_id: str = Field(..., description="Parliament ID")
+    legislature_id: str = Field(..., description="Legislature ID")
+    party_code: Optional[str] = Field(None, description="Party code (e.g. 'SPD', 'CDU')")
+    start_date: str = Field(..., description="Start date (ISO format, required)")
+    end_date: Optional[str] = Field(None, description="End date (ISO format, nullable = offen)")
+    role: Optional[str] = Field(None, description="Role (e.g. 'MdL', 'MdB')")
     wahlkreis: Optional[str] = Field(None, description="Electoral district")
-    start_date: Optional[str] = Field(None, description="Start date (ISO format)")
-    end_date: Optional[str] = Field(None, description="End date (ISO format)")
-    role: str = Field(default="member", description="Role in legislature")
     events: List[Event] = Field(default_factory=list, description="Events related to mandate")
     notes: Optional[str] = Field(None, description="Additional notes")
     evidence_refs: List[EvidenceRef] = Field(default_factory=list, description="Entity-level evidence references (preferred: membership_row with table_row snippet_ref)")
@@ -94,13 +105,18 @@ class Mandate(BaseModel):
 class Evidence(BaseModel):
     """Page-level Evidence (immutable, represents entire page/response)."""
     id: str = Field(..., description="Deterministic UUID5 ID")
-    endpoint_kind: str = Field(..., description="parse or query")
-    page_title: str = Field(..., description="Page title")
-    page_id: int = Field(..., description="Page ID")
-    revision_id: int = Field(..., description="Revision ID")
-    source_url: str = Field(..., description="Source URL")
-    retrieved_at: str = Field(..., description="UTC timestamp")
-    sha256: str = Field(..., description="SHA256 hash")
+    url: str = Field(..., description="Source URL")
+    retrieved_at: str = Field(..., description="Retrieval timestamp (UTC ISO)")
+    content_hash: str = Field(..., description="Content hash (SHA256)")
+    source_type: Optional[str] = Field(None, description="Source type (e.g. 'wikipedia', 'parliament_site', 'dip')")
+    locator: Optional[str] = Field(None, description="Locator (e.g. section/table_row/selector)")
+    snapshot_path: Optional[str] = Field(None, description="Path to cached HTML/JSON snapshot")
+    endpoint_kind: Optional[str] = Field(None, description="Legacy: parse or query")
+    page_title: Optional[str] = Field(None, description="Legacy: Page title")
+    page_id: Optional[int] = Field(None, description="Legacy: Page ID")
+    revision_id: Optional[int] = Field(None, description="Legacy: Revision ID")
+    source_url: Optional[str] = Field(None, description="Legacy: Source URL")
+    sha256: Optional[str] = Field(None, description="Legacy: SHA256 hash")
     # snippet_ref removed: Evidence is page-level, row-level refs belong to EvidenceRef
 
 

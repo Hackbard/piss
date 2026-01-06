@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "mandates.search.request.schema.json",
+  "type": "object",
+  "properties": {
+    "parliament_id": {
+      "type": "string",
+      "description": "Parliament ID filter"
+    },
+    "legislature_id": {
+      "type": "string",
+      "description": "Legislature ID filter"
+    },
+    "party_code": {
+      "type": "string",
+      "description": "Party code filter (e.g. 'SPD', 'CDU')"
+    },
+    "from_date": {
+      "$ref": "common.schema.json#/definitions/Date",
+      "description": "Start date filter (inclusive)"
+    },
+    "to_date": {
+      "$ref": "common.schema.json#/definitions/Date",
+      "description": "End date filter (inclusive)"
+    },
+    "person_id": {
+      "type": "string",
+      "description": "Person ID filter"
+    },
+    "person_name_contains": {
+      "type": "string",
+      "description": "Person name contains filter (case-insensitive)"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 200,
+      "description": "Maximum number of results"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Offset for pagination"
+    },
+    "sort": {
+      "type": "string",
+      "enum": ["person_name", "start_date", "end_date", "party_code"],
+      "default": "person_name",
+      "description": "Sort field"
+    },
+    "sort_dir": {
+      "type": "string",
+      "enum": ["ASC", "DESC"],
+      "default": "ASC",
+      "description": "Sort direction"
+    },
+    "strict_evidence": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, require evidence_urls minItems: 1 for each row"
+    }
+  },
+  "additionalProperties": false
+}
+
