@@ -182,6 +182,41 @@ def _detect_active_only(question: str) -> bool:
     return any(keyword in q for keyword in active_keywords)
 
 
+def _alias_matches(alias: str, q: str) -> bool:
+    """Match aliases safely.
+
+    - Long phrases: substring match.
+    - Short codes (<=3 letters): word-boundary match to avoid accidental hits.
+    """
+    a = alias.strip().lower()
+    if not a:
+        return False
+    if len(a) <= 3 and a.isalpha():
+        return re.search(rf"\b{re.escape(a)}\b", q) is not None
+    return a in q
+
+
+def _normalize_parliament_ids(question: str, parliament_ids: list[str] | None) -> list[str]:
+    """Normalize / constrain scope.
+
+    Rule of thumb: if deterministic scope resolution yields something, prefer it.
+    Otherwise sanitize the provided list.
+    """
+    deterministic = _resolve_parliament_scope(question)
+    if deterministic:
+        return deterministic
+
+    allowed = set(ALL_LANDTAGE_IDS + ["BT", "BR"])
+    out: list[str] = []
+    for pid in (parliament_ids or []):
+        if not isinstance(pid, str):
+            continue
+        pid = pid.strip().upper()
+        if pid in allowed and pid not in out:
+            out.append(pid)
+    return out
+
+
 def _resolve_parliament_scope(question: str) -> list[str]:
     """Resolve parliament scope from question."""
     q = question.lower()
@@ -192,7 +227,7 @@ def _resolve_parliament_scope(question: str) -> list[str]:
     mentions_bundesrat = False
     
     for alias, pid in PARLIAMENT_ALIASES.items():
-        if alias in q:
+        if _alias_matches(alias, q):
             if pid == "BT":
                 mentions_bundestag = True
             else:
@@ -219,9 +254,8 @@ def _resolve_parliament_scope(question: str) -> list[str]:
         return result
     
     if mentions_landtag and not detected_parliament_ids:
-        if mentions_bundestag or "oder" in q or "und" in q:
-            if "bundestag" in q or "oder" in q or "und" in q:
-                return ALL_LANDTAGE_IDS + ["BT"]
+        if mentions_bundestag:
+            return ALL_LANDTAGE_IDS + ["BT"]
         return ALL_LANDTAGE_IDS.copy()
     
     if mentions_bundestag and not detected_parliament_ids:
@@ -315,7 +349,7 @@ def _parse_members_list_plan(question: str) -> dict[str, Any]:
             party_code = code
             break
     
-    parliament_ids = _resolve_parliament_scope(question)
+    parliament_ids = _normalize_parliament_ids(question, _resolve_parliament_scope(question))
     active_only = _detect_active_only(question)
     
     from_date, to_date = _parse_date_range(question)
@@ -346,10 +380,8 @@ def _parse_members_list_plan(question: str) -> dict[str, Any]:
     
     if party_code:
         tool_base_input["party_code"] = party_code
-    if resolved_from_date:
-        tool_base_input["from_date"] = resolved_from_date
-    if resolved_to_date:
-        tool_base_input["to_date"] = resolved_to_date
+    tool_base_input["from_date"] = resolved_from_date
+    tool_base_input["to_date"] = resolved_to_date
     
     return {
         "parliament_ids": parliament_ids,
@@ -421,9 +453,14 @@ Output-Format (JSON):
             parliament_ids = [parliament_ids]
         elif not isinstance(parliament_ids, list):
             parliament_ids = None
+
+        # Guardrail: prefer deterministic scope if implied by the question (e.g. "alle Landtage").
+        parliament_ids = _normalize_parliament_ids(question, parliament_ids)
         
         party_code = data.get("party_code")
-        active_only = data.get("active_only", False)
+        if isinstance(party_code, str):
+            party_code = party_code.strip().upper()
+        active_only = bool(data.get("active_only", False)) or _detect_active_only(question)
         from_date = data.get("from_date")
         to_date = data.get("to_date")
 
@@ -1245,6 +1282,21 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
         if errors_by_parliament:
             error_msg = "; ".join([f"{pid}: {err}" for pid, err in errors_by_parliament.items()])
             return {"answer": f"Fehler bei der Abfrage: {error_msg}"}
+
+        # Keine Fehler, aber auch keine Treffer.
+        if active_only and resolved_from_date and resolved_to_date and resolved_from_date[:10] == resolved_to_date[:10]:
+            stichtag_de = _format_date_de(resolved_from_date)
+            scope_desc = _format_scope_description(parliament_ids)
+            return {
+                "answer": (
+                    f"Keine Ergebnisse gefunden ({scope_desc}, Stichtag: {stichtag_de}).\n"
+                    "Hinweis: Das bedeutet in der Praxis meist, dass der importierte Datenstand diesen Stichtag nicht abdeckt "
+                    "(oder dass für einige Parlamente noch keine Mandate importiert wurden).\n"
+                    "Optionen: (1) Stichtag explizit innerhalb des Datenbestands angeben (z. B. 'Stand 2020-12-31'), "
+                    "oder (2) neuere Daten importieren."
+                )
+            }
+
         return {"answer": "Keine Ergebnisse gefunden."}
 
     output_format = state.get("output_format", "text")
