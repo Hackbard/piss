@@ -323,13 +323,20 @@ def _parse_members_list_plan(question: str) -> dict[str, Any]:
     resolved_from_date: str | None = None
     resolved_to_date: str | None = None
     
+    today_iso = datetime.now().date().isoformat()
+
     if active_only:
+        # "Aktiv" bedeutet: Stichtag-Abfrage.
+        # - Wenn ein Zeitraum genannt ist, nutzen wir standardmäßig dessen Ende als Stichtag.
+        # - Wenn kein Datum genannt ist, default = heute.
         stichtag = _resolve_stichtag(question, from_date, to_date)
         resolved_from_date = stichtag
         resolved_to_date = stichtag
     else:
-        resolved_from_date = from_date
-        resolved_to_date = to_date
+        # members.list benötigt immer from/to.
+        # Wenn kein Zeitraum genannt ist, interpretieren wir "alle" als "bis heute".
+        resolved_from_date = from_date or "0001-01-01"
+        resolved_to_date = to_date or today_iso
     
     tool_base_input: dict[str, Any] = {
         "limit": 200,
@@ -419,14 +426,26 @@ Output-Format (JSON):
         active_only = data.get("active_only", False)
         from_date = data.get("from_date")
         to_date = data.get("to_date")
-        
-        if active_only and from_date and to_date:
-            stichtag = to_date[:10] if to_date else (from_date[:10] if from_date else datetime.now().date().isoformat())
+
+        today_iso = datetime.now().date().isoformat()
+
+        if active_only:
+            # "Aktiv" = Stichtag-Abfrage.
+            # Wenn ein Zeitraum genannt ist: Ende des Zeitraums als Stichtag.
+            # Wenn nur ein Datum genannt ist: dieses Datum.
+            # Wenn nichts genannt ist: heute.
+            stichtag = (to_date or from_date or today_iso)
+            if isinstance(stichtag, str):
+                stichtag = stichtag[:10]
+            else:
+                stichtag = today_iso
             resolved_from_date = stichtag
             resolved_to_date = stichtag
         else:
-            resolved_from_date = from_date
-            resolved_to_date = to_date
+            # members.list benötigt immer from/to.
+            # Ohne Zeitraum interpretieren wir "alle" als "bis heute".
+            resolved_from_date = from_date or "0001-01-01"
+            resolved_to_date = to_date or today_iso
         
         tool_base_input: dict[str, Any] = {
             "limit": data.get("limit", 200),
@@ -436,10 +455,8 @@ Output-Format (JSON):
         
         if party_code:
             tool_base_input["party_code"] = party_code
-        if resolved_from_date:
-            tool_base_input["from_date"] = resolved_from_date
-        if resolved_to_date:
-            tool_base_input["to_date"] = resolved_to_date
+        tool_base_input["from_date"] = resolved_from_date
+        tool_base_input["to_date"] = resolved_to_date
         
         missing = []
         if not parliament_ids:
@@ -774,8 +791,14 @@ def _format_output_text_grouped(
     from_de = _format_date_de(resolved_from_date)
     to_de = _format_date_de(resolved_to_date)
     
+    today_iso = datetime.now().date().isoformat()
     if active_only:
         date_part = f"Stichtag: {from_de}"
+    elif resolved_from_date == "0001-01-01":
+        if resolved_to_date and resolved_to_date[:10] == today_iso:
+            date_part = "alle verfügbaren Daten bis heute"
+        else:
+            date_part = f"alle verfügbaren Daten bis {to_de}"
     elif resolved_from_date and resolved_to_date:
         date_part = f"{from_de}–{to_de}"
     else:
@@ -859,10 +882,21 @@ def _format_output_text(
         str(parliament_id),
         str(parliament_id),
     )
-    from_de = _format_date_de(str(tool_input.get("from_date")) if tool_input.get("from_date") else None)
-    to_de = _format_date_de(str(tool_input.get("to_date")) if tool_input.get("to_date") else None)
+    from_raw = str(tool_input.get("from_date")) if tool_input.get("from_date") else None
+    to_raw = str(tool_input.get("to_date")) if tool_input.get("to_date") else None
+    from_de = _format_date_de(from_raw)
+    to_de = _format_date_de(to_raw)
 
-    headline = f"{party}-Mitglieder im {parliament_name} ({from_de}–{to_de})"
+    today_iso = datetime.now().date().isoformat()
+    if from_raw == "0001-01-01":
+        if to_raw and to_raw[:10] == today_iso:
+            headline = f"{party}-Mitglieder im {parliament_name} (alle verfügbaren Daten bis heute)"
+        else:
+            headline = f"{party}-Mitglieder im {parliament_name} (alle verfügbaren Daten bis {to_de})"
+    elif from_raw and to_raw and from_raw[:10] == to_raw[:10]:
+        headline = f"{party}-Mitglieder im {parliament_name} (Stichtag: {from_de})"
+    else:
+        headline = f"{party}-Mitglieder im {parliament_name} ({from_de}–{to_de})"
     lines: list[str] = [headline, f"Anzahl: {len(members)}", ""]
 
     sources: list[str] = []
@@ -931,13 +965,26 @@ def _format_output_md(
         str(parliament_id),
         str(parliament_id),
     )
-    from_de = _format_date_de(str(tool_input.get("from_date")) if tool_input.get("from_date") else None)
-    to_de = _format_date_de(str(tool_input.get("to_date")) if tool_input.get("to_date") else None)
+    from_raw = str(tool_input.get("from_date")) if tool_input.get("from_date") else None
+    to_raw = str(tool_input.get("to_date")) if tool_input.get("to_date") else None
+    from_de = _format_date_de(from_raw)
+    to_de = _format_date_de(to_raw)
+
+    today_iso = datetime.now().date().isoformat()
+    if from_raw == "0001-01-01":
+        if to_raw and to_raw[:10] == today_iso:
+            date_label = "alle verfügbaren Daten bis heute"
+        else:
+            date_label = f"alle verfügbaren Daten bis {to_de}"
+    elif from_raw and to_raw and from_raw[:10] == to_raw[:10]:
+        date_label = f"Stichtag: {from_de}"
+    else:
+        date_label = f"{from_de}–{to_de}"
 
     lines: list[str] = [
         f"# {party}-Mitglieder im {parliament_name}",
         "",
-        f"**Zeitraum:** {from_de}–{to_de}",
+        f"**Zeitraum:** {date_label}",
         f"**Anzahl:** {len(members)}",
         "",
         "## Mitglieder",
@@ -1035,8 +1082,14 @@ def _format_output_md_grouped(
     from_de = _format_date_de(resolved_from_date)
     to_de = _format_date_de(resolved_to_date)
     
+    today_iso = datetime.now().date().isoformat()
     if active_only:
         date_part = f"Stichtag: {from_de}"
+    elif resolved_from_date == "0001-01-01":
+        if resolved_to_date and resolved_to_date[:10] == today_iso:
+            date_part = "alle verfügbaren Daten bis heute"
+        else:
+            date_part = f"alle verfügbaren Daten bis {to_de}"
     elif resolved_from_date and resolved_to_date:
         date_part = f"{from_de}–{to_de}"
     else:
