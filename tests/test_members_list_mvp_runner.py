@@ -5,7 +5,16 @@ import os
 import httpx
 import pytest
 
-from langgraph_app.graph import format_member_row, members_list_answer_node, members_list_plan_node
+from langgraph_app.graph import (
+    PARLIAMENT_ALIASES,
+    PARTY_ALIASES,
+    _merge_member_rows,
+    _parse_date_range,
+    _parse_members_list_tool_input,
+    format_member_row,
+    members_list_answer_node,
+    members_list_plan_node,
+)
 from langgraph_app.tools import members_list
 
 
@@ -217,5 +226,138 @@ def test_answer_node_no_mandate_note_when_dates_equal():
     assert out["answer"] is not None
     assert "Test Person" in out["answer"]
     assert "(Mandat bis" not in out["answer"]
+
+
+def test_parse_party_aliases():
+    assert _parse_members_list_tool_input("SPD Mitglieder")["party_code"] == "SPD"
+    assert _parse_members_list_tool_input("cdu Mitglieder")["party_code"] == "CDU"
+    assert _parse_members_list_tool_input("Die Grünen")["party_code"] == "GRUENE"
+    assert _parse_members_list_tool_input("gruene Mitglieder")["party_code"] == "GRUENE"
+    assert _parse_members_list_tool_input("FDP Mitglieder")["party_code"] == "FDP"
+    assert _parse_members_list_tool_input("afd Mitglieder")["party_code"] == "AFD"
+    assert _parse_members_list_tool_input("Linke Mitglieder")["party_code"] == "LINKE"
+
+
+def test_parse_parliament_aliases():
+    assert _parse_members_list_tool_input("Niedersachsen")["parliament_id"] == "NI"
+    assert _parse_members_list_tool_input("Landtag Niedersachsen")["parliament_id"] == "NI"
+    assert _parse_members_list_tool_input("Bundestag")["parliament_id"] == "BT"
+    assert _parse_members_list_tool_input("Hessen")["parliament_id"] == "HE"
+    assert _parse_members_list_tool_input("hessischer landtag")["parliament_id"] == "HE"
+    assert _parse_members_list_tool_input("Bayern")["parliament_id"] == "BY"
+    assert _parse_members_list_tool_input("bw")["parliament_id"] == "BW"
+
+
+def test_parse_date_range_dash():
+    from_date, to_date = _parse_date_range("2014-2020")
+    assert from_date == "2014-01-01"
+    assert to_date == "2020-12-31"
+
+
+def test_parse_date_range_em_dash():
+    from_date, to_date = _parse_date_range("2014–2020")
+    assert from_date == "2014-01-01"
+    assert to_date == "2020-12-31"
+
+
+def test_parse_date_range_zwischen():
+    from_date, to_date = _parse_date_range("zwischen 2014 und 2020")
+    assert from_date == "2014-01-01"
+    assert to_date == "2020-12-31"
+
+
+def test_parse_date_range_ab():
+    from datetime import datetime
+
+    from_date, to_date = _parse_date_range("ab 2014")
+    assert from_date == "2014-01-01"
+    assert to_date == datetime.now().date().isoformat()
+
+
+def test_parse_date_range_bis():
+    from_date, to_date = _parse_date_range("bis 2020")
+    assert from_date == "0001-01-01"
+    assert to_date == "2020-12-31"
+
+
+def test_parse_date_range_single_year():
+    from_date, to_date = _parse_date_range("2018")
+    assert from_date == "2018-01-01"
+    assert to_date == "2018-12-31"
+
+
+def test_parse_date_range_two_years():
+    from_date, to_date = _parse_date_range("2018 2021")
+    assert from_date == "2018-01-01"
+    assert to_date == "2021-12-31"
+
+
+def test_parse_tool_input_complete():
+    result = _parse_members_list_tool_input("Liste CDU im Bundestag 2018-2021")
+    assert result["parliament_id"] == "BT"
+    assert result["party_code"] == "CDU"
+    assert result["from_date"] == "2018-01-01"
+    assert result["to_date"] == "2021-12-31"
+    assert result["limit"] == 200
+    assert result["offset"] == 0
+    assert result["strict_evidence"] is True
+
+
+def test_parse_tool_input_partial():
+    result = _parse_members_list_tool_input("SPD")
+    assert result.get("party_code") == "SPD"
+    assert result.get("parliament_id") is None
+    assert result.get("from_date") is None
+    assert result.get("to_date") is None
+
+
+def test_merge_member_rows_dedupe():
+    rows = [
+        {
+            "person_id": "1",
+            "person_name": "Test Person",
+            "active_first_start_date": "2018-01-01",
+            "active_last_end_date": "2020-12-31",
+            "evidence_urls": ["https://example.com/1"],
+        },
+        {
+            "person_id": "1",
+            "person_name": "Test Person",
+            "active_first_start_date": "2017-06-01",
+            "active_last_end_date": "2021-12-31",
+            "evidence_urls": ["https://example.com/2"],
+        },
+    ]
+
+    merged = _merge_member_rows(rows)
+    assert len(merged) == 1
+    assert merged[0]["active_first_start_date"] == "2017-06-01"
+    assert merged[0]["active_last_end_date"] == "2021-12-31"
+    assert len(merged[0]["evidence_urls"]) == 2
+
+
+def test_merge_member_rows_multiple_persons():
+    rows = [
+        {"person_id": "1", "person_name": "Person 1"},
+        {"person_id": "2", "person_name": "Person 2"},
+        {"person_id": "1", "person_name": "Person 1"},
+    ]
+
+    merged = _merge_member_rows(rows)
+    assert len(merged) == 2
+    person_ids = {r["person_id"] for r in merged}
+    assert person_ids == {"1", "2"}
+
+
+def test_merge_member_rows_max_sources():
+    rows = [
+        {
+            "person_id": "1",
+            "evidence_urls": [f"https://example.com/{i}" for i in range(30)],
+        },
+    ]
+
+    merged = _merge_member_rows(rows, max_sources=10)
+    assert len(merged[0]["evidence_urls"]) == 10
 
 

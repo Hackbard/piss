@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 import re
 from typing import Any
 
@@ -83,75 +83,271 @@ def create_graph(config: OrchestratorConfig) -> StateGraph:
     return workflow.compile()
 
 
-class MembersListMvpState(TypedDict):
+class MembersListMvpState(TypedDict, total=False):
     question: str
     tool_input: dict[str, Any] | None
     tool_result: dict[str, Any] | None
     answer: str | None
+    output_format: str
+    sources_mode: str
+    max_sources: int
+
+
+PARTY_ALIASES: dict[str, str] = {
+    "spd": "SPD",
+    "cdu": "CDU",
+    "csu": "CSU",
+    "grüne": "GRUENE",
+    "gruene": "GRUENE",
+    "grünen": "GRUENE",
+    "gruenen": "GRUENE",
+    "fdp": "FDP",
+    "afd": "AFD",
+    "linke": "LINKE",
+    "die linke": "LINKE",
+}
+
+PARLIAMENT_ALIASES: dict[str, str] = {
+    "niedersachsen": "NI",
+    "landtag niedersachsen": "NI",
+    "niedersächsisch": "NI",
+    "bundestag": "BT",
+    "deutscher bundestag": "BT",
+    "hessen": "HE",
+    "hessisch": "HE",
+    "hessischer landtag": "HE",
+    "baden-württemberg": "BW",
+    "baden württemberg": "BW",
+    "bw": "BW",
+    "bayern": "BY",
+    "bayerisch": "BY",
+    "bayerischer landtag": "BY",
+    "by": "BY",
+    "berlin": "BE",
+    "abgeordnetenhaus": "BE",
+    "be": "BE",
+    "brandenburg": "BB",
+    "bb": "BB",
+    "bremen": "HB",
+    "bremisch": "HB",
+    "bremische bürgerschaft": "HB",
+    "hb": "HB",
+    "hamburg": "HH",
+    "hamburgisch": "HH",
+    "hamburgische bürgerschaft": "HH",
+    "hh": "HH",
+    "mecklenburg": "MV",
+    "vorpommern": "MV",
+    "mv": "MV",
+    "nordrhein-westfalen": "NW",
+    "nordrhein westfalen": "NW",
+    "nrw": "NW",
+    "nw": "NW",
+    "rheinland-pfalz": "RP",
+    "rheinland pfalz": "RP",
+    "rp": "RP",
+    "saarland": "SL",
+    "sl": "SL",
+    "sachsen": "SN",
+    "sn": "SN",
+    "sachsen-anhalt": "ST",
+    "sachsen anhalt": "ST",
+    "st": "ST",
+    "schleswig-holstein": "SH",
+    "schleswig holstein": "SH",
+    "sh": "SH",
+    "thüringen": "TH",
+    "thueringen": "TH",
+    "th": "TH",
+}
 
 
 def _iso_date(year: int, month: int, day: int) -> str:
     return date(year, month, day).isoformat()
 
 
-def _parse_members_list_tool_input(question: str) -> dict[str, Any] | None:
+def _parse_date_range(question: str) -> tuple[str | None, str | None]:
     q = question.lower()
-
-    parliament_id: str | None = None
-    if "niedersachsen" in q or "landtag niedersachsen" in q:
-        parliament_id = "NI"
-    if "bundestag" in q or "deutscher bundestag" in q:
-        parliament_id = "BT"
-
-    party_code: str | None = None
-    for code in ("SPD", "CDU", "CSU", "GRUENE", "GRÜNE", "FDP", "LINKE", "AFD"):
-        normalized = code.lower().replace("ü", "u")
-        if re.search(rf"\b{re.escape(normalized)}\b", q.replace("ü", "u")):
-            party_code = "GRUENE" if code in {"GRUENE", "GRÜNE"} else code
-            break
-
-    from_date: str | None = None
-    to_date: str | None = None
+    today = datetime.now().date()
+    
     years = [int(y) for y in re.findall(r"(?:19|20)\d{2}", q)]
+    
+    if "zwischen" in q and "und" in q:
+        if len(years) >= 2:
+            start_year, end_year = years[0], years[1]
+            if start_year > end_year:
+                start_year, end_year = end_year, start_year
+            return _iso_date(start_year, 1, 1), _iso_date(end_year, 12, 31)
+    
+    range_match = re.search(r"(\d{4})\s*[-–]\s*(\d{4})", q)
+    if range_match:
+        start_year = int(range_match.group(1))
+        end_year = int(range_match.group(2))
+        if start_year > end_year:
+            start_year, end_year = end_year, start_year
+        return _iso_date(start_year, 1, 1), _iso_date(end_year, 12, 31)
+    
+    if "ab" in q and years:
+        start_year = years[0]
+        return _iso_date(start_year, 1, 1), today.isoformat()
+    
+    if "bis" in q and years:
+        end_year = years[0]
+        return _iso_date(1, 1, 1), _iso_date(end_year, 12, 31)
+    
     if len(years) >= 2:
         start_year, end_year = years[0], years[1]
         if start_year > end_year:
             start_year, end_year = end_year, start_year
-        from_date = _iso_date(start_year, 1, 1)
-        to_date = _iso_date(end_year, 12, 31)
+        return _iso_date(start_year, 1, 1), _iso_date(end_year, 12, 31)
+    
+    if len(years) == 1:
+        year = years[0]
+        return _iso_date(year, 1, 1), _iso_date(year, 12, 31)
+    
+    return None, None
 
-    if not parliament_id or not party_code or not from_date or not to_date:
-        return None
 
-    return {
-        "parliament_id": parliament_id,
-        "party_code": party_code,
-        "from_date": from_date,
-        "to_date": to_date,
+def _parse_members_list_tool_input(question: str) -> dict[str, Any]:
+    q = question.lower()
+    
+    parliament_id: str | None = None
+    for alias, pid in PARLIAMENT_ALIASES.items():
+        if alias in q:
+            parliament_id = pid
+            break
+    
+    party_code: str | None = None
+    for alias, code in PARTY_ALIASES.items():
+        if re.search(rf"\b{re.escape(alias)}\b", q):
+            party_code = code
+            break
+    
+    from_date, to_date = _parse_date_range(question)
+    
+    tool_input: dict[str, Any] = {
         "limit": 200,
         "offset": 0,
         "strict_evidence": STRICT_EVIDENCE_DEFAULT,
     }
+    
+    if parliament_id:
+        tool_input["parliament_id"] = parliament_id
+    if party_code:
+        tool_input["party_code"] = party_code
+    if from_date:
+        tool_input["from_date"] = from_date
+    if to_date:
+        tool_input["to_date"] = to_date
+    
+    return tool_input
 
 
 def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
     question = state.get("question", "")
     tool_input = _parse_members_list_tool_input(question)
-    if tool_input is None:
+    
+    missing = []
+    if not tool_input.get("parliament_id"):
+        missing.append("Parlament")
+    if not tool_input.get("party_code"):
+        missing.append("Partei")
+    if not tool_input.get("from_date") or not tool_input.get("to_date"):
+        missing.append("Zeitraum")
+    
+    if missing:
         return {
             "tool_input": None,
-            "answer": "Welche Partei (z. B. SPD) und welchen Zeitraum (von/bis) soll ich für welches Parlament abfragen?",
+            "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
         }
+    
     return {"tool_input": tool_input, "answer": None}
+
+
+def _merge_member_rows(rows: list[dict[str, Any]], max_sources: int = 20) -> list[dict[str, Any]]:
+    by_person_id: dict[str, dict[str, Any]] = {}
+    
+    for row in rows:
+        person_id = row.get("person_id") or row.get("id")
+        if not person_id:
+            continue
+        
+        if person_id not in by_person_id:
+            by_person_id[person_id] = row.copy()
+            continue
+        
+        existing = by_person_id[person_id]
+        
+        active_start = existing.get("active_first_start_date")
+        new_start = row.get("active_first_start_date")
+        if new_start and (not active_start or new_start < active_start):
+            existing["active_first_start_date"] = new_start
+        
+        active_end = existing.get("active_last_end_date")
+        new_end = row.get("active_last_end_date")
+        if new_end and (not active_end or new_end > active_end):
+            existing["active_last_end_date"] = new_end
+        
+        existing_urls = set(_extract_urls(existing.get("evidence_urls") or existing.get("sources") or existing.get("evidence")))
+        new_urls = set(_extract_urls(row.get("evidence_urls") or row.get("sources") or row.get("evidence")))
+        merged_urls = list(existing_urls | new_urls)[:max_sources]
+        existing["evidence_urls"] = merged_urls
+    
+    return list(by_person_id.values())
 
 
 def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
     tool_input = state.get("tool_input")
     if not tool_input:
         return {"tool_result": None}
+    
+    limit = tool_input.get("limit", 200)
+    offset = 0
+    all_rows: list[dict[str, Any]] = []
+    meta: dict[str, Any] = {}
+    
     try:
-        result = members_list(**tool_input)
-        return {"tool_result": result}
+        while True:
+            page_input = tool_input.copy()
+            page_input["offset"] = offset
+            page_input["limit"] = limit
+            
+            result = members_list(**page_input)
+            
+            if isinstance(result, dict) and result.get("error"):
+                return {"tool_result": result}
+            
+            page_rows = _coerce_members_list(result)
+            if not page_rows:
+                break
+            
+            all_rows.extend(page_rows)
+            
+            if meta:
+                meta_urls = set(_extract_urls(meta.get("evidence_urls") or meta.get("sources")))
+                result_urls = set(_extract_urls(result.get("evidence_urls") or result.get("sources")))
+                meta["evidence_urls"] = list(meta_urls | result_urls)
+            else:
+                meta = result.copy()
+                if "members" in meta:
+                    del meta["members"]
+                if "rows" in meta:
+                    del meta["rows"]
+                if "items" in meta:
+                    del meta["items"]
+                if "results" in meta:
+                    del meta["results"]
+            
+            if len(page_rows) < limit:
+                break
+            
+            offset += limit
+        
+        merged_rows = _merge_member_rows(all_rows)
+        merged_result = meta.copy()
+        merged_result["members"] = merged_rows
+        
+        return {"tool_result": merged_result}
     except Exception as e:
         return {"tool_result": {"error": str(e)}}
 
@@ -245,6 +441,207 @@ def format_member_row(row: dict[str, Any]) -> str:
     return f"- {person_name}{title_part} – {date_part}{mandate_note}"
 
 
+def _format_output_text(
+    members: list[dict[str, Any]],
+    tool_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    party = tool_input.get("party_code") or "?"
+    parliament_id = tool_input.get("parliament_id") or "?"
+    parliament_name = {
+        "NI": "Landtag Niedersachsen",
+        "BT": "Deutschen Bundestag",
+        "HE": "Hessischen Landtag",
+        "BW": "Landtag von Baden-Württemberg",
+        "BY": "Bayerischen Landtag",
+        "BE": "Abgeordnetenhaus von Berlin",
+        "BB": "Landtag Brandenburg",
+        "HB": "Bremischen Bürgerschaft",
+        "HH": "Hamburgischen Bürgerschaft",
+        "MV": "Landtag Mecklenburg-Vorpommern",
+        "NW": "Landtag Nordrhein-Westfalen",
+        "RP": "Landtag Rheinland-Pfalz",
+        "SL": "Landtag des Saarlandes",
+        "SN": "Sächsischen Landtag",
+        "ST": "Landtag von Sachsen-Anhalt",
+        "SH": "Schleswig-Holsteinischen Landtag",
+        "TH": "Thüringer Landtag",
+    }.get(
+        str(parliament_id),
+        str(parliament_id),
+    )
+    from_de = _format_date_de(str(tool_input.get("from_date")) if tool_input.get("from_date") else None)
+    to_de = _format_date_de(str(tool_input.get("to_date")) if tool_input.get("to_date") else None)
+
+    headline = f"{party}-Mitglieder im {parliament_name} ({from_de}–{to_de})"
+    lines: list[str] = [headline, f"Anzahl: {len(members)}", ""]
+
+    sources: list[str] = []
+    for m in members:
+        lines.append(format_member_row(m))
+        if sources_mode == "per-person":
+            member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+            if member_sources:
+                lines.append(f"  Quellen: {', '.join(member_sources[:max_sources])}")
+        elif sources_mode == "top":
+            member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+            sources.extend(member_sources[:2])
+
+    if sources_mode == "top":
+        meta_sources = _extract_urls(tool_result.get("evidence_urls") or tool_result.get("sources"))
+        sources.extend(meta_sources)
+
+        deduped_sources: list[str] = []
+        seen: set[str] = set()
+        for s in sources:
+            if s not in seen:
+                deduped_sources.append(s)
+                seen.add(s)
+            if len(deduped_sources) >= max_sources:
+                break
+
+        lines.append("")
+        lines.append("Quellen:")
+        if not deduped_sources:
+            lines.append("- (keine Quellen in der Tool-Antwort enthalten)")
+        else:
+            for s in deduped_sources:
+                lines.append(f"- {s}")
+
+    return "\n".join(lines)
+
+
+def _format_output_md(
+    members: list[dict[str, Any]],
+    tool_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    party = tool_input.get("party_code") or "?"
+    parliament_id = tool_input.get("parliament_id") or "?"
+    parliament_name = {
+        "NI": "Landtag Niedersachsen",
+        "BT": "Deutschen Bundestag",
+        "HE": "Hessischen Landtag",
+        "BW": "Landtag von Baden-Württemberg",
+        "BY": "Bayerischen Landtag",
+        "BE": "Abgeordnetenhaus von Berlin",
+        "BB": "Landtag Brandenburg",
+        "HB": "Bremischen Bürgerschaft",
+        "HH": "Hamburgischen Bürgerschaft",
+        "MV": "Landtag Mecklenburg-Vorpommern",
+        "NW": "Landtag Nordrhein-Westfalen",
+        "RP": "Landtag Rheinland-Pfalz",
+        "SL": "Landtag des Saarlandes",
+        "SN": "Sächsischen Landtag",
+        "ST": "Landtag von Sachsen-Anhalt",
+        "SH": "Schleswig-Holsteinischen Landtag",
+        "TH": "Thüringer Landtag",
+    }.get(
+        str(parliament_id),
+        str(parliament_id),
+    )
+    from_de = _format_date_de(str(tool_input.get("from_date")) if tool_input.get("from_date") else None)
+    to_de = _format_date_de(str(tool_input.get("to_date")) if tool_input.get("to_date") else None)
+
+    lines: list[str] = [
+        f"# {party}-Mitglieder im {parliament_name}",
+        "",
+        f"**Zeitraum:** {from_de}–{to_de}",
+        f"**Anzahl:** {len(members)}",
+        "",
+        "## Mitglieder",
+        "",
+    ]
+
+    for m in members:
+        person_name = (
+            m.get("person_name")
+            or m.get("name")
+            or m.get("person", {}).get("name")
+            or "?"
+        )
+        wikipedia_title = (
+            m.get("wikipedia_title")
+            or m.get("wikipedia")
+            or m.get("person", {}).get("wikipedia_title")
+        )
+        active_first_start = m.get("active_first_start_date")
+        active_last_end = m.get("active_last_end_date")
+        raw_first_start = m.get("first_start_date") or m.get("from_date") or m.get("start_date")
+        raw_last_end = m.get("last_end_date") or m.get("to_date") or m.get("end_date")
+        first_start = active_first_start if active_first_start else raw_first_start
+        last_end = active_last_end if active_last_end else raw_last_end
+        start_str = first_start if isinstance(first_start, str) and len(first_start) >= 10 else None
+        end_str = last_end if isinstance(last_end, str) and len(last_end) >= 10 else None
+
+        if start_str:
+            date_part = start_str[:10]
+            if end_str:
+                date_part = f"{date_part} … {end_str[:10]}"
+            else:
+                date_part = f"{date_part} … (offen)"
+        else:
+            date_part = "? … ?"
+
+        mandate_note = ""
+        raw_last_end_str = raw_last_end if isinstance(raw_last_end, str) and len(raw_last_end) >= 10 else None
+        active_last_end_str = active_last_end if isinstance(active_last_end, str) and len(active_last_end) >= 10 else None
+        if raw_last_end_str and active_last_end_str and raw_last_end_str > active_last_end_str:
+            mandate_note = f" (Mandat bis {raw_last_end_str[:10]})"
+
+        title_part = f" ({wikipedia_title})" if isinstance(wikipedia_title, str) and wikipedia_title else ""
+        lines.append(f"- **{person_name}**{title_part} – {date_part}{mandate_note}")
+
+        if sources_mode == "per-person":
+            member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+            if member_sources:
+                lines.append(f"  - Quellen: {', '.join(member_sources[:max_sources])}")
+
+    if sources_mode == "top":
+        sources: list[str] = []
+        for m in members:
+            member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+            sources.extend(member_sources[:2])
+        meta_sources = _extract_urls(tool_result.get("evidence_urls") or tool_result.get("sources"))
+        sources.extend(meta_sources)
+
+        deduped_sources: list[str] = []
+        seen: set[str] = set()
+        for s in sources:
+            if s not in seen:
+                deduped_sources.append(s)
+                seen.add(s)
+            if len(deduped_sources) >= max_sources:
+                break
+
+        if deduped_sources:
+            lines.append("")
+            lines.append("## Quellen")
+            lines.append("")
+            for s in deduped_sources:
+                lines.append(f"- {s}")
+
+    return "\n".join(lines)
+
+
+def _format_output_json(
+    members: list[dict[str, Any]],
+    tool_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    import json
+
+    output = tool_result.copy()
+    output["members"] = members
+    return json.dumps(output, indent=2, ensure_ascii=False, default=str)
+
+
 def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     if state.get("answer"):
         return {}
@@ -256,47 +653,18 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
         return {"answer": f"Tool-Fehler: {message}"}
     members = _coerce_members_list(tool_result)
 
-    party = tool_input.get("party_code") or "?"
-    parliament_id = tool_input.get("parliament_id") or "?"
-    parliament_name = {"NI": "Landtag Niedersachsen", "BT": "Deutschen Bundestag"}.get(
-        str(parliament_id),
-        str(parliament_id),
-    )
-    from_de = _format_date_de(str(tool_input.get("from_date")) if tool_input.get("from_date") else None)
-    to_de = _format_date_de(str(tool_input.get("to_date")) if tool_input.get("to_date") else None)
+    output_format = state.get("output_format", "text")
+    sources_mode = state.get("sources_mode", "top")
+    max_sources = state.get("max_sources", 20)
 
-    headline = f"{party}-Mitglieder im {parliament_name} ({from_de}–{to_de})"
-    lines: list[str] = [headline, f"Anzahl: {len(members)}", ""]
-
-    sources: list[str] = []
-
-    for m in members:
-        lines.append(format_member_row(m))
-
-        member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
-        sources.extend(member_sources[:2])
-
-    meta_sources = _extract_urls(tool_result.get("evidence_urls") or tool_result.get("sources"))
-    sources.extend(meta_sources)
-
-    deduped_sources: list[str] = []
-    seen: set[str] = set()
-    for s in sources:
-        if s not in seen:
-            deduped_sources.append(s)
-            seen.add(s)
-        if len(deduped_sources) >= 20:
-            break
-
-    lines.append("")
-    lines.append("Quellen:")
-    if not deduped_sources:
-        lines.append("- (keine Quellen in der Tool-Antwort enthalten)")
+    if output_format == "json":
+        answer = _format_output_json(members, tool_input, tool_result, sources_mode, max_sources)
+    elif output_format == "md":
+        answer = _format_output_md(members, tool_input, tool_result, sources_mode, max_sources)
     else:
-        for s in deduped_sources:
-            lines.append(f"- {s}")
+        answer = _format_output_text(members, tool_input, tool_result, sources_mode, max_sources)
 
-    return {"answer": "\n".join(lines)}
+    return {"answer": answer}
 
 
 def create_members_list_mvp_graph() -> StateGraph:

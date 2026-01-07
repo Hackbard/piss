@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import os
@@ -38,7 +39,12 @@ def _write_trace(payload: dict[str, Any]) -> Path | None:
     return path
 
 
-async def run_once(question: str) -> str:
+async def run_once(
+    question: str,
+    output_format: str = "text",
+    sources_mode: str = "top",
+    max_sources: int = 20,
+) -> str:
     from langgraph_app.graph import MembersListMvpState, create_members_list_mvp_graph
 
     app = create_members_list_mvp_graph()
@@ -48,6 +54,9 @@ async def run_once(question: str) -> str:
         "tool_input": None,
         "tool_result": None,
         "answer": None,
+        "output_format": output_format,
+        "sources_mode": sources_mode,
+        "max_sources": max_sources,
     }
 
     try:
@@ -77,23 +86,53 @@ def _read_stdin_interactive() -> str | None:
 
 
 def main() -> None:
-    question = " ".join(sys.argv[1:]).strip()
+    parser = argparse.ArgumentParser(
+        description="CLI for members.list MVP runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "question",
+        nargs="*",
+        help="Question to ask (e.g., 'Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014 und 2020')",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json", "md"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    parser.add_argument(
+        "--sources",
+        choices=["none", "top", "per-person"],
+        default="top",
+        help="Sources display mode: none, top (default), or per-person",
+    )
+    parser.add_argument(
+        "--max-sources",
+        type=int,
+        default=20,
+        help="Maximum number of sources to display (default: 20)",
+    )
+
+    args = parser.parse_args()
+
+    question = " ".join(args.question).strip() if args.question else ""
 
     if question:
-        print(asyncio.run(run_once(question)))
+        print(asyncio.run(run_once(question, args.format, args.sources, args.max_sources)))
         return
 
     if sys.stdin.isatty():
         q = DEFAULT_QUESTION
-        print(asyncio.run(run_once(q)))
+        print(asyncio.run(run_once(q, args.format, args.sources, args.max_sources)))
         while True:
             next_q = _read_stdin_interactive()
             if not next_q:
                 break
-            print(asyncio.run(run_once(next_q)))
+            print(asyncio.run(run_once(next_q, args.format, args.sources, args.max_sources)))
         return
 
-    print(asyncio.run(run_once(DEFAULT_QUESTION)))
+    print(asyncio.run(run_once(DEFAULT_QUESTION, args.format, args.sources, args.max_sources)))
 
 
 if __name__ == "__main__":
