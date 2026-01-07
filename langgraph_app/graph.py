@@ -93,6 +93,11 @@ class MembersListMvpState(TypedDict, total=False):
     output_format: str
     sources_mode: str
     max_sources: int
+    parliament_ids: list[str]
+    active_only: bool
+    resolved_from_date: str | None
+    resolved_to_date: str | None
+    tool_base_input: dict[str, Any] | None
 
 
 PARTY_ALIASES: dict[str, str] = {
@@ -108,6 +113,8 @@ PARTY_ALIASES: dict[str, str] = {
     "linke": "LINKE",
     "die linke": "LINKE",
 }
+
+ALL_LANDTAGE_IDS = ["BW", "BY", "BE", "BB", "HB", "HH", "HE", "MV", "NI", "NW", "RP", "SL", "SN", "ST", "SH", "TH"]
 
 PARLIAMENT_ALIASES: dict[str, str] = {
     "niedersachsen": "NI",
@@ -168,6 +175,83 @@ def _iso_date(year: int, month: int, day: int) -> str:
     return date(year, month, day).isoformat()
 
 
+def _detect_active_only(question: str) -> bool:
+    """Detect if question asks for active members only."""
+    q = question.lower()
+    active_keywords = ["aktiv", "aktuell", "heute", "noch", "derzeit", "bestehend"]
+    return any(keyword in q for keyword in active_keywords)
+
+
+def _resolve_parliament_scope(question: str) -> list[str]:
+    """Resolve parliament scope from question."""
+    q = question.lower()
+    
+    detected_parliament_ids: set[str] = set()
+    mentions_landtag = False
+    mentions_bundestag = False
+    mentions_bundesrat = False
+    
+    for alias, pid in PARLIAMENT_ALIASES.items():
+        if alias in q:
+            if pid == "BT":
+                mentions_bundestag = True
+            else:
+                detected_parliament_ids.add(pid)
+    
+    if "landtag" in q or "landtage" in q:
+        mentions_landtag = True
+    
+    if "bundestag" in q:
+        mentions_bundestag = True
+    
+    if "bundesrat" in q:
+        mentions_bundesrat = True
+    
+    if "parlament" in q or "parlamente" in q:
+        if not detected_parliament_ids and not mentions_landtag and not mentions_bundestag:
+            return ALL_LANDTAGE_IDS + ["BT"]
+    
+    if detected_parliament_ids:
+        result = list(detected_parliament_ids)
+        if mentions_bundestag:
+            if "BT" not in result:
+                result.append("BT")
+        return result
+    
+    if mentions_landtag and not detected_parliament_ids:
+        if mentions_bundestag or "oder" in q or "und" in q:
+            if "bundestag" in q or "oder" in q or "und" in q:
+                return ALL_LANDTAGE_IDS + ["BT"]
+        return ALL_LANDTAGE_IDS.copy()
+    
+    if mentions_bundestag and not detected_parliament_ids:
+        return ["BT"]
+    
+    if mentions_bundesrat:
+        return ["BR"]
+    
+    return []
+
+
+def _resolve_stichtag(question: str, from_date: str | None, to_date: str | None) -> str:
+    """Resolve stichtag for active_only filter."""
+    today = datetime.now().date()
+    
+    if to_date:
+        try:
+            return to_date[:10]
+        except (ValueError, IndexError):
+            pass
+    
+    if from_date:
+        try:
+            return from_date[:10]
+        except (ValueError, IndexError):
+            pass
+    
+    return today.isoformat()
+
+
 def _parse_date_range(question: str) -> tuple[str | None, str | None]:
     q = question.lower()
     today = datetime.now().date()
@@ -210,14 +294,9 @@ def _parse_date_range(question: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def _parse_members_list_tool_input(question: str) -> dict[str, Any]:
+def _parse_members_list_plan(question: str) -> dict[str, Any]:
+    """Parse question into plan with parliament_ids, active_only, and base_input."""
     q = question.lower()
-    
-    parliament_id: str | None = None
-    for alias, pid in PARLIAMENT_ALIASES.items():
-        if alias in q:
-            parliament_id = pid
-            break
     
     party_code: str | None = None
     for alias, code in PARTY_ALIASES.items():
@@ -225,24 +304,42 @@ def _parse_members_list_tool_input(question: str) -> dict[str, Any]:
             party_code = code
             break
     
+    parliament_ids = _resolve_parliament_scope(question)
+    active_only = _detect_active_only(question)
+    
     from_date, to_date = _parse_date_range(question)
     
-    tool_input: dict[str, Any] = {
+    resolved_from_date: str | None = None
+    resolved_to_date: str | None = None
+    
+    if active_only:
+        stichtag = _resolve_stichtag(question, from_date, to_date)
+        resolved_from_date = stichtag
+        resolved_to_date = stichtag
+    else:
+        resolved_from_date = from_date
+        resolved_to_date = to_date
+    
+    tool_base_input: dict[str, Any] = {
         "limit": 200,
         "offset": 0,
         "strict_evidence": STRICT_EVIDENCE_DEFAULT,
     }
     
-    if parliament_id:
-        tool_input["parliament_id"] = parliament_id
     if party_code:
-        tool_input["party_code"] = party_code
-    if from_date:
-        tool_input["from_date"] = from_date
-    if to_date:
-        tool_input["to_date"] = to_date
+        tool_base_input["party_code"] = party_code
+    if resolved_from_date:
+        tool_base_input["from_date"] = resolved_from_date
+    if resolved_to_date:
+        tool_base_input["to_date"] = resolved_to_date
     
-    return tool_input
+    return {
+        "parliament_ids": parliament_ids,
+        "active_only": active_only,
+        "resolved_from_date": resolved_from_date,
+        "resolved_to_date": resolved_to_date,
+        "tool_base_input": tool_base_input,
+    }
 
 
 def members_list_plan_llm_node(state: MembersListMvpState) -> dict[str, Any]:
@@ -343,33 +440,33 @@ Output-Format (JSON):
 
 def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
     """Plan node with hybrid strategy: LLM first if enabled, deterministic fallback."""
-    if MVP_USE_LLM:
-        try:
-            result = members_list_plan_llm_node(state)
-            if result.get("tool_input") is not None:
-                return result
-        except Exception as e:
-            import sys
-            print(f"[DEBUG] LLM parsing failed, falling back to deterministic: {e}", file=sys.stderr)
-            pass
-    
     question = state.get("question", "")
-    tool_input = _parse_members_list_tool_input(question)
+    
+    plan = _parse_members_list_plan(question)
     
     missing = []
-    if not tool_input.get("parliament_id"):
+    if not plan["parliament_ids"]:
         missing.append("Parlament")
-    if not tool_input.get("party_code"):
+    if not plan["tool_base_input"].get("party_code"):
         missing.append("Partei")
-    if not tool_input.get("from_date") or not tool_input.get("to_date"):
-        missing.append("Zeitraum")
     
-    if not missing:
-        return {"tool_input": tool_input, "answer": None}
+    if missing:
+        return {
+            "parliament_ids": [],
+            "active_only": False,
+            "resolved_from_date": None,
+            "resolved_to_date": None,
+            "tool_base_input": None,
+            "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+        }
     
     return {
-        "tool_input": None,
-        "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+        "parliament_ids": plan["parliament_ids"],
+        "active_only": plan["active_only"],
+        "resolved_from_date": plan["resolved_from_date"],
+        "resolved_to_date": plan["resolved_to_date"],
+        "tool_base_input": plan["tool_base_input"],
+        "answer": None,
     }
 
 
@@ -406,59 +503,77 @@ def _merge_member_rows(rows: list[dict[str, Any]], max_sources: int = 20) -> lis
 
 
 def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
-    tool_input = state.get("tool_input")
-    if not tool_input:
+    """Call members.list for multiple parliament_ids and aggregate results."""
+    parliament_ids = state.get("parliament_ids", [])
+    tool_base_input = state.get("tool_base_input")
+    
+    if not parliament_ids or not tool_base_input:
         return {"tool_result": None}
     
-    limit = tool_input.get("limit", 200)
-    offset = 0
-    all_rows: list[dict[str, Any]] = []
-    meta: dict[str, Any] = {}
+    if not tool_base_input.get("party_code"):
+        return {"tool_result": {"error": "party_code is required"}}
     
-    try:
-        while True:
-            page_input = tool_input.copy()
-            page_input["offset"] = offset
-            page_input["limit"] = limit
+    if not tool_base_input.get("from_date") or not tool_base_input.get("to_date"):
+        return {"tool_result": {"error": "from_date and to_date are required"}}
+    
+    results_by_parliament: dict[str, list[dict[str, Any]]] = {}
+    errors_by_parliament: dict[str, str] = {}
+    all_meta_urls: set[str] = set()
+    
+    limit = tool_base_input.get("limit", 200)
+    
+    for parliament_id in parliament_ids:
+        try:
+            offset = 0
+            parliament_rows: list[dict[str, Any]] = []
+            parliament_meta: dict[str, Any] = {}
             
-            result = members_list(**page_input)
-            
-            if isinstance(result, dict) and result.get("error"):
-                return {"tool_result": result}
-            
-            page_rows = _coerce_members_list(result)
-            if not page_rows:
-                break
-            
-            all_rows.extend(page_rows)
-            
-            if meta:
-                meta_urls = set(_extract_urls(meta.get("evidence_urls") or meta.get("sources")))
+            while True:
+                page_input = tool_base_input.copy()
+                page_input["parliament_id"] = parliament_id
+                page_input["offset"] = offset
+                page_input["limit"] = limit
+                
+                result = members_list(**page_input)
+                
+                if isinstance(result, dict) and result.get("error"):
+                    errors_by_parliament[parliament_id] = str(result.get("error"))
+                    break
+                
+                page_rows = _coerce_members_list(result)
+                if not page_rows:
+                    break
+                
+                parliament_rows.extend(page_rows)
+                
+                if not parliament_meta:
+                    parliament_meta = result.copy()
+                    for key in ("members", "rows", "items", "results"):
+                        if key in parliament_meta:
+                            del parliament_meta[key]
+                
                 result_urls = set(_extract_urls(result.get("evidence_urls") or result.get("sources")))
-                meta["evidence_urls"] = list(meta_urls | result_urls)
-            else:
-                meta = result.copy()
-                if "members" in meta:
-                    del meta["members"]
-                if "rows" in meta:
-                    del meta["rows"]
-                if "items" in meta:
-                    del meta["items"]
-                if "results" in meta:
-                    del meta["results"]
+                all_meta_urls.update(result_urls)
+                
+                if len(page_rows) < limit:
+                    break
+                
+                offset += limit
             
-            if len(page_rows) < limit:
-                break
-            
-            offset += limit
+            if parliament_rows:
+                merged_rows = _merge_member_rows(parliament_rows)
+                results_by_parliament[parliament_id] = merged_rows
         
-        merged_rows = _merge_member_rows(all_rows)
-        merged_result = meta.copy()
-        merged_result["members"] = merged_rows
-        
-        return {"tool_result": merged_result}
-    except Exception as e:
-        return {"tool_result": {"error": str(e)}}
+        except Exception as e:
+            errors_by_parliament[parliament_id] = str(e)
+    
+    tool_result: dict[str, Any] = {
+        "results_by_parliament": results_by_parliament,
+        "errors_by_parliament": errors_by_parliament,
+        "evidence_urls": list(all_meta_urls),
+    }
+    
+    return {"tool_result": tool_result}
 
 
 def _extract_urls(value: Any) -> list[str]:
@@ -548,6 +663,121 @@ def format_member_row(row: dict[str, Any]) -> str:
 
     title_part = f" ({wikipedia_title})" if isinstance(wikipedia_title, str) and wikipedia_title else ""
     return f"- {person_name}{title_part} – {date_part}{mandate_note}"
+
+
+PARLIAMENT_NAMES: dict[str, str] = {
+    "NI": "Landtag Niedersachsen",
+    "BT": "Deutscher Bundestag",
+    "HE": "Hessischer Landtag",
+    "BW": "Landtag von Baden-Württemberg",
+    "BY": "Bayerischer Landtag",
+    "BE": "Abgeordnetenhaus von Berlin",
+    "BB": "Landtag Brandenburg",
+    "HB": "Bremische Bürgerschaft",
+    "HH": "Hamburgische Bürgerschaft",
+    "MV": "Landtag Mecklenburg-Vorpommern",
+    "NW": "Landtag Nordrhein-Westfalen",
+    "RP": "Landtag Rheinland-Pfalz",
+    "SL": "Landtag des Saarlandes",
+    "SN": "Sächsischer Landtag",
+    "ST": "Landtag von Sachsen-Anhalt",
+    "SH": "Schleswig-Holsteinischer Landtag",
+    "TH": "Thüringer Landtag",
+}
+
+
+def _format_scope_description(parliament_ids: list[str]) -> str:
+    """Format scope description from parliament_ids."""
+    if not parliament_ids:
+        return "?"
+    
+    if len(parliament_ids) == 1:
+        return PARLIAMENT_NAMES.get(parliament_ids[0], parliament_ids[0])
+    
+    if len(parliament_ids) == 17 and "BT" in parliament_ids:
+        return "alle Landtage und Bundestag"
+    
+    if len(parliament_ids) == 16 and "BT" not in parliament_ids:
+        return "alle Landtage"
+    
+    if "BT" in parliament_ids:
+        return f"{len(parliament_ids)} Parlamente (inkl. Bundestag)"
+    
+    return f"{len(parliament_ids)} Landtage"
+
+
+def _format_output_text_grouped(
+    results_by_parliament: dict[str, list[dict[str, Any]]],
+    tool_base_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    parliament_ids: list[str],
+    active_only: bool,
+    resolved_from_date: str | None,
+    resolved_to_date: str | None,
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    """Format grouped output by parliament."""
+    party = tool_base_input.get("party_code") or "?"
+    scope_desc = _format_scope_description(parliament_ids)
+    
+    total_count = sum(len(members) for members in results_by_parliament.values())
+    
+    from_de = _format_date_de(resolved_from_date)
+    to_de = _format_date_de(resolved_to_date)
+    
+    if active_only:
+        date_part = f"Stichtag: {from_de}"
+    elif resolved_from_date and resolved_to_date:
+        date_part = f"{from_de}–{to_de}"
+    else:
+        date_part = "alle Zeiträume"
+    
+    headline = f"{party}-Mitglieder ({scope_desc}) [{date_part}]"
+    lines: list[str] = [headline, f"Gesamtanzahl: {total_count}", ""]
+    
+    for parliament_id in sorted(parliament_ids):
+        members = results_by_parliament.get(parliament_id, [])
+        if not members:
+            continue
+        
+        parliament_name = PARLIAMENT_NAMES.get(parliament_id, parliament_id)
+        lines.append(f"{parliament_id}: {len(members)}")
+        
+        for m in members:
+            lines.append(f"  {format_member_row(m)}")
+            if sources_mode == "per-person":
+                member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+                if member_sources:
+                    lines.append(f"    Quellen: {', '.join(member_sources[:2])}")
+        
+        lines.append("")
+    
+    if sources_mode == "top":
+        all_sources: list[str] = []
+        for members in results_by_parliament.values():
+            for m in members:
+                member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+                all_sources.extend(member_sources[:2])
+        
+        meta_sources = _extract_urls(tool_result.get("evidence_urls") or tool_result.get("sources"))
+        all_sources.extend(meta_sources)
+        
+        deduped_sources: list[str] = []
+        seen: set[str] = set()
+        for s in all_sources:
+            if s not in seen:
+                deduped_sources.append(s)
+                seen.add(s)
+            if len(deduped_sources) >= max_sources:
+                break
+        
+        if deduped_sources:
+            lines.append("Quellen:")
+            for s in deduped_sources:
+                lines.append(f"- {s}")
+    
+    return "\n".join(lines)
 
 
 def _format_output_text(
@@ -737,6 +967,147 @@ def _format_output_md(
     return "\n".join(lines)
 
 
+def _format_output_md_grouped(
+    results_by_parliament: dict[str, list[dict[str, Any]]],
+    tool_base_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    parliament_ids: list[str],
+    active_only: bool,
+    resolved_from_date: str | None,
+    resolved_to_date: str | None,
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    """Format grouped markdown output by parliament."""
+    party = tool_base_input.get("party_code") or "?"
+    scope_desc = _format_scope_description(parliament_ids)
+    
+    total_count = sum(len(members) for members in results_by_parliament.values())
+    
+    from_de = _format_date_de(resolved_from_date)
+    to_de = _format_date_de(resolved_to_date)
+    
+    if active_only:
+        date_part = f"Stichtag: {from_de}"
+    elif resolved_from_date and resolved_to_date:
+        date_part = f"{from_de}–{to_de}"
+    else:
+        date_part = "alle Zeiträume"
+    
+    lines: list[str] = [
+        f"# {party}-Mitglieder ({scope_desc})",
+        "",
+        f"**{date_part}**",
+        f"**Gesamtanzahl:** {total_count}",
+        "",
+    ]
+    
+    for parliament_id in sorted(parliament_ids):
+        members = results_by_parliament.get(parliament_id, [])
+        if not members:
+            continue
+        
+        parliament_name = PARLIAMENT_NAMES.get(parliament_id, parliament_id)
+        lines.append(f"## {parliament_name} ({parliament_id}): {len(members)}")
+        lines.append("")
+        
+        for m in members:
+            person_name = (
+                m.get("person_name")
+                or m.get("name")
+                or m.get("person", {}).get("name")
+                or "?"
+            )
+            wikipedia_title = (
+                m.get("wikipedia_title")
+                or m.get("wikipedia")
+                or m.get("person", {}).get("wikipedia_title")
+            )
+            active_first_start = m.get("active_first_start_date")
+            active_last_end = m.get("active_last_end_date")
+            raw_first_start = m.get("first_start_date") or m.get("from_date") or m.get("start_date")
+            raw_last_end = m.get("last_end_date") or m.get("to_date") or m.get("end_date")
+            first_start = active_first_start if active_first_start else raw_first_start
+            last_end = active_last_end if active_last_end else raw_last_end
+            start_str = first_start if isinstance(first_start, str) and len(first_start) >= 10 else None
+            end_str = last_end if isinstance(last_end, str) and len(last_end) >= 10 else None
+            
+            if start_str:
+                date_part = start_str[:10]
+                if end_str:
+                    date_part = f"{date_part} … {end_str[:10]}"
+                else:
+                    date_part = f"{date_part} … (offen)"
+            else:
+                date_part = "? … ?"
+            
+            title_part = f" ({wikipedia_title})" if isinstance(wikipedia_title, str) and wikipedia_title else ""
+            lines.append(f"- **{person_name}**{title_part} – {date_part}")
+            
+            if sources_mode == "per-person":
+                member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+                if member_sources:
+                    lines.append(f"  - Quellen: {', '.join(member_sources[:2])}")
+        
+        lines.append("")
+    
+    if sources_mode == "top":
+        all_sources: list[str] = []
+        for members in results_by_parliament.values():
+            for m in members:
+                member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
+                all_sources.extend(member_sources[:2])
+        
+        meta_sources = _extract_urls(tool_result.get("evidence_urls") or tool_result.get("sources"))
+        all_sources.extend(meta_sources)
+        
+        deduped_sources: list[str] = []
+        seen: set[str] = set()
+        for s in all_sources:
+            if s not in seen:
+                deduped_sources.append(s)
+                seen.add(s)
+            if len(deduped_sources) >= max_sources:
+                break
+        
+        if deduped_sources:
+            lines.append("## Quellen")
+            lines.append("")
+            for s in deduped_sources:
+                lines.append(f"- {s}")
+    
+    return "\n".join(lines)
+
+
+def _format_output_json_grouped(
+    results_by_parliament: dict[str, list[dict[str, Any]]],
+    tool_base_input: dict[str, Any],
+    tool_result: dict[str, Any],
+    parliament_ids: list[str],
+    active_only: bool,
+    resolved_from_date: str | None,
+    resolved_to_date: str | None,
+    sources_mode: str,
+    max_sources: int,
+) -> str:
+    """Format grouped JSON output by parliament."""
+    import json
+    
+    output: dict[str, Any] = {
+        "party_code": tool_base_input.get("party_code"),
+        "parliament_ids": parliament_ids,
+        "active_only": active_only,
+        "resolved_from_date": resolved_from_date,
+        "resolved_to_date": resolved_to_date,
+        "results_by_parliament": results_by_parliament,
+        "total_count": sum(len(members) for members in results_by_parliament.values()),
+        "errors_by_parliament": tool_result.get("errors_by_parliament", {}),
+        "evidence_urls": tool_result.get("evidence_urls", []),
+    }
+    
+    return json.dumps(output, indent=2, ensure_ascii=False, default=str)
+
+
 def _format_output_json(
     members: list[dict[str, Any]],
     tool_input: dict[str, Any],
@@ -756,22 +1127,35 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
         return {}
 
     tool_result = state.get("tool_result") or {}
-    tool_input = state.get("tool_input") or {}
+    tool_base_input = state.get("tool_base_input") or {}
+    parliament_ids = state.get("parliament_ids", [])
+    active_only = state.get("active_only", False)
+    resolved_from_date = state.get("resolved_from_date")
+    resolved_to_date = state.get("resolved_to_date")
+    
     if isinstance(tool_result, dict) and tool_result.get("error"):
         message = str(tool_result.get("error"))
         return {"answer": f"Tool-Fehler: {message}"}
-    members = _coerce_members_list(tool_result)
+    
+    results_by_parliament = tool_result.get("results_by_parliament", {})
+    errors_by_parliament = tool_result.get("errors_by_parliament", {})
+    
+    if not results_by_parliament:
+        if errors_by_parliament:
+            error_msg = "; ".join([f"{pid}: {err}" for pid, err in errors_by_parliament.items()])
+            return {"answer": f"Fehler bei der Abfrage: {error_msg}"}
+        return {"answer": "Keine Ergebnisse gefunden."}
 
     output_format = state.get("output_format", "text")
     sources_mode = state.get("sources_mode", "top")
     max_sources = state.get("max_sources", 20)
 
     if output_format == "json":
-        answer = _format_output_json(members, tool_input, tool_result, sources_mode, max_sources)
+        answer = _format_output_json_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
     elif output_format == "md":
-        answer = _format_output_md(members, tool_input, tool_result, sources_mode, max_sources)
+        answer = _format_output_md_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
     else:
-        answer = _format_output_text(members, tool_input, tool_result, sources_mode, max_sources)
+        answer = _format_output_text_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
 
     return {"answer": answer}
 
@@ -785,7 +1169,11 @@ def create_members_list_mvp_graph() -> StateGraph:
     workflow.set_entry_point("plan")
 
     def _route_after_plan(state: MembersListMvpState) -> str:
-        if state.get("tool_input") is None:
+        if state.get("answer"):
+            return "answer"
+        parliament_ids = state.get("parliament_ids", [])
+        tool_base_input = state.get("tool_base_input")
+        if not parliament_ids or not tool_base_input:
             return "answer"
         return "call_tool"
 

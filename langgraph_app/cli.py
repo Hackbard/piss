@@ -57,6 +57,11 @@ async def run_once(
         "output_format": output_format,
         "sources_mode": sources_mode,
         "max_sources": max_sources,
+        "parliament_ids": [],
+        "active_only": False,
+        "resolved_from_date": None,
+        "resolved_to_date": None,
+        "tool_base_input": None,
     }
 
     try:
