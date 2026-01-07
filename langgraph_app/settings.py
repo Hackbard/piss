@@ -45,55 +45,6 @@ class MvpSettings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._load_langsmith_from_env()
-        self._setup_langsmith_if_needed()
-
-    def _load_langsmith_from_env(self) -> None:
-        """Load LangSmith settings from .env file (without PISS_ prefix)."""
-        if not self.langsmith_tracing:
-            tracing = os.getenv("LANGSMITH_TRACING", "").strip().lower()
-            if tracing in {"1", "true", "yes", "y", "on"}:
-                self.langsmith_tracing = True
-        
-        if not self.langsmith_endpoint:
-            endpoint = os.getenv("LANGSMITH_ENDPOINT")
-            if endpoint:
-                self.langsmith_endpoint = endpoint
-        
-        if not self.langsmith_api_key:
-            api_key = os.getenv("LANGSMITH_API_KEY")
-            if api_key:
-                self.langsmith_api_key = api_key
-        
-        if not self.langsmith_project:
-            project = os.getenv("LANGSMITH_PROJECT")
-            if project:
-                self.langsmith_project = project
-
-    def _setup_langsmith_if_needed(self) -> None:
-        """Setup LangSmith tracing if enabled and API key is provided."""
-        api_key = self.langsmith_api_key
-        has_valid_api_key = api_key and api_key.strip() and api_key.strip() != ""
-        
-        if has_valid_api_key:
-            self._setup_langsmith()
-        elif self.langsmith_tracing and not has_valid_api_key:
-            import sys
-            print(
-                "[WARNING] PISS_LANGSMITH_TRACING is enabled but PISS_LANGSMITH_API_KEY is missing or empty. "
-                "LangSmith tracing will not be enabled.",
-                file=sys.stderr
-            )
-
-    def _setup_langsmith(self) -> None:
-        """Setup LangSmith tracing if enabled."""
-        api_key = self.langsmith_api_key
-        if api_key and api_key.strip():
-            os.environ["LANGCHAIN_TRACING_V2"] = "true"
-            os.environ["LANGCHAIN_ENDPOINT"] = self.langsmith_endpoint or "https://api.smith.langchain.com"
-            os.environ["LANGCHAIN_API_KEY"] = api_key.strip()
-            if self.langsmith_project:
-                os.environ["LANGCHAIN_PROJECT"] = self.langsmith_project
 
 
 _settings = MvpSettings()
