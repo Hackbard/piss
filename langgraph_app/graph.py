@@ -202,6 +202,49 @@ def _coerce_members_list(tool_result: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
+def format_member_row(row: dict[str, Any]) -> str:
+    person_name = (
+        row.get("person_name")
+        or row.get("name")
+        or row.get("person", {}).get("name")
+        or "?"
+    )
+    wikipedia_title = (
+        row.get("wikipedia_title")
+        or row.get("wikipedia")
+        or row.get("person", {}).get("wikipedia_title")
+    )
+
+    active_first_start = row.get("active_first_start_date")
+    active_last_end = row.get("active_last_end_date")
+    raw_first_start = row.get("first_start_date") or row.get("from_date") or row.get("start_date")
+    raw_last_end = row.get("last_end_date") or row.get("to_date") or row.get("end_date")
+
+    start = active_first_start if active_first_start else raw_first_start
+    end = active_last_end if active_last_end else raw_last_end
+
+    start_str = start if isinstance(start, str) and len(start) >= 10 else None
+    end_str = end if isinstance(end, str) and len(end) >= 10 else None
+
+    if start_str:
+        date_part = start_str[:10]
+        if end_str:
+            date_part = f"{date_part} … {end_str[:10]}"
+        else:
+            date_part = f"{date_part} … (offen)"
+    else:
+        date_part = "? … ?"
+
+    mandate_note = ""
+    raw_last_end_str = raw_last_end if isinstance(raw_last_end, str) and len(raw_last_end) >= 10 else None
+    active_last_end_str = active_last_end if isinstance(active_last_end, str) and len(active_last_end) >= 10 else None
+    if raw_last_end_str and active_last_end_str and raw_last_end_str > active_last_end_str:
+        mandate_note = f" (Mandat bis {raw_last_end_str[:10]})"
+
+    title_part = f" ({wikipedia_title})" if isinstance(wikipedia_title, str) and wikipedia_title else ""
+    return f"- {person_name}{title_part} – {date_part}{mandate_note}"
+
+
 def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     if state.get("answer"):
         return {}
@@ -228,26 +271,7 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     sources: list[str] = []
 
     for m in members:
-        person_name = (
-            m.get("person_name")
-            or m.get("name")
-            or m.get("person", {}).get("name")
-            or "?"
-        )
-        wikipedia_title = (
-            m.get("wikipedia_title")
-            or m.get("wikipedia")
-            or m.get("person", {}).get("wikipedia_title")
-        )
-
-        first_start = m.get("first_start_date") or m.get("from_date") or m.get("start_date")
-        last_end = m.get("last_end_date") or m.get("to_date") or m.get("end_date")
-
-        start_de = _format_date_de(first_start if isinstance(first_start, str) else None)
-        end_de = _format_date_de(last_end if isinstance(last_end, str) else None)
-
-        title_part = f" ({wikipedia_title})" if isinstance(wikipedia_title, str) and wikipedia_title else ""
-        lines.append(f"- {person_name}{title_part} – {start_de} … {end_de}")
+        lines.append(format_member_row(m))
 
         member_sources = _extract_urls(m.get("evidence_urls") or m.get("sources") or m.get("evidence"))
         sources.extend(member_sources[:2])
