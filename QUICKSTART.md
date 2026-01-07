@@ -219,6 +219,30 @@ Die Registry `config/landtage_registry.yaml` kann angepasst werden:
 
 Nach Änderungen: Discovery erneut ausführen.
 
+## LangGraph MVP: Members List CLI
+
+Ein minimaler CLI-Runner für `members.list` Abfragen ohne LLM:
+
+```bash
+# Einfache Abfrage
+python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
+
+# Mit JSON Output
+python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
+
+# Mit Markdown und Quellen pro Person
+python -m langgraph_app.cli "Alle Grünen in Hessen 2020-2025" --format md --sources per-person
+```
+
+**Features:**
+- Robuste Parameter-Extraktion (alle 16 Bundesländer + Bundestag)
+- Automatische Pagination mit Merging/Deduplizierung
+- Multiple Output-Formate (text, json, markdown)
+- Konfigurierbare Quellen-Anzeige (`--sources none|top|per-person`)
+- Verwendet `active_first_start_date`/`active_last_end_date` Felder
+
+**Siehe [langgraph_app/README.md](../langgraph_app/README.md) für Details.**
+
 ## Dokumentation
 
 Weitere Details zu den neuen Features:
@@ -226,6 +250,8 @@ Weitere Details zu den neuen Features:
 - **Data Contract**: `docs/data-contract.md` - Entities, Zeitlogik, Constraints
 - **Provenance**: `docs/provenance.md` - Evidence-Modell, Hashing, Reproduzierbarkeit
 - **QA-Gates**: `docs/qa-gates.md` - Validator-Regeln, CLI, CI/CD Integration
+- **LangGraph Orchestrator**: `docs/langgraph-orchestrator.md` - Vollständiger Orchestrator mit LLM
+- **LangGraph MVP**: `langgraph_app/README.md` - Minimaler CLI-Runner ohne LLM
 - **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md` - Übersicht aller Änderungen
 
 ## Troubleshooting

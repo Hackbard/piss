@@ -227,6 +227,31 @@ docker compose run --rm scraper scraper evidence --resolve-from-meili \
   --format md
 ```
 
+## LangGraph MVP: Members List CLI
+
+Ein minimaler CLI-Runner für `members.list` Abfragen:
+
+**Siehe [langgraph_app/README.md](langgraph_app/README.md) für Details.**
+
+**Kurzfassung:**
+```bash
+# Einfache Abfrage
+python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
+
+# Mit JSON Output
+python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
+
+# Mit Markdown und Quellen pro Person
+python -m langgraph_app.cli "Alle Grünen in Hessen 2020-2025" --format md --sources per-person
+```
+
+**Features:**
+- Robuste Parameter-Extraktion (alle 16 Bundesländer + Bundestag)
+- Automatische Pagination mit Merging/Deduplizierung
+- Multiple Output-Formate (text, json, markdown)
+- Konfigurierbare Quellen-Anzeige
+- Verwendet `active_first_start_date`/`active_last_end_date` Felder
+
 ## Evidence Resolver
 
 Der Evidence Resolver löst Evidence-IDs in zitierfähige Quellenobjekte auf:

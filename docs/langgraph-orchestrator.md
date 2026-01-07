@@ -153,9 +153,32 @@ LANGSMITH_API_KEY=your_key_here
 LANGSMITH_PROJECT=parliament-orchestrator
 ```
 
+## MVP vs. Vollständiger Orchestrator
+
+**MVP (ohne LLM):**
+- Verwendet Regex-Parsing für Parameter-Extraktion
+- Keine LLM-Abhängigkeit
+- CLI: `python -m langgraph_app.cli "..." --format json`
+- Siehe [langgraph_app/README.md](../langgraph_app/README.md)
+
+**Vollständiger Orchestrator (mit LLM):**
+- Verwendet LLM für Intent-Parsing
+- Erfordert Ollama oder OpenAI API
+- Server: `python -m langgraph_app.server "..."`
+
 ## Starten
 
-### Local Server
+### MVP (ohne LLM)
+
+```bash
+# Einfache Abfrage
+python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
+
+# Mit JSON Output
+python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
+```
+
+### Local Server (vollständiger Orchestrator)
 
 ```bash
 # Environment setzen
