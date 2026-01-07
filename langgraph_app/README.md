@@ -18,9 +18,11 @@ Dieses MVP beantwortet Mitglieder-Fragen **ausschließlich auf Basis des Laravel
 ### Environment
 
 - **`PISS_TOOL_BASE_URL`**: default `http://localhost:8000/api/tools`
-- **`OLLAMA_BASE_URL`**: default `http://192.168.178.185:11434/v1` (optional)
-- **`OLLAMA_MODEL`**: default `ministral-3:14b` (optional)
+- **`OLLAMA_BASE_URL`**: default `http://192.168.178.185:11434/v1` (optional, für LLM-Modus)
+- **`OLLAMA_MODEL`**: default `ministral-3:14b` (optional, für LLM-Modus)
 - **`PISS_STRICT_EVIDENCE_DEFAULT`**: default `true`
+- **`PISS_MVP_USE_LLM`**: default `false` - Aktiviert LLM-basierte Parameter-Extraktion als Fallback
+- **`PISS_OPENAI_API_KEY`**: default `"ollama"` - API-Key für LLM (bei Ollama meist "ollama")
 
 ### CLI Usage
 
@@ -63,7 +65,13 @@ python -m langgraph_app.cli
 
 ### Parameter-Extraktion
 
-Der Parser erkennt automatisch:
+**Hybrid-Strategie:**
+1. Zuerst wird ein deterministischer Parser verwendet (regex-basiert)
+2. Falls Pflichtfelder fehlen und `PISS_MVP_USE_LLM=1` gesetzt ist, wird ein LLM als Fallback verwendet
+3. Das LLM extrahiert nur Parameter aus der Frage (erfindet keine Fakten)
+4. Tool-Aufruf und Formatter bleiben deterministisch (Ground Truth = Tool)
+
+**Deterministischer Parser erkennt automatisch:**
 
 **Parteien:**
 - SPD, CDU, CSU, FDP, LINKE, AFD
@@ -81,6 +89,18 @@ Der Parser erkennt automatisch:
 - `ab 2014` → 2014-01-01 bis heute
 - `bis 2020` → 0001-01-01 bis 2020-12-31
 - Einzeljahre: `2018` → 2018-01-01 bis 2018-12-31
+
+**LLM-Modus (optional):**
+```bash
+# LLM-basierte Parameter-Extraktion aktivieren
+PISS_MVP_USE_LLM=1 python -m langgraph_app.cli "Zeige mir alle SPD-Abgeordneten im niedersächsischen Landtag von 2014 bis 2020"
+```
+
+Das LLM wird nur verwendet, wenn der deterministische Parser nicht alle benötigten Parameter extrahieren konnte. Es extrahiert:
+- `parliament_id`: Erlaubte Codes (NI, BT, HE, BW, BY, BE, BB, HB, HH, MV, NW, RP, SL, SN, ST, SH, TH)
+- `party_code`: Uppercase (SPD, CDU, CSU, GRUENE, FDP, AFD, LINKE, ...)
+- `from_date` / `to_date`: ISO-Format (YYYY-MM-DD)
+- Bei unklaren Angaben: Felder als `null` (löst Clarification-Message aus)
 
 ### Pagination
 

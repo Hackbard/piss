@@ -11,18 +11,18 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from langgraph_app.settings import env, env_bool
-
+from langgraph_app.settings import _settings
 
 DEFAULT_QUESTION = "Gib mir alle SPD-Abgeordneten im Landtag Niedersachsen zwischen 2014 und 2020."
 
 
 def _trace_enabled() -> bool:
-    return env_bool("PISS_MVP_TRACE", True)
+    value = os.getenv("PISS_MVP_TRACE", "true")
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _trace_dir() -> Path:
-    return Path(env("PISS_MVP_TRACE_DIR", "data/exports/langgraph_mvp_traces"))
+    return Path(os.getenv("PISS_MVP_TRACE_DIR", "data/exports/langgraph_mvp_traces"))
 
 
 def _write_trace(payload: dict[str, Any]) -> Path | None:

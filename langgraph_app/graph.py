@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import json
 import re
 from typing import Any
 
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
 
@@ -17,8 +19,8 @@ from langgraph_app.nodes.policy_guard import policy_guard_node
 from langgraph_app.nodes.response_composer import response_composer_node
 from langgraph_app.nodes.router import router_node
 from langgraph_app.nodes.tool_executor import tool_executor_node
-from langgraph_app.schemas import ComputedResult, ToolCall, ToolResult, UserIntent
-from langgraph_app.settings import STRICT_EVIDENCE_DEFAULT
+from langgraph_app.schemas import ComputedResult, MembersListToolInput, ToolCall, ToolResult, UserIntent
+from langgraph_app.settings import MVP_USE_LLM, OLLAMA_BASE_URL, OLLAMA_MODEL, OPENAI_API_KEY, STRICT_EVIDENCE_DEFAULT
 from langgraph_app.tools import members_list
 
 
@@ -243,7 +245,114 @@ def _parse_members_list_tool_input(question: str) -> dict[str, Any]:
     return tool_input
 
 
+def members_list_plan_llm_node(state: MembersListMvpState) -> dict[str, Any]:
+    """Extract tool input parameters using LLM."""
+    question = state.get("question", "")
+    
+    system_prompt = """Du extrahierst Parameter aus Nutzerfragen für eine Mitglieder-Abfrage.
+
+WICHTIG:
+- Du erfindest KEINE Fakten, du extrahierst nur Parameter aus der Frage
+- Output ausschließlich JSON, keine Erklärungen, keine Markdown-Fences
+- Erlaubte parliament_id Codes: NI, BT, HE, BW, BY, BE, BB, HB, HH, MV, NW, RP, SL, SN, ST, SH, TH
+- party_code immer UPPERCASE (SPD, CDU, CSU, GRUENE, FDP, AFD, LINKE, ...)
+- Zeitraum immer als ISO YYYY-MM-DD; bei Jahresangaben: 01-01 bis 12-31
+- Wenn etwas nicht eindeutig ist: Felder als null lassen
+
+Output-Format (JSON):
+{
+  "parliament_id": "NI" | null,
+  "party_code": "SPD" | null,
+  "from_date": "2014-01-01" | null,
+  "to_date": "2020-12-31" | null,
+  "limit": 200,
+  "offset": 0,
+  "strict_evidence": true
+}"""
+
+    try:
+        llm = ChatOpenAI(
+            base_url=OLLAMA_BASE_URL,
+            model=OLLAMA_MODEL,
+            api_key=OPENAI_API_KEY,
+            temperature=0,
+        )
+        
+        response = llm.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": question}
+        ])
+        
+        content = response.content.strip()
+        
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+        
+        data = json.loads(content)
+        
+        tool_input_dict = {
+            "limit": data.get("limit", 200),
+            "offset": data.get("offset", 0),
+            "strict_evidence": data.get("strict_evidence", STRICT_EVIDENCE_DEFAULT),
+        }
+        
+        if data.get("parliament_id"):
+            tool_input_dict["parliament_id"] = data["parliament_id"]
+        if data.get("party_code"):
+            tool_input_dict["party_code"] = data["party_code"]
+        if data.get("from_date"):
+            tool_input_dict["from_date"] = data["from_date"]
+        if data.get("to_date"):
+            tool_input_dict["to_date"] = data["to_date"]
+        
+        missing = []
+        if not tool_input_dict.get("parliament_id"):
+            missing.append("Parlament")
+        if not tool_input_dict.get("party_code"):
+            missing.append("Partei")
+        if not tool_input_dict.get("from_date") or not tool_input_dict.get("to_date"):
+            missing.append("Zeitraum")
+        
+        if missing:
+            return {
+                "tool_input": None,
+                "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+            }
+        
+        try:
+            tool_input = MembersListToolInput.model_validate(tool_input_dict)
+            tool_input_dict = tool_input.model_dump()
+        except Exception:
+            return {
+                "tool_input": None,
+                "answer": "Die extrahierten Parameter sind ungültig. Bitte spezifizieren Sie: Parlament / Partei / Zeitraum.",
+            }
+        
+        return {"tool_input": tool_input_dict, "answer": None}
+    except Exception:
+        return {
+            "tool_input": None,
+            "answer": "Welche Parlament / Partei / Zeitraum soll ich abfragen? Bitte spezifizieren Sie: Parlament / Partei / Zeitraum.",
+        }
+
+
 def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
+    """Plan node with hybrid strategy: LLM first if enabled, deterministic fallback."""
+    if MVP_USE_LLM:
+        try:
+            result = members_list_plan_llm_node(state)
+            if result.get("tool_input") is not None:
+                return result
+        except Exception as e:
+            import sys
+            print(f"[DEBUG] LLM parsing failed, falling back to deterministic: {e}", file=sys.stderr)
+            pass
+    
     question = state.get("question", "")
     tool_input = _parse_members_list_tool_input(question)
     
@@ -255,13 +364,13 @@ def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
     if not tool_input.get("from_date") or not tool_input.get("to_date"):
         missing.append("Zeitraum")
     
-    if missing:
-        return {
-            "tool_input": None,
-            "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
-        }
+    if not missing:
+        return {"tool_input": tool_input, "answer": None}
     
-    return {"tool_input": tool_input, "answer": None}
+    return {
+        "tool_input": None,
+        "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+    }
 
 
 def _merge_member_rows(rows: list[dict[str, Any]], max_sources: int = 20) -> list[dict[str, Any]]:

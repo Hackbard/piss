@@ -2,9 +2,10 @@
 
 from datetime import date
 from enum import Enum
+import re
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class IntentType(str, Enum):
@@ -99,6 +100,41 @@ class ComputedResult(BaseModel):
     computed_metrics: dict[str, Any] = Field(default_factory=dict)
     grouped_data: Optional[dict[str, Any]] = None
     raw_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class MembersListToolInput(BaseModel):
+    """Schema for members.list tool input parameters."""
+
+    parliament_id: str
+    party_code: str
+    from_date: str
+    to_date: str
+    limit: int = 200
+    offset: int = 0
+    strict_evidence: bool = True
+
+    @field_validator("from_date", "to_date")
+    @classmethod
+    def validate_iso_date(cls, v: str) -> str:
+        """Validate ISO date format (YYYY-MM-DD)."""
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+            raise ValueError(f"Invalid date format: {v}. Expected YYYY-MM-DD")
+        return v
+
+    @field_validator("parliament_id")
+    @classmethod
+    def validate_parliament_id(cls, v: str) -> str:
+        """Validate parliament_id is one of the allowed codes."""
+        allowed = {"NI", "BT", "HE", "BW", "BY", "BE", "BB", "HB", "HH", "MV", "NW", "RP", "SL", "SN", "ST", "SH", "TH"}
+        if v.upper() not in allowed:
+            raise ValueError(f"Invalid parliament_id: {v}. Allowed: {', '.join(sorted(allowed))}")
+        return v.upper()
+
+    @field_validator("party_code")
+    @classmethod
+    def validate_party_code(cls, v: str) -> str:
+        """Normalize party_code to uppercase."""
+        return v.upper()
 
 
 
