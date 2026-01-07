@@ -343,7 +343,7 @@ def _parse_members_list_plan(question: str) -> dict[str, Any]:
 
 
 def members_list_plan_llm_node(state: MembersListMvpState) -> dict[str, Any]:
-    """Extract tool input parameters using LLM."""
+    """Extract tool input parameters using LLM with new structure."""
     question = state.get("question", "")
     
     system_prompt = """Du extrahierst Parameter aus Nutzerfragen für eine Mitglieder-Abfrage.
@@ -352,16 +352,22 @@ WICHTIG:
 - Du erfindest KEINE Fakten, du extrahierst nur Parameter aus der Frage
 - Output ausschließlich JSON, keine Erklärungen, keine Markdown-Fences
 - Erlaubte parliament_id Codes: NI, BT, HE, BW, BY, BE, BB, HB, HH, MV, NW, RP, SL, SN, ST, SH, TH
+- Wenn "Landtag" ohne konkretes Bundesland: parliament_ids = alle 16 Landtage
+- Wenn "Bundestag": parliament_ids enthält "BT"
+- Wenn "Landtag oder Bundestag": parliament_ids = alle 16 Landtage + "BT"
 - party_code immer UPPERCASE (SPD, CDU, CSU, GRUENE, FDP, AFD, LINKE, ...)
 - Zeitraum immer als ISO YYYY-MM-DD; bei Jahresangaben: 01-01 bis 12-31
+- active_only: true wenn "aktiv", "aktuell", "heute", "noch", "derzeit" erwähnt
+- Wenn active_only: from_date = to_date = Stichtag (to_date aus Zeitraum, sonst heute)
 - Wenn etwas nicht eindeutig ist: Felder als null lassen
 
 Output-Format (JSON):
 {
-  "parliament_id": "NI" | null,
+  "parliament_ids": ["NI", "BT"] | null,
   "party_code": "SPD" | null,
   "from_date": "2014-01-01" | null,
   "to_date": "2020-12-31" | null,
+  "active_only": false,
   "limit": 200,
   "offset": 0,
   "strict_evidence": true
@@ -392,56 +398,87 @@ Output-Format (JSON):
         
         data = json.loads(content)
         
-        tool_input_dict = {
+        parliament_ids = data.get("parliament_ids")
+        if isinstance(parliament_ids, str):
+            parliament_ids = [parliament_ids]
+        elif not isinstance(parliament_ids, list):
+            parliament_ids = None
+        
+        party_code = data.get("party_code")
+        active_only = data.get("active_only", False)
+        from_date = data.get("from_date")
+        to_date = data.get("to_date")
+        
+        if active_only and from_date and to_date:
+            stichtag = to_date[:10] if to_date else (from_date[:10] if from_date else datetime.now().date().isoformat())
+            resolved_from_date = stichtag
+            resolved_to_date = stichtag
+        else:
+            resolved_from_date = from_date
+            resolved_to_date = to_date
+        
+        tool_base_input: dict[str, Any] = {
             "limit": data.get("limit", 200),
             "offset": data.get("offset", 0),
             "strict_evidence": data.get("strict_evidence", STRICT_EVIDENCE_DEFAULT),
         }
         
-        if data.get("parliament_id"):
-            tool_input_dict["parliament_id"] = data["parliament_id"]
-        if data.get("party_code"):
-            tool_input_dict["party_code"] = data["party_code"]
-        if data.get("from_date"):
-            tool_input_dict["from_date"] = data["from_date"]
-        if data.get("to_date"):
-            tool_input_dict["to_date"] = data["to_date"]
+        if party_code:
+            tool_base_input["party_code"] = party_code
+        if resolved_from_date:
+            tool_base_input["from_date"] = resolved_from_date
+        if resolved_to_date:
+            tool_base_input["to_date"] = resolved_to_date
         
         missing = []
-        if not tool_input_dict.get("parliament_id"):
+        if not parliament_ids:
             missing.append("Parlament")
-        if not tool_input_dict.get("party_code"):
+        if not party_code:
             missing.append("Partei")
-        if not tool_input_dict.get("from_date") or not tool_input_dict.get("to_date"):
-            missing.append("Zeitraum")
         
         if missing:
             return {
-                "tool_input": None,
+                "parliament_ids": [],
+                "active_only": False,
+                "resolved_from_date": None,
+                "resolved_to_date": None,
+                "tool_base_input": None,
                 "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
             }
         
-        try:
-            tool_input = MembersListToolInput.model_validate(tool_input_dict)
-            tool_input_dict = tool_input.model_dump()
-        except Exception:
-            return {
-                "tool_input": None,
-                "answer": "Die extrahierten Parameter sind ungültig. Bitte spezifizieren Sie: Parlament / Partei / Zeitraum.",
-            }
-        
-        return {"tool_input": tool_input_dict, "answer": None}
-    except Exception:
         return {
-            "tool_input": None,
-            "answer": "Welche Parlament / Partei / Zeitraum soll ich abfragen? Bitte spezifizieren Sie: Parlament / Partei / Zeitraum.",
+            "parliament_ids": parliament_ids,
+            "active_only": active_only,
+            "resolved_from_date": resolved_from_date,
+            "resolved_to_date": resolved_to_date,
+            "tool_base_input": tool_base_input,
+            "answer": None,
+        }
+    except Exception as e:
+        import sys
+        print(f"[DEBUG] LLM parsing failed: {e}", file=sys.stderr)
+        return {
+            "parliament_ids": [],
+            "active_only": False,
+            "resolved_from_date": None,
+            "resolved_to_date": None,
+            "tool_base_input": None,
+            "answer": None,
         }
 
 
 def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
     """Plan node with hybrid strategy: LLM first if enabled, deterministic fallback."""
-    question = state.get("question", "")
+    if MVP_USE_LLM:
+        try:
+            result = members_list_plan_llm_node(state)
+            if result.get("parliament_ids") and result.get("tool_base_input"):
+                return result
+        except Exception as e:
+            import sys
+            print(f"[DEBUG] LLM parsing failed, falling back to deterministic: {e}", file=sys.stderr)
     
+    question = state.get("question", "")
     plan = _parse_members_list_plan(question)
     
     missing = []
