@@ -1,9 +1,2889 @@
-nds_lt_17:
-  key: nds_lt_17
+bb_lt_1:
+  key: "bb_lt_1"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (1. Wahlperiode)"
+  expected_time_range:
+    start: "1990-10-26"
+    end: "1994-10-11"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2752383
+  revision_id: 254425775
+bb_lt_2:
+  key: "bb_lt_2"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (2. Wahlperiode)"
+  expected_time_range:
+    start: "1994-10-11"
+    end: "1999-09-29"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2752375
+  revision_id: 254051403
+bb_lt_3:
+  key: "bb_lt_3"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (3. Wahlperiode)"
+  expected_time_range:
+    start: "1999-09-29"
+    end: "2004-10-13"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2752370
+  revision_id: 254051413
+bb_lt_4:
+  key: "bb_lt_4"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (4. Wahlperiode)"
+  expected_time_range:
+    start: "2004-10-13"
+    end: "2009-10-21"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2678312
+  revision_id: 248150962
+bb_lt_5:
+  key: "bb_lt_5"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (5. Wahlperiode)"
+  expected_time_range:
+    start: "2009-10-13"
+    end: "2014-07-01"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4751330
+  revision_id: 248155440
+bb_lt_6:
+  key: "bb_lt_6"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (6. Wahlperiode)"
+  expected_time_range:
+    start: "2014-09-14"
+    end: "2019-09-25"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 8395405
+  revision_id: 251346987
+bb_lt_7:
+  key: "bb_lt_7"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (7. Wahlperiode)"
+  expected_time_range:
+    start: "2019-09-01"
+    end: "2024-10-17"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 10938449
+  revision_id: 258062986
+bb_lt_8:
+  key: "bb_lt_8"
+  page_title: "Liste der Mitglieder des Landtags Brandenburg (8. Wahlperiode)"
+  expected_time_range:
+    start: "2024-09-22"
+    end: "2025-11-11"
+  hints:
+    parliament_id: "BB"
+    parliament: "Landtag Brandenburg"
+    state: "Brandenburg"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 13227585
+  revision_id: 262291648
+be_ah_1:
+  key: "be_ah_1"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (1. Wahlperiode)"
+  expected_time_range:
+    start: "1950-12-03"
+    end: "1955-01-11"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3545861
+  revision_id: 241490102
+be_ah_10:
+  key: "be_ah_10"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (10. Wahlperiode)"
+  expected_time_range:
+    start: "1986-02-03"
+    end: "1988-09-21"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3653448
+  revision_id: 259742936
+be_ah_11:
+  key: "be_ah_11"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (11. Wahlperiode)"
+  expected_time_range:
+    start: "1989-01-29"
+    end: "1990-03-31"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3900934
+  revision_id: 259742965
+be_ah_12:
+  key: "be_ah_12"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (12. Wahlperiode)"
+  expected_time_range:
+    start: "1990-12-02"
+    end: "1994-11-18"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3646033
+  revision_id: 262045943
+be_ah_13:
+  key: "be_ah_13"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (13. Wahlperiode)"
+  expected_time_range:
+    start: "1995-10-22"
+    end: "1998-11-12"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 5597734
+  revision_id: 259234849
+be_ah_14:
+  key: "be_ah_14"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (14. Wahlperiode)"
+  expected_time_range:
+    start: "1999-10-10"
+    end: "2001-06-16"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3020810
+  revision_id: 259240473
+be_ah_15:
+  key: "be_ah_15"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (15. Wahlperiode)"
+  expected_time_range:
+    start: "2001-10-21"
+    end: "2005-09-30"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3020858
+  revision_id: 258711481
+be_ah_16:
+  key: "be_ah_16"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (16. Wahlperiode)"
+  expected_time_range:
+    start: "2006-09-17"
+    end: "2011-06-08"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2135999
+  revision_id: 258799677
+be_ah_17:
+  key: "be_ah_17"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (17. Wahlperiode)"
+  expected_time_range:
+    start: "2011-09-18"
+    end: "2016-09-19"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6466538
+  revision_id: 243585521
+be_ah_18:
+  key: "be_ah_18"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (18. Wahlperiode)"
+  expected_time_range:
+    start: "2016-09-18"
+    end: "2020-06-02"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9591086
+  revision_id: 232668189
+be_ah_19:
+  key: "be_ah_19"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (19. Wahlperiode)"
+  expected_time_range:
+    start: "2021-09-26"
+    end: "2025-12-01"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11937110
+  revision_id: 262237921
+be_ah_2:
+  key: "be_ah_2"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (2. Wahlperiode)"
+  expected_time_range:
+    start: "1954-12-05"
+    end: "1959-01-11"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3605723
+  revision_id: 251505682
+be_ah_3:
+  key: "be_ah_3"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (3. Wahlperiode)"
+  expected_time_range:
+    start: "1959-01-21"
+    end: "1962-02-27"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3608726
+  revision_id: 253879779
+be_ah_4:
+  key: "be_ah_4"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (4. Wahlperiode)"
+  expected_time_range:
+    start: "1963-04-18"
+    end: "1966-12-14"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3610999
+  revision_id: 259969620
+be_ah_5:
+  key: "be_ah_5"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (5. Wahlperiode)"
+  expected_time_range:
+    start: "1967-04-06"
+    end: "1971-02-25"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3650446
+  revision_id: 259969640
+be_ah_6:
+  key: "be_ah_6"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (6. Wahlperiode)"
+  expected_time_range:
+    start: "1971-04-29"
+    end: "1975-01-16"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3651886
+  revision_id: 258988289
+be_ah_7:
+  key: "be_ah_7"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (7. Wahlperiode)"
+  expected_time_range:
+    start: "1975-05-29"
+    end: "1977-01-01"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3652026
+  revision_id: 259969690
+be_ah_8:
+  key: "be_ah_8"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (8. Wahlperiode)"
+  expected_time_range:
+    start: "1979-05-16"
+    end: "1981-01-08"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3652214
+  revision_id: 258297150
+be_ah_9:
+  key: "be_ah_9"
+  page_title: "Liste der Mitglieder des Abgeordnetenhauses von Berlin (9. Wahlperiode)"
+  expected_time_range:
+    start: "1981-06-25"
+    end: "1985-02-09"
+  hints:
+    parliament_id: "BE"
+    parliament: "Abgeordnetenhaus von Berlin"
+    state: "Berlin"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3652923
+  revision_id: 259234682
+bw_lt_1:
+  key: "bw_lt_1"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (1. Wahlperiode)"
+  expected_time_range:
+    start: "1952-03-09"
+    end: "1956-02-08"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1491786
+  revision_id: 256378601
+bw_lt_10:
+  key: "bw_lt_10"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (10. Wahlperiode)"
+  expected_time_range:
+    start: "1988-03-20"
+    end: "1992-02-20"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 813149
+  revision_id: 262046113
+bw_lt_11:
+  key: "bw_lt_11"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (11. Wahlperiode)"
+  expected_time_range:
+    start: "1992-04-05"
+    end: "1996-02-08"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 583899
+  revision_id: 262046127
+bw_lt_12:
+  key: "bw_lt_12"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (12. Wahlperiode)"
+  expected_time_range:
+    start: "1996-03-24"
+    end: "2001-05-31"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 582921
+  revision_id: 262046137
+bw_lt_13:
+  key: "bw_lt_13"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (13. Wahlperiode)"
+  expected_time_range:
+    start: "2001-03-25"
+    end: "2006-02-22"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 297187
+  revision_id: 261991751
+bw_lt_14:
+  key: "bw_lt_14"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (14. Wahlperiode)"
+  expected_time_range:
+    start: "2006-03-26"
+    end: "2011-04-30"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1370132
+  revision_id: 257894790
+bw_lt_15:
+  key: "bw_lt_15"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (15. Wahlperiode)"
+  expected_time_range:
+    start: "2011-03-27"
+    end: "2015-02-01"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6099513
+  revision_id: 261805886
+bw_lt_16:
+  key: "bw_lt_16"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (16. Wahlperiode)"
+  expected_time_range:
+    start: "2016-03-13"
+    end: "2021-04-30"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9378799
+  revision_id: 261819991
+bw_lt_17:
+  key: "bw_lt_17"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (17. Wahlperiode)"
+  expected_time_range:
+    start: "2021-03-14"
+    end: "2025-07-25"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11697563
+  revision_id: 262129542
+bw_lt_2:
+  key: "bw_lt_2"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (2. Wahlperiode)"
+  expected_time_range:
+    start: "1956-03-04"
+    end: "1960-03-24"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1489232
+  revision_id: 247920314
+bw_lt_3:
+  key: "bw_lt_3"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (3. Wahlperiode)"
+  expected_time_range:
+    start: "1960-05-15"
+    end: "1964-04-21"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1481292
+  revision_id: 254113263
+bw_lt_4:
+  key: "bw_lt_4"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (4. Wahlperiode)"
+  expected_time_range:
+    start: "1964-04-26"
+    end: "1968-03-29"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1479897
+  revision_id: 254114700
+bw_lt_5:
+  key: "bw_lt_5"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (5. Wahlperiode)"
+  expected_time_range:
+    start: "1968-04-28"
+    end: "1972-03-23"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1479067
+  revision_id: 254114727
+bw_lt_6:
+  key: "bw_lt_6"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (6. Wahlperiode)"
+  expected_time_range:
+    start: "1972-04-23"
+    end: "1976-02-20"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1475801
+  revision_id: 254114753
+bw_lt_7:
+  key: "bw_lt_7"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (7. Wahlperiode)"
+  expected_time_range:
+    start: "1976-04-04"
+    end: "1980-04-22"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1470321
+  revision_id: 262046085
+bw_lt_8:
+  key: "bw_lt_8"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (8. Wahlperiode)"
+  expected_time_range:
+    start: "1980-03-16"
+    end: "1984-05-08"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1467501
+  revision_id: 262046096
+bw_lt_9:
+  key: "bw_lt_9"
+  page_title: "Liste der Mitglieder des Landtags von Baden-Württemberg (9. Wahlperiode)"
+  expected_time_range:
+    start: "1984-03-25"
+    end: "1988-05-20"
+  hints:
+    parliament_id: "BW"
+    parliament: "Landtag von Baden-Württemberg"
+    state: "Baden-Württemberg"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1455019
+  revision_id: 262046102
+by_lt_1:
+  key: "by_lt_1"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (1. Wahlperiode)"
+  expected_time_range:
+    start: "1946-12-16"
+    end: "1950-11-20"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2055742
+  revision_id: 258251445
+by_lt_10:
+  key: "by_lt_10"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (10. Wahlperiode)"
+  expected_time_range:
+    start: "1982-10-22"
+    end: "1986-07-24"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3107743
+  revision_id: 260700711
+by_lt_11:
+  key: "by_lt_11"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (11. Wahlperiode)"
+  expected_time_range:
+    start: "1986-10-22"
+    end: "1990-09-26"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3109999
+  revision_id: 260700724
+by_lt_12:
+  key: "by_lt_12"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (12. Wahlperiode)"
+  expected_time_range:
+    start: "1990-10-24"
+    end: "1994-07-21"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3110011
+  revision_id: 260700735
+by_lt_13:
+  key: "by_lt_13"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (13. Wahlperiode)"
+  expected_time_range:
+    start: "1994-10-20"
+    end: "1998-07-15"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2460039
+  revision_id: 260700296
+by_lt_14:
+  key: "by_lt_14"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (14. Wahlperiode)"
+  expected_time_range:
+    start: "1998-09-28"
+    end: "2003-07-10"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1083096
+  revision_id: 261779634
+by_lt_15:
+  key: "by_lt_15"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (15. Wahlperiode)"
+  expected_time_range:
+    start: "2003-10-06"
+    end: "2008-07-17"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1040349
+  revision_id: 260700428
+by_lt_16:
+  key: "by_lt_16"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (16. Wahlperiode)"
+  expected_time_range:
+    start: "2009-10-14"
+    end: "2013-05-15"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3874906
+  revision_id: 259120141
+by_lt_17:
+  key: "by_lt_17"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (17. Wahlperiode)"
+  expected_time_range:
+    start: "2013-09-15"
+    end: "2018-05-07"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 7874211
+  revision_id: 261710358
+by_lt_18:
+  key: "by_lt_18"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (18. Wahlperiode)"
+  expected_time_range:
+    start: "2018-10-14"
+    end: "2022-09-30"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 10508804
+  revision_id: 261710373
+by_lt_19:
+  key: "by_lt_19"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (19. Wahlperiode)"
+  expected_time_range:
+    start: "2023-10-08"
+    end: "2025-03-27"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 12848589
+  revision_id: 262212663
+by_lt_2:
+  key: "by_lt_2"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (2. Wahlperiode)"
+  expected_time_range:
+    start: "1950-12-11"
+    end: "1954-11-23"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3092852
+  revision_id: 255225782
+by_lt_3:
+  key: "by_lt_3"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (3. Wahlperiode)"
+  expected_time_range:
+    start: "1954-12-13"
+    end: "1958-11-17"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3093227
+  revision_id: 262609986
+by_lt_4:
+  key: "by_lt_4"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (4. Wahlperiode)"
+  expected_time_range:
+    start: "1958-12-04"
+    end: "1962-10-25"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3093906
+  revision_id: 255225779
+by_lt_5:
+  key: "by_lt_5"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (5. Wahlperiode)"
+  expected_time_range:
+    start: "1962-12-07"
+    end: "1966-11-09"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3096050
+  revision_id: 255225775
+by_lt_6:
+  key: "by_lt_6"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (6. Wahlperiode)"
+  expected_time_range:
+    start: "1966-12-02"
+    end: "1970-10-01"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3096312
+  revision_id: 255225767
+by_lt_7:
+  key: "by_lt_7"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (7. Wahlperiode)"
+  expected_time_range:
+    start: "1970-12-03"
+    end: "1974-10-29"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3100302
+  revision_id: 260699946
+by_lt_8:
+  key: "by_lt_8"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (8. Wahlperiode)"
+  expected_time_range:
+    start: "1974-11-12"
+    end: "1978-11-19"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3100544
+  revision_id: 260699966
+by_lt_9:
+  key: "by_lt_9"
+  page_title: "Liste der Mitglieder des Bayerischen Landtags (9. Wahlperiode)"
+  expected_time_range:
+    start: "1978-10-30"
+    end: "1982-07-23"
+  hints:
+    parliament_id: "BY"
+    parliament: "Bayerischer Landtag"
+    state: "Bayern"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3102696
+  revision_id: 260699976
+hb_bb_1:
+  key: "hb_bb_1"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (1. Wahlperiode)"
+  expected_time_range:
+    start: "1946-10-13"
+    end: "1947-07-10"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6645341
+  revision_id: 248471406
+hb_bb_10:
+  key: "hb_bb_10"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (10. Wahlperiode)"
+  expected_time_range:
+    start: "1979-10-07"
+    end: "1983-03-25"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2260881
+  revision_id: 232413885
+hb_bb_11:
+  key: "hb_bb_11"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (11. Wahlperiode)"
+  expected_time_range:
+    start: "1983-09-25"
+    end: "1987-10-12"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6341233
+  revision_id: 232413896
+hb_bb_12:
+  key: "hb_bb_12"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (12. Wahlperiode)"
+  expected_time_range:
+    start: "1987-09-13"
+    end: "1991-12-11"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6293181
+  revision_id: 259244509
+hb_bb_13:
+  key: "hb_bb_13"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (13. Wahlperiode)"
+  expected_time_range:
+    start: "1991-09-29"
+    end: "1995-01-18"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6288738
+  revision_id: 232413916
+hb_bb_14:
+  key: "hb_bb_14"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (14. Wahlperiode)"
+  expected_time_range:
+    start: "1995-05-14"
+    end: "1998-03-06"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2349393
+  revision_id: 262258295
+hb_bb_15:
+  key: "hb_bb_15"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (15. Wahlperiode)"
+  expected_time_range:
+    start: "1999-06-06"
+    end: "2002-11-12"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2349392
+  revision_id: 259558898
+hb_bb_16:
+  key: "hb_bb_16"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (16. Wahlperiode)"
+  expected_time_range:
+    start: "2003-05-25"
+    end: "2006-02-22"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2248854
+  revision_id: 233757613
+hb_bb_17:
+  key: "hb_bb_17"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (17. Wahlperiode)"
+  expected_time_range:
+    start: "2007-05-13"
+    end: "2010-02-25"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2567038
+  revision_id: 232413941
+hb_bb_18:
+  key: "hb_bb_18"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (18. Wahlperiode)"
+  expected_time_range:
+    start: "2011-05-22"
+    end: "2015-06-07"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6221887
+  revision_id: 234857712
+hb_bb_19:
+  key: "hb_bb_19"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (19. Wahlperiode)"
+  expected_time_range:
+    start: "2015-05-10"
+    end: "2019-06-07"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 8834314
+  revision_id: 260673749
+hb_bb_2:
+  key: "hb_bb_2"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (2. Wahlperiode)"
+  expected_time_range:
+    start: "1947-10-12"
+    end: "1951-04-26"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6339778
+  revision_id: 232679370
+hb_bb_20:
+  key: "hb_bb_20"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (20. Wahlperiode)"
+  expected_time_range:
+    start: "2019-05-26"
+    end: "2023-06-07"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 20
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 10820187
+  revision_id: 256079581
+hb_bb_21:
+  key: "hb_bb_21"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (21. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 21
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 12673320
+  revision_id: 262362973
+hb_bb_3:
+  key: "hb_bb_3"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (3. Wahlperiode)"
+  expected_time_range:
+    start: "1951-01-11"
+    end: "1955-04-18"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6157582
+  revision_id: 236073090
+hb_bb_4:
+  key: "hb_bb_4"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (4. Wahlperiode)"
+  expected_time_range:
+    start: "1955-10-09"
+    end: "1959-09-04"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6331440
+  revision_id: 232413810
+hb_bb_5:
+  key: "hb_bb_5"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (5. Wahlperiode)"
+  expected_time_range:
+    start: "1959-10-11"
+    end: "1963-06-28"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6329138
+  revision_id: 232413821
+hb_bb_6:
+  key: "hb_bb_6"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (6. Wahlperiode)"
+  expected_time_range:
+    start: "1963-09-29"
+    end: "1966-12-20"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6327515
+  revision_id: 248471645
+hb_bb_7:
+  key: "hb_bb_7"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (7. Wahlperiode)"
+  expected_time_range:
+    start: "1967-10-01"
+    end: "1971-12-31"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2325180
+  revision_id: 232413836
+hb_bb_8:
+  key: "hb_bb_8"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (8. Wahlperiode)"
+  expected_time_range:
+    start: "1971-10-10"
+    end: "1978-09-04"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6323350
+  revision_id: 232413847
+hb_bb_9:
+  key: "hb_bb_9"
+  page_title: "Liste der Mitglieder der Bremischen Bürgerschaft (9. Wahlperiode)"
+  expected_time_range:
+    start: "1975-09-28"
+    end: "1979-06-13"
+  hints:
+    parliament_id: "HB"
+    parliament: "Bremische Bürgerschaft"
+    state: "Bremen"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6319839
+  revision_id: 232413851
+he_lt_1:
+  key: "he_lt_1"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (1. Wahlperiode)"
+  expected_time_range:
+    start: "1947-06-18"
+    end: "1950-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1342040
+  revision_id: 232591168
+he_lt_10:
+  key: "he_lt_10"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (10. Wahlperiode)"
+  expected_time_range:
+    start: "1982-12-01"
+    end: "1983-08-04"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1351614
+  revision_id: 261575772
+he_lt_11:
+  key: "he_lt_11"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (11. Wahlperiode)"
+  expected_time_range:
+    start: "1983-09-25"
+    end: "1987-02-17"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1351885
+  revision_id: 261575782
+he_lt_12:
+  key: "he_lt_12"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (12. Wahlperiode)"
+  expected_time_range:
+    start: "1987-04-05"
+    end: "1991-04-04"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1362866
+  revision_id: 261575799
+he_lt_13:
+  key: "he_lt_13"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (13. Wahlperiode)"
+  expected_time_range:
+    start: "1991-04-05"
+    end: "1995-04-04"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1485135
+  revision_id: 257639702
+he_lt_14:
+  key: "he_lt_14"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (14. Wahlperiode)"
+  expected_time_range:
+    start: "1995-04-05"
+    end: "1999-04-04"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1485239
+  revision_id: 257639731
+he_lt_15:
+  key: "he_lt_15"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (15. Wahlperiode)"
+  expected_time_range:
+    start: "1999-02-07"
+    end: "2003-02-11"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1485706
+  revision_id: 257639754
+he_lt_16:
+  key: "he_lt_16"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (16. Wahlperiode)"
+  expected_time_range:
+    start: "2003-04-05"
+    end: "2007-01-16"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1485816
+  revision_id: 257639783
+he_lt_17:
+  key: "he_lt_17"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (17. Wahlperiode)"
+  expected_time_range:
+    start: "2008-01-27"
+    end: "2009-01-18"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3254883
+  revision_id: 257639802
+he_lt_18:
+  key: "he_lt_18"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (18. Wahlperiode)"
+  expected_time_range:
+    start: "2009-01-18"
+    end: "2013-10-31"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4155944
+  revision_id: 257639836
+he_lt_19:
+  key: "he_lt_19"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (19. Wahlperiode)"
+  expected_time_range:
+    start: "2013-09-22"
+    end: "2017-11-01"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 7886039
+  revision_id: 261085938
+he_lt_2:
+  key: "he_lt_2"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (2. Wahlperiode)"
+  expected_time_range:
+    start: "1950-12-01"
+    end: "1954-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1342360
+  revision_id: 260416824
+he_lt_20:
+  key: "he_lt_20"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (20. Wahlperiode)"
+  expected_time_range:
+    start: "2018-10-28"
+    end: "2024-01-18"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 20
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 10524981
+  revision_id: 261085945
+he_lt_21:
+  key: "he_lt_21"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (21. Wahlperiode)"
+  expected_time_range:
+    start: "2023-10-08"
+    end: "2025-08-16"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 21
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 12842611
+  revision_id: 262188765
+he_lt_3:
+  key: "he_lt_3"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (3. Wahlperiode)"
+  expected_time_range:
+    start: "1954-12-01"
+    end: "1958-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1342680
+  revision_id: 234718392
+he_lt_4:
+  key: "he_lt_4"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (4. Wahlperiode)"
+  expected_time_range:
+    start: "1958-12-01"
+    end: "1962-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1342696
+  revision_id: 234718416
+he_lt_5:
+  key: "he_lt_5"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (5. Wahlperiode)"
+  expected_time_range:
+    start: "1962-12-01"
+    end: "1966-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1343917
+  revision_id: 235849856
+he_lt_6:
+  key: "he_lt_6"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (6. Wahlperiode)"
+  expected_time_range:
+    start: "1966-12-01"
+    end: "1970-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1343968
+  revision_id: 235848406
+he_lt_7:
+  key: "he_lt_7"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (7. Wahlperiode)"
+  expected_time_range:
+    start: "1970-12-01"
+    end: "1974-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1347534
+  revision_id: 261575729
+he_lt_8:
+  key: "he_lt_8"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (8. Wahlperiode)"
+  expected_time_range:
+    start: "1974-12-01"
+    end: "1978-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1347619
+  revision_id: 257838391
+he_lt_9:
+  key: "he_lt_9"
+  page_title: "Liste der Mitglieder des Hessischen Landtags (9. Wahlperiode)"
+  expected_time_range:
+    start: "1978-12-01"
+    end: "1982-11-30"
+  hints:
+    parliament_id: "HE"
+    parliament: "Hessischer Landtag"
+    state: "Hessen"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1351553
+  revision_id: 261575754
+hh_bh_1:
+  key: "hh_bh_1"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (1. Wahlperiode)"
+  expected_time_range:
+    start: "1870-09-13"
+    end: "1949-05-04"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2304528
+  revision_id: 239133633
+hh_bh_10:
+  key: "hh_bh_10"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (10. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4905314
+  revision_id: 247652166
+hh_bh_11:
+  key: "hh_bh_11"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (11. Wahlperiode)"
+  expected_time_range:
+    start: "1983-03-11"
+    end: "1986-09-10"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4908196
+  revision_id: 247652181
+hh_bh_12:
+  key: "hh_bh_12"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (12. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4911021
+  revision_id: 253393866
+hh_bh_13:
+  key: "hh_bh_13"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (13. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4810158
+  revision_id: 247652159
+hh_bh_14:
+  key: "hh_bh_14"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (14. Wahlperiode)"
+  expected_time_range:
+    start: "1991-06-19"
+    end: "1993-02-19"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2193763
+  revision_id: 247652135
+hh_bh_15:
+  key: "hh_bh_15"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (15. Wahlperiode)"
+  expected_time_range:
+    start: "1993-12-13"
+    end: "1997-01-22"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2501199
+  revision_id: 255517276
+hh_bh_16:
+  key: "hh_bh_16"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (16. Wahlperiode)"
+  expected_time_range:
+    start: "1997-11-12"
+    end: "2000-04-05"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2344284
+  revision_id: 259852641
+hh_bh_17:
+  key: "hh_bh_17"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (17. Wahlperiode)"
+  expected_time_range:
+    start: "2001-10-31"
+    end: "2003-12-18"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2191157
+  revision_id: 259852643
+hh_bh_18:
+  key: "hh_bh_18"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (18. Wahlperiode)"
+  expected_time_range:
+    start: "2004-03-17"
+    end: "2008-03-12"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1211345
+  revision_id: 259852652
+hh_bh_19:
+  key: "hh_bh_19"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (19. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3367029
+  revision_id: 253412223
+hh_bh_2:
+  key: "hh_bh_2"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (2. Wahlperiode)"
+  expected_time_range:
+    start: "1950-01-12"
+    end: "1953-07-04"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2427499
+  revision_id: 241651058
+hh_bh_20:
+  key: "hh_bh_20"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (20. Wahlperiode)"
+  expected_time_range:
+    start: "2011-03-07"
+    end: "2014-08-01"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 20
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6023106
+  revision_id: 243560251
+hh_bh_21:
+  key: "hh_bh_21"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (21. Wahlperiode)"
+  expected_time_range:
+    start: "2015-04-01"
+    end: "2018-01-01"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 21
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 8597423
+  revision_id: 253582050
+hh_bh_22:
+  key: "hh_bh_22"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (22. Wahlperiode)"
+  expected_time_range:
+    start: "2020-02-23"
+    end: "2025-03-26"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 22
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11173795
+  revision_id: 254565887
+hh_bh_23:
+  key: "hh_bh_23"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (23. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 23
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 13407832
+  revision_id: 261528634
+hh_bh_3:
+  key: "hh_bh_3"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (3. Wahlperiode)"
+  expected_time_range:
+    start: "1954-01-02"
+    end: "1957-05-22"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2203704
+  revision_id: 259321266
+hh_bh_4:
+  key: "hh_bh_4"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (4. Wahlperiode)"
+  expected_time_range:
+    start: "1957-12-31"
+    end: "1960-07-04"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2216491
+  revision_id: 239133744
+hh_bh_5:
+  key: "hh_bh_5"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (5. Wahlperiode)"
+  expected_time_range:
+    start: "1962-01-08"
+    end: "1965-12-15"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2663703
+  revision_id: 239133864
+hh_bh_6:
+  key: "hh_bh_6"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (6. Wahlperiode)"
+  expected_time_range:
+    start: "1966-10-12"
+    end: "1969-10-29"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2737286
+  revision_id: 239133883
+hh_bh_7:
+  key: "hh_bh_7"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (7. Wahlperiode)"
+  expected_time_range:
+    start: "1970-05-01"
+    end: "1973-10-10"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3782897
+  revision_id: 257355446
+hh_bh_8:
+  key: "hh_bh_8"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (8. Wahlperiode)"
+  expected_time_range:
+    start: "1974-04-21"
+    end: "1978-02-16"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3924329
+  revision_id: 257355442
+hh_bh_9:
+  key: "hh_bh_9"
+  page_title: "Liste der Mitglieder der Hamburgischen Bürgerschaft (9. Wahlperiode)"
+  expected_time_range:
+    start: "1978-06-28"
+    end: "1982-03-10"
+  hints:
+    parliament_id: "HH"
+    parliament: "Hamburgische Bürgerschaft"
+    state: "Hamburg"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4904924
+  revision_id: 258685554
+mv_lt_1:
+  key: "mv_lt_1"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (1. Wahlperiode)"
+  expected_time_range:
+    start: "1990-10-14"
+    end: "1994-11-15"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4717906
+  revision_id: 259979292
+mv_lt_2:
+  key: "mv_lt_2"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (2. Wahlperiode)"
+  expected_time_range:
+    start: "1994-10-16"
+    end: "1998-10-26"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4718881
+  revision_id: 259979299
+mv_lt_3:
+  key: "mv_lt_3"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (3. Wahlperiode)"
+  expected_time_range:
+    start: "1998-09-27"
+    end: "2011-11-13"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4716708
+  revision_id: 259979306
+mv_lt_4:
+  key: "mv_lt_4"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (4. Wahlperiode)"
+  expected_time_range:
+    start: "2002-09-22"
+    end: "2006-10-16"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1798773
+  revision_id: 259979312
+mv_lt_5:
+  key: "mv_lt_5"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (5. Wahlperiode)"
+  expected_time_range:
+    start: "2006-09-17"
+    end: "2011-09-05"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1799576
+  revision_id: 236321514
+mv_lt_6:
+  key: "mv_lt_6"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (6. Wahlperiode)"
+  expected_time_range:
+    start: "2011-09-04"
+    end: "2016-06-05"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6439150
+  revision_id: 262454942
+mv_lt_7:
+  key: "mv_lt_7"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (7. Wahlperiode)"
+  expected_time_range:
+    start: "2016-09-04"
+    end: "2021-04-07"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9576734
+  revision_id: 262270661
+mv_lt_8:
+  key: "mv_lt_8"
+  page_title: "Liste der Mitglieder des Landtages Mecklenburg-Vorpommern (8. Wahlperiode)"
+  expected_time_range:
+    start: "2021-09-26"
+    end: "2025-12-19"
+  hints:
+    parliament_id: "MV"
+    parliament: "Landtag Mecklenburg-Vorpommern"
+    state: "Mecklenburg-Vorpommern"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11939264
+  revision_id: 262563454
+ni_lt_1:
+  key: "ni_lt_1"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (1. Wahlperiode)"
+  expected_time_range:
+    start: "1947-04-20"
+    end: "1951-03-08"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2273328
+  revision_id: 255590685
+ni_lt_10:
+  key: "ni_lt_10"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (10. Wahlperiode)"
+  expected_time_range:
+    start: "1982-03-21"
+    end: "1985-10-02"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4611817
+  revision_id: 260568972
+ni_lt_11:
+  key: "ni_lt_11"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (11. Wahlperiode)"
+  expected_time_range:
+    start: "1986-06-15"
+    end: "1989-03-17"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4615983
+  revision_id: 260568984
+ni_lt_12:
+  key: "ni_lt_12"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (12. Wahlperiode)"
+  expected_time_range:
+    start: "1990-05-13"
+    end: "1994-03-29"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3603929
+  revision_id: 260568996
+ni_lt_13:
+  key: "ni_lt_13"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (13. Wahlperiode)"
+  expected_time_range:
+    start: "1994-03-13"
+    end: "1996-11-13"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1830319
+  revision_id: 259013962
+ni_lt_14:
+  key: "ni_lt_14"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (14. Wahlperiode)"
+  expected_time_range:
+    start: "1998-03-01"
+    end: "2002-10-23"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1287854
+  revision_id: 257785990
+ni_lt_15:
+  key: "ni_lt_15"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (15. Wahlperiode)"
+  expected_time_range:
+    start: "2003-02-02"
+    end: "2005-11-09"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1277624
+  revision_id: 247400553
+ni_lt_16:
+  key: "ni_lt_16"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (16. Wahlperiode)"
+  expected_time_range:
+    start: "2008-01-27"
+    end: "2011-11-09"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3261362
+  revision_id: 247400566
+ni_lt_17:
+  key: "ni_lt_17"
   page_title: "Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)"
   expected_time_range:
-    start: "2013-01-20"
-    end: "2017-11-14"
+    start: ""
+    end: ""
   hints:
     parliament_id: "NI"
     parliament: "Niedersächsischer Landtag"
@@ -16,13 +2896,14 @@ nds_lt_17:
       - "Name"
       - "Partei"
       - "Wahlkreis"
-
-nds_lt_18:
-  key: nds_lt_18
+  page_id: 7494713
+  revision_id: 256198867
+ni_lt_18:
+  key: "ni_lt_18"
   page_title: "Liste der Mitglieder des Niedersächsischen Landtages (18. Wahlperiode)"
   expected_time_range:
-    start: "2017-11-15"
-    end: "2022-10-08"
+    start: "2017-10-15"
+    end: "2022-11-08"
   hints:
     parliament_id: "NI"
     parliament: "Niedersächsischer Landtag"
@@ -35,4 +2916,2043 @@ nds_lt_18:
       - "Name"
       - "Partei"
       - "Wahlkreis"
-
+  page_id: 10077853
+  revision_id: 245322179
+ni_lt_19:
+  key: "ni_lt_19"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (19. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 12404649
+  revision_id: 262644341
+ni_lt_2:
+  key: "ni_lt_2"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (2. Wahlperiode)"
+  expected_time_range:
+    start: "1951-05-06"
+    end: "1955-02-07"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2286271
+  revision_id: 253079025
+ni_lt_3:
+  key: "ni_lt_3"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (3. Wahlperiode)"
+  expected_time_range:
+    start: "1955-04-24"
+    end: "1958-11-28"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2289308
+  revision_id: 253079042
+ni_lt_4:
+  key: "ni_lt_4"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (4. Wahlperiode)"
+  expected_time_range:
+    start: "1959-04-19"
+    end: "1962-06-19"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2295405
+  revision_id: 253947831
+ni_lt_5:
+  key: "ni_lt_5"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (5. Wahlperiode)"
+  expected_time_range:
+    start: "1963-05-19"
+    end: "1967-02-21"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2303641
+  revision_id: 256238387
+ni_lt_6:
+  key: "ni_lt_6"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (6. Wahlperiode)"
+  expected_time_range:
+    start: "1967-06-04"
+    end: "1970-02-17"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4611796
+  revision_id: 253689316
+ni_lt_7:
+  key: "ni_lt_7"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (7. Wahlperiode)"
+  expected_time_range:
+    start: "1970-06-14"
+    end: "1974-03-20"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4611802
+  revision_id: 254296692
+ni_lt_8:
+  key: "ni_lt_8"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (8. Wahlperiode)"
+  expected_time_range:
+    start: "1974-06-09"
+    end: "1976-10-20"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4611810
+  revision_id: 261362844
+ni_lt_9:
+  key: "ni_lt_9"
+  page_title: "Liste der Mitglieder des Niedersächsischen Landtages (9. Wahlperiode)"
+  expected_time_range:
+    start: "1978-06-04"
+    end: "1981-07-27"
+  hints:
+    parliament_id: "NI"
+    parliament: "Niedersächsischer Landtag"
+    state: "Niedersachsen"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4611814
+  revision_id: 259575048
+nw_lt_1:
+  key: "nw_lt_1"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (1. Wahlperiode)"
+  expected_time_range:
+    start: "1947-04-20"
+    end: "1950-06-17"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397046
+  revision_id: 232639661
+nw_lt_10:
+  key: "nw_lt_10"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (10. Wahlperiode)"
+  expected_time_range:
+    start: "1985-05-30"
+    end: "1990-05-30"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1349849
+  revision_id: 260948270
+nw_lt_11:
+  key: "nw_lt_11"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (11. Wahlperiode)"
+  expected_time_range:
+    start: "1990-05-31"
+    end: "1995-05-31"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 638931
+  revision_id: 260948281
+nw_lt_12:
+  key: "nw_lt_12"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (12. Wahlperiode)"
+  expected_time_range:
+    start: "1995-06-01"
+    end: "2000-06-01"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 638535
+  revision_id: 260948299
+nw_lt_13:
+  key: "nw_lt_13"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (13. Wahlperiode)"
+  expected_time_range:
+    start: "2000-06-02"
+    end: "2005-06-07"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 631691
+  revision_id: 258700866
+nw_lt_14:
+  key: "nw_lt_14"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (14. Wahlperiode)"
+  expected_time_range:
+    start: "2005-05-22"
+    end: "2009-11-02"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 705921
+  revision_id: 261583456
+nw_lt_15:
+  key: "nw_lt_15"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (15. Wahlperiode)"
+  expected_time_range:
+    start: "2010-05-09"
+    end: "2012-03-14"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 5373082
+  revision_id: 258908191
+nw_lt_16:
+  key: "nw_lt_16"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (16. Wahlperiode)"
+  expected_time_range:
+    start: "2012-05-13"
+    end: "2014-08-12"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6942548
+  revision_id: 261583470
+nw_lt_17:
+  key: "nw_lt_17"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (17. Wahlperiode)"
+  expected_time_range:
+    start: "2017-05-14"
+    end: "2020-10-26"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9901053
+  revision_id: 261474545
+nw_lt_18:
+  key: "nw_lt_18"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (18. Wahlperiode)"
+  expected_time_range:
+    start: "2022-05-15"
+    end: "2025-10-18"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 12242259
+  revision_id: 261267161
+nw_lt_2:
+  key: "nw_lt_2"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (2. Wahlperiode)"
+  expected_time_range:
+    start: "1947-07-31"
+    end: "1954-07-04"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397058
+  revision_id: 232639667
+nw_lt_3:
+  key: "nw_lt_3"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (3. Wahlperiode)"
+  expected_time_range:
+    start: "1954-04-03"
+    end: "1958-07-12"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397083
+  revision_id: 259343847
+nw_lt_4:
+  key: "nw_lt_4"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (4. Wahlperiode)"
+  expected_time_range:
+    start: "1958-07-21"
+    end: "1962-07-20"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397087
+  revision_id: 259343865
+nw_lt_5:
+  key: "nw_lt_5"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (5. Wahlperiode)"
+  expected_time_range:
+    start: "1962-07-23"
+    end: "1966-07-23"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397090
+  revision_id: 254951612
+nw_lt_6:
+  key: "nw_lt_6"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (6. Wahlperiode)"
+  expected_time_range:
+    start: "1966-07-25"
+    end: "1970-07-25"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397115
+  revision_id: 252161290
+nw_lt_7:
+  key: "nw_lt_7"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (7. Wahlperiode)"
+  expected_time_range:
+    start: "1968-07-10"
+    end: "1975-05-27"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397123
+  revision_id: 258700786
+nw_lt_8:
+  key: "nw_lt_8"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (8. Wahlperiode)"
+  expected_time_range:
+    start: "1975-05-28"
+    end: "1980-05-28"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397130
+  revision_id: 258700794
+nw_lt_9:
+  key: "nw_lt_9"
+  page_title: "Liste der Mitglieder des Landtages Nordrhein-Westfalen (9. Wahlperiode)"
+  expected_time_range:
+    start: "1980-05-29"
+    end: "1985-05-29"
+  hints:
+    parliament_id: "NW"
+    parliament: "Landtag Nordrhein-Westfalen"
+    state: "Nordrhein-Westfalen"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1397137
+  revision_id: 260664891
+rp_lt_1:
+  key: "rp_lt_1"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (1. Wahlperiode)"
+  expected_time_range:
+    start: "1947-05-18"
+    end: "1951-04-26"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3327639
+  revision_id: 260553010
+rp_lt_10:
+  key: "rp_lt_10"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (10. Wahlperiode)"
+  expected_time_range:
+    start: "1983-03-06"
+    end: "1987-03-23"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3359027
+  revision_id: 255486425
+rp_lt_11:
+  key: "rp_lt_11"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (11. Wahlperiode)"
+  expected_time_range:
+    start: "1987-05-17"
+    end: "1991-01-07"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3361856
+  revision_id: 255486445
+rp_lt_12:
+  key: "rp_lt_12"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (12. Wahlperiode)"
+  expected_time_range:
+    start: "1991-04-21"
+    end: "1995-03-30"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3364700
+  revision_id: 260028239
+rp_lt_13:
+  key: "rp_lt_13"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (13. Wahlperiode)"
+  expected_time_range:
+    start: "1996-03-24"
+    end: "2000-12-05"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3367325
+  revision_id: 255316520
+rp_lt_14:
+  key: "rp_lt_14"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (14. Wahlperiode)"
+  expected_time_range:
+    start: "2001-03-25"
+    end: "2006-01-16"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1488683
+  revision_id: 259515531
+rp_lt_15:
+  key: "rp_lt_15"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (15. Wahlperiode)"
+  expected_time_range:
+    start: "2006-03-26"
+    end: "2010-04-28"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2167498
+  revision_id: 260762655
+rp_lt_16:
+  key: "rp_lt_16"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (16. Wahlperiode)"
+  expected_time_range:
+    start: "2011-03-27"
+    end: "2015-04-01"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6099516
+  revision_id: 260762565
+rp_lt_17:
+  key: "rp_lt_17"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (17. Wahlperiode)"
+  expected_time_range:
+    start: "2016-03-13"
+    end: "2020-12-02"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9378757
+  revision_id: 260762623
+rp_lt_18:
+  key: "rp_lt_18"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (18. Wahlperiode)"
+  expected_time_range:
+    start: "2021-03-14"
+    end: "2025-04-04"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11696253
+  revision_id: 261014858
+rp_lt_2:
+  key: "rp_lt_2"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (2. Wahlperiode)"
+  expected_time_range:
+    start: "1951-04-29"
+    end: "1955-04-25"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3330285
+  revision_id: 245061947
+rp_lt_3:
+  key: "rp_lt_3"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (3. Wahlperiode)"
+  expected_time_range:
+    start: "1955-05-15"
+    end: "1959-01-03"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3337247
+  revision_id: 232843632
+rp_lt_4:
+  key: "rp_lt_4"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (4. Wahlperiode)"
+  expected_time_range:
+    start: "1959-04-19"
+    end: "1963-04-12"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3340695
+  revision_id: 232843637
+rp_lt_5:
+  key: "rp_lt_5"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (5. Wahlperiode)"
+  expected_time_range:
+    start: "1963-03-31"
+    end: "1965-10-22"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3344077
+  revision_id: 232843642
+rp_lt_6:
+  key: "rp_lt_6"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (6. Wahlperiode)"
+  expected_time_range:
+    start: "1967-04-23"
+    end: "1970-07-01"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3347042
+  revision_id: 261445186
+rp_lt_7:
+  key: "rp_lt_7"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (7. Wahlperiode)"
+  expected_time_range:
+    start: "1971-03-21"
+    end: "1974-12-16"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3349406
+  revision_id: 261638817
+rp_lt_8:
+  key: "rp_lt_8"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (8. Wahlperiode)"
+  expected_time_range:
+    start: "1975-03-09"
+    end: "1978-12-14"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3351997
+  revision_id: 261445212
+rp_lt_9:
+  key: "rp_lt_9"
+  page_title: "Liste der Mitglieder des Landtages Rheinland-Pfalz (9. Wahlperiode)"
+  expected_time_range:
+    start: "1979-03-18"
+    end: "1982-10-01"
+  hints:
+    parliament_id: "RP"
+    parliament: "Landtag Rheinland-Pfalz"
+    state: "Rheinland-Pfalz"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 3355731
+  revision_id: 261445221
+sh_lt_1:
+  key: "sh_lt_1"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (1. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_10:
+  key: "sh_lt_10"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (10. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_11:
+  key: "sh_lt_11"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (11. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_12:
+  key: "sh_lt_12"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (12. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_13:
+  key: "sh_lt_13"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (13. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_14:
+  key: "sh_lt_14"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (14. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_15:
+  key: "sh_lt_15"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (15. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_16:
+  key: "sh_lt_16"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (16. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_17:
+  key: "sh_lt_17"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (17. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 17
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_18:
+  key: "sh_lt_18"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (18. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 18
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_19:
+  key: "sh_lt_19"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (19. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 19
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_2:
+  key: "sh_lt_2"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (2. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_20:
+  key: "sh_lt_20"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (20. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 20
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_3:
+  key: "sh_lt_3"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (3. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_4:
+  key: "sh_lt_4"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (4. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_5:
+  key: "sh_lt_5"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (5. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_6:
+  key: "sh_lt_6"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (6. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_7:
+  key: "sh_lt_7"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (7. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_8:
+  key: "sh_lt_8"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (8. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sh_lt_9:
+  key: "sh_lt_9"
+  page_title: "Liste der Mitglieder des Schleswig-Holsteinischen Landtages (9. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SH"
+    parliament: "Schleswig-Holsteinischer Landtag"
+    state: "Schleswig-Holstein"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sl_lt_1:
+  key: "sl_lt_1"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (1. Wahlperiode)"
+  expected_time_range:
+    start: "1947-10-14"
+    end: "1952-10-07"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2158058
+  revision_id: 252859892
+sl_lt_10:
+  key: "sl_lt_10"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (10. Wahlperiode)"
+  expected_time_range:
+    start: "1990-01-28"
+    end: "1992-10-29"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 10
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1100117
+  revision_id: 261000489
+sl_lt_11:
+  key: "sl_lt_11"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (11. Wahlperiode)"
+  expected_time_range:
+    start: "1994-10-16"
+    end: "1994-11-21"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 11
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1100144
+  revision_id: 259089558
+sl_lt_12:
+  key: "sl_lt_12"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (12. Wahlperiode)"
+  expected_time_range:
+    start: "1999-09-05"
+    end: "2004-03-20"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 12
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1091357
+  revision_id: 242100641
+sl_lt_13:
+  key: "sl_lt_13"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (13. Wahlperiode)"
+  expected_time_range:
+    start: "2004-09-05"
+    end: "2009-08-14"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 13
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1073641
+  revision_id: 243410175
+sl_lt_14:
+  key: "sl_lt_14"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (14. Wahlperiode)"
+  expected_time_range:
+    start: "2009-08-30"
+    end: "2012-01-26"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 14
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4674613
+  revision_id: 243410217
+sl_lt_15:
+  key: "sl_lt_15"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (15. Wahlperiode)"
+  expected_time_range:
+    start: "2012-03-25"
+    end: "2015-11-24"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 15
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6848895
+  revision_id: 257822932
+sl_lt_16:
+  key: "sl_lt_16"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (16. Wahlperiode)"
+  expected_time_range:
+    start: "2017-03-26"
+    end: "2022-03-17"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 16
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9838407
+  revision_id: 240293657
+sl_lt_2:
+  key: "sl_lt_2"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (2. Wahlperiode)"
+  expected_time_range:
+    start: "1952-11-30"
+    end: "1955-01-04"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2158028
+  revision_id: 240223537
+sl_lt_3:
+  key: "sl_lt_3"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (3. Wahlperiode)"
+  expected_time_range:
+    start: "1955-12-18"
+    end: "1961-01-02"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2075865
+  revision_id: 261718597
+sl_lt_4:
+  key: "sl_lt_4"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (4. Wahlperiode)"
+  expected_time_range:
+    start: "1960-12-04"
+    end: "1965-03-13"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2075713
+  revision_id: 256880134
+sl_lt_5:
+  key: "sl_lt_5"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (5. Wahlperiode)"
+  expected_time_range:
+    start: "1965-06-27"
+    end: "1970-01-11"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2075659
+  revision_id: 257574853
+sl_lt_6:
+  key: "sl_lt_6"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (6. Wahlperiode)"
+  expected_time_range:
+    start: "1970-06-14"
+    end: "1975-06-18"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1090652
+  revision_id: 259383337
+sl_lt_7:
+  key: "sl_lt_7"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (7. Wahlperiode)"
+  expected_time_range:
+    start: "1975-05-04"
+    end: "1979-07-20"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1096112
+  revision_id: 259545957
+sl_lt_8:
+  key: "sl_lt_8"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (8. Wahlperiode)"
+  expected_time_range:
+    start: "1980-04-27"
+    end: "1984-12-07"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1098262
+  revision_id: 257574903
+sl_lt_9:
+  key: "sl_lt_9"
+  page_title: "Liste der Mitglieder des Landtages des Saarlandes (9. Wahlperiode)"
+  expected_time_range:
+    start: "1985-03-10"
+    end: "1989-02-28"
+  hints:
+    parliament_id: "SL"
+    parliament: "Landtag des Saarlandes"
+    state: "Saarland"
+    legislature_number: 9
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1099992
+  revision_id: 261000477
+sn_lt_1:
+  key: "sn_lt_1"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (1. Wahlperiode)"
+  expected_time_range:
+    start: "1991-01-24"
+    end: "1992-01-23"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2350762
+  revision_id: 260747581
+sn_lt_2:
+  key: "sn_lt_2"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (2. Wahlperiode)"
+  expected_time_range:
+    start: "1994-12-12"
+    end: "1999-06-24"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2350930
+  revision_id: 262254508
+sn_lt_3:
+  key: "sn_lt_3"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (3. Wahlperiode)"
+  expected_time_range:
+    start: "2001-08-31"
+    end: "2004-07-12"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2351126
+  revision_id: 262254516
+sn_lt_4:
+  key: "sn_lt_4"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (4. Wahlperiode)"
+  expected_time_range:
+    start: ""
+    end: ""
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+sn_lt_5:
+  key: "sn_lt_5"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (5. Wahlperiode)"
+  expected_time_range:
+    start: "2009-08-30"
+    end: "2014-01-17"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4675450
+  revision_id: 260056495
+sn_lt_6:
+  key: "sn_lt_6"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (6. Wahlperiode)"
+  expected_time_range:
+    start: "2014-08-31"
+    end: "2018-09-25"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 8379668
+  revision_id: 254333735
+sn_lt_7:
+  key: "sn_lt_7"
+  page_title: "Liste der Mitglieder des Sächsischen Landtags (7. Wahlperiode)"
+  expected_time_range:
+    start: "2022-07-05"
+    end: "2024-10-01"
+  hints:
+    parliament_id: "SN"
+    parliament: "Sächsischer Landtag"
+    state: "Sachsen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 10939431
+  revision_id: 254333752
+st_lt_1:
+  key: "st_lt_1"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (1. Wahlperiode)"
+  expected_time_range:
+    start: "1990-10-27"
+    end: "1992-03-19"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2228339
+  revision_id: 260892822
+st_lt_2:
+  key: "st_lt_2"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (2. Wahlperiode)"
+  expected_time_range:
+    start: "1994-11-04"
+    end: "1996-07-31"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2217812
+  revision_id: 258591256
+st_lt_3:
+  key: "st_lt_3"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (3. Wahlperiode)"
+  expected_time_range:
+    start: "1998-05-25"
+    end: "2002-05-15"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2182282
+  revision_id: 258591260
+st_lt_4:
+  key: "st_lt_4"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (4. Wahlperiode)"
+  expected_time_range:
+    start: "2002-05-16"
+    end: "2006-04-23"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2182104
+  revision_id: 261000497
+st_lt_5:
+  key: "st_lt_5"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (5. Wahlperiode)"
+  expected_time_range:
+    start: "2006-04-24"
+    end: "2011-04-18"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2181013
+  revision_id: 261416513
+st_lt_6:
+  key: "st_lt_6"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (6. Wahlperiode)"
+  expected_time_range:
+    start: "2012-04-17"
+    end: "2015-12-01"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 6084501
+  revision_id: 256450839
+st_lt_7:
+  key: "st_lt_7"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (7. Wahlperiode)"
+  expected_time_range:
+    start: "2016-03-13"
+    end: "2020-01-02"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 9378838
+  revision_id: 227101951
+st_lt_8:
+  key: "st_lt_8"
+  page_title: "Liste der Mitglieder des Landtages von Sachsen-Anhalt (8. Wahlperiode)"
+  expected_time_range:
+    start: "2021-06-06"
+    end: "2023-09-05"
+  hints:
+    parliament_id: "ST"
+    parliament: "Landtag von Sachsen-Anhalt"
+    state: "Sachsen-Anhalt"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11810622
+  revision_id: 258288084
+th_lt_1:
+  key: "th_lt_1"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (1. Wahlperiode)"
+  expected_time_range:
+    start: "1990-10-14"
+    end: "1994-09-30"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 1
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2436332
+  revision_id: 260453885
+th_lt_2:
+  key: "th_lt_2"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (2. Wahlperiode)"
+  expected_time_range:
+    start: "1994-10-16"
+    end: "1999-09-05"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 2
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2452328
+  revision_id: 260453905
+th_lt_3:
+  key: "th_lt_3"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (3. Wahlperiode)"
+  expected_time_range:
+    start: "1999-09-12"
+    end: "2003-06-05"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 3
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 2567865
+  revision_id: 260453926
+th_lt_4:
+  key: "th_lt_4"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (4. Wahlperiode)"
+  expected_time_range:
+    start: "2004-06-13"
+    end: "2009-02-01"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 4
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 1680128
+  revision_id: 260453943
+th_lt_5:
+  key: "th_lt_5"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (5. Wahlperiode)"
+  expected_time_range:
+    start: "2009-08-30"
+    end: "2013-12-18"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 5
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 4675886
+  revision_id: 261855447
+th_lt_6:
+  key: "th_lt_6"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (6. Wahlperiode)"
+  expected_time_range:
+    start: "2014-09-14"
+    end: "2019-11-26"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 6
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 8396123
+  revision_id: 262392402
+th_lt_7:
+  key: "th_lt_7"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (7. Wahlperiode)"
+  expected_time_range:
+    start: "2019-10-27"
+    end: "2024-08-12"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 7
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 11008563
+  revision_id: 257840191
+th_lt_8:
+  key: "th_lt_8"
+  page_title: "Liste der Mitglieder des Thüringer Landtags (8. Wahlperiode)"
+  expected_time_range:
+    start: "2024-09-01"
+    end: "2025-03-26"
+  hints:
+    parliament_id: "TH"
+    parliament: "Thüringer Landtag"
+    state: "Thüringen"
+    legislature_number: 8
+    section_keywords:
+      - "Mitglieder"
+      - "Abgeordnete"
+    expected_table_keywords:
+      - "Name"
+      - "Partei"
+      - "Wahlkreis"
+  page_id: 13208392
+  revision_id: 258611922
