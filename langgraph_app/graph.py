@@ -256,6 +256,17 @@ def _parse_date_range(question: str) -> tuple[str | None, str | None]:
     q = question.lower()
     today = datetime.now().date()
     
+    iso_date_match = re.search(r"(\d{4}-\d{2}-\d{2})", q)
+    if iso_date_match:
+        iso_date_str = iso_date_match.group(1)
+        if "am" in q or "zum" in q or "stichtag" in q or "an" in q:
+            return iso_date_str, iso_date_str
+        try:
+            parsed_date = datetime.strptime(iso_date_str, "%Y-%m-%d").date()
+            return iso_date_str, iso_date_str
+        except ValueError:
+            pass
+    
     years = [int(y) for y in re.findall(r"(?:19|20)\d{2}", q)]
     
     if "zwischen" in q and "und" in q:
