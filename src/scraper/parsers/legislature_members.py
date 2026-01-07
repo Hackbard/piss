@@ -33,7 +33,10 @@ def find_members_table(soup: BeautifulSoup, seed_hints: Optional[Dict[str, Any]]
         headers = header_row.find_all(["th", "td"])
         header_texts = [normalize_header(h.get_text()) for h in headers]
         
-        has_name = any("name" in ht for ht in header_texts)
+        has_name = any(
+            ("name" in ht) or ("abgeordnete" in ht) or ("mitglied" in ht) or ("mitglied des landtag" in ht)
+            for ht in header_texts
+        )
         has_party_or_fraktion = any("partei" in ht or "fraktion" in ht for ht in header_texts)
         has_wahlkreis = any("wahlkreis" in ht for ht in header_texts)
         
@@ -63,7 +66,7 @@ def extract_table_headers(table: Any) -> Dict[str, int]:
     cells = header_row.find_all(["th", "td"])
     for idx, cell in enumerate(cells):
         text = normalize_header(cell.get_text())
-        if "name" in text or "abgeordnete" in text:
+        if "name" in text or "abgeordnete" in text or "mitglied" in text:
             headers["name"] = idx
         elif "partei" in text or "fraktion" in text:
             headers["party"] = idx

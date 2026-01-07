@@ -15,6 +15,7 @@ from scraper.parsers.legislature_members import parse_legislature_members
 from scraper.sinks.json_export import export_json
 from scraper.sinks.meili import MeiliSink
 from scraper.sinks.neo4j import Neo4jSink
+from scraper.utils.hashing import sha256_hash_json
 from scraper.utils.time import utc_now_iso
 from scraper.utils.url import build_wikipedia_canonical_url
 from typing import Optional, List, Any
