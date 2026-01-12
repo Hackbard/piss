@@ -9,6 +9,7 @@ from scraper.models.query import (
     MandateQueryFilter,
     MandateQueryResult,
     MandateRow,
+    ParliamentCoverageRow,
     PersonDTO,
     SortDirection,
     SortField,
@@ -16,7 +17,9 @@ from scraper.models.query import (
 from scraper.services.interfaces import (
     LegislatureStatsServiceInterface,
     MandateQueryServiceInterface,
-    PersonLookupServiceInterface)
+    ParliamentCoverageServiceInterface,
+    PersonLookupServiceInterface,
+)
 
 
 class QueryExecutionException(Exception):
@@ -454,6 +457,67 @@ class Neo4jPersonLookupService(PersonLookupServiceInterface):
                 return persons
         except Exception as e:
             raise QueryExecutionException(f"Failed to search persons: {e}") from e
+
+    def close(self) -> None:
+        self.driver.close()
+
+
+class Neo4jParliamentCoverageService(ParliamentCoverageServiceInterface):
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self.driver = GraphDatabase.driver(
+            settings.neo4j_uri,
+            auth=(settings.neo4j_user, settings.neo4j_password),
+        )
+
+    def _load_cypher_query(self) -> str:
+        """Load Cypher query from file."""
+        from pathlib import Path
+        
+        query_path = Path(__file__).parent.parent.parent.parent / "resources" / "cypher" / "parliaments_coverage.cypher"
+        
+        if query_path.exists():
+            with open(query_path, "r", encoding="utf-8") as f:
+                return f.read()
+        
+        raise FileNotFoundError(f"Cypher query file not found: {query_path}")
+
+    def get_coverage(self, parliament_ids: list[str] | None = None) -> list[ParliamentCoverageRow]:
+        """Get coverage statistics per parliament_id."""
+        try:
+            query = self._load_cypher_query()
+            
+            with self.driver.session() as session:
+                result = session.run(query)
+                
+                rows = []
+                for record in result:
+                    parliament_id = record.get("parliament_id")
+                    
+                    if parliament_ids and parliament_id not in parliament_ids:
+                        continue
+                    
+                    min_start = record.get("min_start")
+                    max_end = record.get("max_end")
+                    
+                    rows.append(
+                        ParliamentCoverageRow(
+                            parliament_id=parliament_id,
+                            mandates_count=record.get("mandates_count", 0),
+                            min_start=min_start,
+                            max_end=max_end,
+                            invalid_start_count=record.get("invalid_start_count", 0),
+                            invalid_end_count=record.get("invalid_end_count", 0),
+                            missing_evidence_count=record.get("missing_evidence_count", 0),
+                        )
+                    )
+                
+                if parliament_ids:
+                    rows = [r for r in rows if r.parliament_id in parliament_ids]
+                
+                return sorted(rows, key=lambda x: x.parliament_id)
+        except Exception as e:
+            raise QueryExecutionException(f"Failed to get parliament coverage: {e}") from e
 
     def close(self) -> None:
         self.driver.close()

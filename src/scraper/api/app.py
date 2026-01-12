@@ -9,6 +9,9 @@ from scraper.api.models import (
     LegislatureStatsResponse,
     MandateSearchRequest,
     MandateSearchResponse,
+    ParliamentCoverageRequest,
+    ParliamentCoverageResponse,
+    ParliamentCoverageRowResponse,
     PersonLookupRequest,
     PersonLookupResponse,
 )
@@ -22,6 +25,7 @@ from scraper.models.query import MandateQueryFilter, SortDirection, SortField
 from scraper.services import (
     Neo4jLegislatureStatsService,
     Neo4jMandateQueryService,
+    Neo4jParliamentCoverageService,
     Neo4jPersonLookupService,
 )
 
@@ -206,6 +210,52 @@ def create_app() -> FastAPI:
             response_data["meta"] = tool_meta.model_dump(mode="json")
             
             return PersonLookupResponse(**response_data)
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "error_code": "INTERNAL_ERROR", "request_id": str(request_id)},
+            )
+    
+    @app.post("/api/tools/parliaments/coverage", response_model=ParliamentCoverageResponse)
+    async def parliaments_coverage(request: ParliamentCoverageRequest) -> ParliamentCoverageResponse:
+        """Get coverage statistics per parliament_id."""
+        request_id = uuid4()
+        tool_meta = create_tool_meta("parliaments.coverage", request_id)
+        
+        try:
+            parliament_ids = request.parliament_ids if request.parliament_ids else None
+            
+            service = Neo4jParliamentCoverageService(settings)
+            coverage_rows = service.get_coverage(parliament_ids)
+            service.close()
+            
+            rows_data = []
+            for row in coverage_rows:
+                rows_data.append({
+                    "parliament_id": row.parliament_id,
+                    "mandates_count": row.mandates_count,
+                    "min_start": row.min_start,
+                    "max_end": row.max_end,
+                    "invalid_start_count": row.invalid_start_count,
+                    "invalid_end_count": row.invalid_end_count,
+                    "missing_evidence_count": row.missing_evidence_count,
+                })
+            
+            applied_filter = {
+                "parliament_ids": parliament_ids if parliament_ids else "all",
+            }
+            
+            response_data = {
+                "meta": tool_meta.model_dump(mode="json"),
+                "applied_filter": applied_filter,
+                "rows": rows_data,
+            }
+            
+            tool_meta.result_hash = compute_result_hash(response_data)
+            response_data["meta"] = tool_meta.model_dump(mode="json")
+            
+            return ParliamentCoverageResponse(**response_data)
             
         except Exception as e:
             raise HTTPException(

@@ -141,41 +141,62 @@ PISS_TOOL_BASE_URL=http://localhost:8000/api/tools
 PISS_TOOL_TIMEOUT_SECONDS=20
 PISS_TOOL_STRICT_EVIDENCE=true
 
-# Ollama (OpenAI-kompatibel)
-OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
-OLLAMA_MODEL=ministral-3:14b
-OPENAI_API_KEY=ollama
+# Ollama (OpenAI-kompatibel, erforderlich für MVP)
+PISS_OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
+PISS_OLLAMA_MODEL=ministral-3:14b
+PISS_OPENAI_API_KEY=ollama
 
-# LangSmith (optional)
-LANGSMITH_TRACING=false
-LANGSMITH_ENDPOINT=https://api.smith.langchain.com
-LANGSMITH_API_KEY=your_key_here
-LANGSMITH_PROJECT=parliament-orchestrator
+# MVP-spezifisch
+PISS_STRICT_EVIDENCE_DEFAULT=true
+PISS_DEBUG=0  # Debug-Ausgabe für Healthcheck (0/1)
+
+# LangGraph Orchestrator (optional)
+PISS_DEBUG_EXPLAIN_QUERIES=false
+PISS_DEBUG_INCLUDE_RAW_TOOL_PAYLOADS=false
+PISS_POLICY_MODE=NEUTRAL_STRICT
+PISS_RESPONSE_SECTIONS=true
+PISS_MAX_SOURCES=20
+
+# LangSmith (optional, für Tracing)
+PISS_LANGSMITH_TRACING=false
+PISS_LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+PISS_LANGSMITH_API_KEY=your_key_here
+PISS_LANGSMITH_PROJECT=parliament-orchestrator
 ```
 
 ## MVP vs. Vollständiger Orchestrator
 
-**MVP (ohne LLM):**
-- Verwendet Regex-Parsing für Parameter-Extraktion
-- Keine LLM-Abhängigkeit
+**MVP (LLM-only für Parameter-Extraktion):**
+- Verwendet LLM (Ollama) für Parameter-Extraktion aus natürlicher Sprache
+- Erfordert Ollama (verpflichtend, kein deterministischer Fallback)
+- Preflight Healthcheck vor Graph-Start
 - CLI: `python -m langgraph_app.cli "..." --format json`
 - Siehe [langgraph_app/README.md](../langgraph_app/README.md)
 
 **Vollständiger Orchestrator (mit LLM):**
-- Verwendet LLM für Intent-Parsing
+- Verwendet LLM für Intent-Parsing und Response-Composition
 - Erfordert Ollama oder OpenAI API
 - Server: `python -m langgraph_app.server "..."`
 
 ## Starten
 
-### MVP (ohne LLM)
+### MVP (LLM-only)
 
 ```bash
+# Voraussetzung: Ollama muss laufen (PISS_OLLAMA_BASE_URL gesetzt)
+# Preflight Healthcheck wird automatisch ausgeführt
+
 # Einfache Abfrage
 python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
 
 # Mit JSON Output
 python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
+
+# Healthcheck deaktivieren (nicht empfohlen)
+python -m langgraph_app.cli --no-healthcheck "..."
+
+# Healthcheck-Timeout anpassen
+python -m langgraph_app.cli --health-timeout 10.0 "..."
 ```
 
 ### Local Server (vollständiger Orchestrator)
@@ -183,8 +204,9 @@ python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
 ```bash
 # Environment setzen
 export PISS_TOOL_BASE_URL=http://localhost:8000/api/tools
-export OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
-export OLLAMA_MODEL=ministral-3:14b
+export PISS_OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
+export PISS_OLLAMA_MODEL=ministral-3:14b
+export PISS_OPENAI_API_KEY=ollama
 
 # Server starten
 python -m langgraph_app.server "Alle SPD-Mitglieder im Landtag Niedersachsen 2014-2020"

@@ -10,6 +10,7 @@ class MediaWikiParseResponse(BaseModel):
     revision_id: int = Field(..., description="Revision ID")
     page_title: str = Field(..., description="Page title")
     html: str = Field(..., description="Parsed HTML content")
+    wikitext: Optional[str] = Field(None, description="Wikitext content (if available)")
     displaytitle: Optional[str] = Field(None, description="Display title")
 
 

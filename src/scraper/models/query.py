@@ -128,3 +128,13 @@ class PersonDTO(BaseModel):
             return []
         return sorted(list(set(url for url in v if url)))
 
+
+class ParliamentCoverageRow(BaseModel):
+    parliament_id: str = Field(..., description="Parliament ID (canonical string)")
+    mandates_count: int = Field(..., description="Total number of mandates")
+    min_start: Optional[str] = Field(None, description="Minimum start_date (YYYY-MM-DD) from valid dates")
+    max_end: Optional[str] = Field(None, description="Maximum end_date (YYYY-MM-DD) from valid dates")
+    invalid_start_count: int = Field(default=0, description="Count of mandates with invalid start_date")
+    invalid_end_count: int = Field(default=0, description="Count of mandates with invalid end_date")
+    missing_evidence_count: int = Field(default=0, description="Count of mandates without SUPPORTED_BY Evidence URLs")
+

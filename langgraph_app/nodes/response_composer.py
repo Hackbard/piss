@@ -262,7 +262,8 @@ Formatiere als Aufzählung mit Evidence-URLs."""
             llm = ChatOpenAI(
                 base_url=config.ollama_base_url,
                 model=config.ollama_model,
-                temperature=0.3,
+                temperature=0.1,
+                max_tokens=512,
                 api_key=config.openai_api_key,
             )
 

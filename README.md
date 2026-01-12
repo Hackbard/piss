@@ -123,8 +123,37 @@ cd wikipedia-parlamente-scraper
 ```bash
 cp .env.example .env
 # Bearbeite .env nach Bedarf
-# Wichtig: DIP_API_KEY setzen für Bundestag-Daten
-# DIP_MAX_WAHLPERIODE=50  # Maximum Wahlperiode (default: 50, lädt alle WPs 1-50)
+```
+
+**Wichtige ENV-Variablen:**
+```bash
+# DIP API (für Bundestag)
+DIP_API_KEY=your_api_key_here
+DIP_BASE_URL=https://search.dip.bundestag.de/api/v1
+DIP_MAX_WAHLPERIODE=50  # Maximum Wahlperiode (default: 50)
+
+# Neo4j
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password
+
+# Meilisearch
+MEILI_URL=http://meilisearch:7700
+MEILI_MASTER_KEY=masterKey
+
+# LangGraph MVP (Ollama erforderlich)
+PISS_TOOL_BASE_URL=http://localhost:8000/api/tools
+PISS_OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
+PISS_OLLAMA_MODEL=ministral-3:14b
+PISS_OPENAI_API_KEY=ollama
+PISS_STRICT_EVIDENCE_DEFAULT=true
+PISS_DEBUG=0  # Debug-Ausgabe für Healthcheck (0/1)
+
+# LangGraph Orchestrator (optional)
+PISS_TOOL_TIMEOUT_SECONDS=20
+PISS_TOOL_STRICT_EVIDENCE=true
+PISS_DEBUG_EXPLAIN_QUERIES=false
+PISS_DEBUG_INCLUDE_RAW_TOOL_PAYLOADS=false
 ```
 
 3. Services starten:
@@ -229,12 +258,15 @@ docker compose run --rm scraper scraper evidence --resolve-from-meili \
 
 ## LangGraph MVP: Members List CLI
 
-Ein minimaler CLI-Runner für `members.list` Abfragen:
+Ein minimaler CLI-Runner für `members.list` Abfragen mit LLM-basierter Parameter-Extraktion:
 
 **Siehe [langgraph_app/README.md](langgraph_app/README.md) für Details.**
 
 **Kurzfassung:**
 ```bash
+# Voraussetzung: Ollama muss laufen (PISS_OLLAMA_BASE_URL gesetzt)
+# Preflight Healthcheck wird automatisch ausgeführt
+
 # Einfache Abfrage
 python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
 
@@ -243,14 +275,21 @@ python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
 
 # Mit Markdown und Quellen pro Person
 python -m langgraph_app.cli "Alle Grünen in Hessen 2020-2025" --format md --sources per-person
+
+# Healthcheck-Optionen
+python -m langgraph_app.cli --no-healthcheck "..."  # Healthcheck deaktivieren (nicht empfohlen)
+python -m langgraph_app.cli --health-timeout 10.0 "..."  # Timeout anpassen
 ```
 
 **Features:**
-- Robuste Parameter-Extraktion (alle 16 Bundesländer + Bundestag)
+- LLM-basierte Parameter-Extraktion (Ollama erforderlich, alle 16 Bundesländer + Bundestag)
+- Preflight Healthcheck (fail-fast bei Ollama-Fehlern)
 - Automatische Pagination mit Merging/Deduplizierung
 - Multiple Output-Formate (text, json, markdown)
 - Konfigurierbare Quellen-Anzeige
 - Verwendet `active_first_start_date`/`active_last_end_date` Felder
+
+**Wichtig:** MVP benötigt Ollama für Parameter-Extraktion. Kein deterministischer Fallback mehr.
 
 ## Evidence Resolver
 
@@ -594,6 +633,57 @@ curl -X POST "http://localhost:8000/api/tools/mandates/search" \
 - Keine `EVIDENCE_MISSING` Fehler
 - `evidence_urls` pro Row enthalten Wikipedia-URLs mit `oldid`
 - `parliament_id` Filter funktioniert zuverlässig
+
+#### Parliament Coverage Tool
+
+Das `parliaments.coverage` Tool liefert Coverage-Statistiken pro Parliament:
+
+```bash
+# Alle Parlamente
+curl -sS -X POST http://localhost:8000/api/tools/parliaments/coverage \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{}' | jq '.rows[:3]'
+
+# Spezifische Parlamente
+curl -sS -X POST http://localhost:8000/api/tools/parliaments/coverage \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"parliament_ids": ["NI", "BT"]}' | jq '.rows'
+```
+
+**Response:**
+```json
+{
+  "meta": {...},
+  "applied_filter": {"parliament_ids": "all"},
+  "rows": [
+    {
+      "parliament_id": "NI",
+      "mandates_count": 3034,
+      "min_start": "1947-04-20",
+      "max_end": "2022-11-08",
+      "invalid_start_count": 144,
+      "invalid_end_count": 144,
+      "missing_evidence_count": 0
+    }
+  ]
+}
+```
+
+#### Active Only mit automatischem Stichtag
+
+Das System nutzt Coverage automatisch, um den Stichtag zu clampen:
+
+```bash
+# Automatischer Stichtag (wird auf Datenstand geklemmt)
+python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen die noch ein aktives mandat haben"
+# -> nutzt as_of = min(today, NI.max_end) = 2022-11-08
+
+# Expliziter Stichtag (wird nicht geklemmt)
+python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen am 30.01.1990"
+# -> nutzt exakt 1990-01-30, kein clamp
+```
 
 ### 4. Validierung
 

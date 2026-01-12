@@ -20,8 +20,8 @@ from langgraph_app.nodes.response_composer import response_composer_node
 from langgraph_app.nodes.router import router_node
 from langgraph_app.nodes.tool_executor import tool_executor_node
 from langgraph_app.schemas import ComputedResult, MembersListToolInput, ToolCall, ToolResult, UserIntent
-from langgraph_app.settings import MVP_USE_LLM, OLLAMA_BASE_URL, OLLAMA_MODEL, OPENAI_API_KEY, STRICT_EVIDENCE_DEFAULT
-from langgraph_app.tools import members_list
+from langgraph_app.settings import OLLAMA_BASE_URL, OLLAMA_MODEL, OPENAI_API_KEY, STRICT_EVIDENCE_DEFAULT, TOOL_BASE_URL
+from langgraph_app.tools import members_list, parliaments_coverage
 
 
 class GraphState(TypedDict):
@@ -98,6 +98,9 @@ class MembersListMvpState(TypedDict, total=False):
     resolved_from_date: str | None
     resolved_to_date: str | None
     tool_base_input: dict[str, Any] | None
+    as_of_by_parliament: dict[str, str] | None
+    coverage_data: dict[str, Any] | None
+    coverage_missing_by_parliament: dict[str, bool] | None
 
 
 PARTY_ALIASES: dict[str, str] = {
@@ -340,7 +343,11 @@ def _parse_date_range(question: str) -> tuple[str | None, str | None]:
 
 
 def _parse_members_list_plan(question: str) -> dict[str, Any]:
-    """Parse question into plan with parliament_ids, active_only, and base_input."""
+    """Parse question into plan with parliament_ids, active_only, and base_input.
+    
+    DEPRECATED: This deterministic parser is no longer used in the MVP flow.
+    Kept for reference/testing purposes only.
+    """
     q = question.lower()
     
     party_code: str | None = None
@@ -464,23 +471,92 @@ Output-Format (JSON):
         from_date = data.get("from_date")
         to_date = data.get("to_date")
 
-        today_iso = datetime.now().date().isoformat()
-
+        explicit_as_of = to_date or from_date
+        
         if active_only:
-            # "Aktiv" = Stichtag-Abfrage.
-            # Wenn ein Zeitraum genannt ist: Ende des Zeitraums als Stichtag.
-            # Wenn nur ein Datum genannt ist: dieses Datum.
-            # Wenn nichts genannt ist: heute.
-            stichtag = (to_date or from_date or today_iso)
-            if isinstance(stichtag, str):
-                stichtag = stichtag[:10]
+            if not explicit_as_of:
+                try:
+                    coverage_result = parliaments_coverage(parliament_ids)
+                    data_as_of_str = coverage_result.get("data_as_of")
+                    if not data_as_of_str:
+                        from datetime import date
+                        data_as_of_str = date.today().isoformat()
+                    
+                    base_today = date.fromisoformat(data_as_of_str)
+                    coverage_rows = coverage_result.get("rows", [])
+                    coverage_by_pid: dict[str, dict[str, Any]] = {
+                        row.get("parliament_id"): row for row in coverage_rows
+                    }
+                    
+                    as_of_by_parliament: dict[str, str] = {}
+                    coverage_missing_by_parliament: dict[str, bool] = {}
+                    
+                    for pid in parliament_ids:
+                        coverage = coverage_by_pid.get(pid, {})
+                        max_end_str = coverage.get("max_end")
+                        mandates_count = coverage.get("mandates_count", 0)
+                        
+                        coverage_missing = False
+                        if not coverage or mandates_count == 0:
+                            as_of_by_parliament[pid] = base_today.isoformat()
+                            coverage_missing = True
+                        elif max_end_str:
+                            try:
+                                max_end_date = date.fromisoformat(max_end_str[:10])
+                                as_of_date = min(base_today, max_end_date)
+                                as_of_by_parliament[pid] = as_of_date.isoformat()
+                            except (ValueError, TypeError):
+                                as_of_by_parliament[pid] = base_today.isoformat()
+                                coverage_missing = True
+                        else:
+                            as_of_by_parliament[pid] = base_today.isoformat()
+                            coverage_missing = True
+                        
+                        coverage_missing_by_parliament[pid] = coverage_missing
+                    
+                    tool_base_input: dict[str, Any] = {
+                        "limit": data.get("limit", 200),
+                        "offset": data.get("offset", 0),
+                        "strict_evidence": data.get("strict_evidence", STRICT_EVIDENCE_DEFAULT),
+                    }
+                    
+                    if party_code:
+                        tool_base_input["party_code"] = party_code
+                    
+                    resolved_from_date = None
+                    resolved_to_date = None
+                    
+                    return {
+                        "parliament_ids": parliament_ids,
+                        "active_only": active_only,
+                        "resolved_from_date": resolved_from_date,
+                        "resolved_to_date": resolved_to_date,
+                        "as_of_by_parliament": as_of_by_parliament,
+                        "coverage_missing_by_parliament": coverage_missing_by_parliament,
+                        "coverage_data": coverage_result,
+                        "tool_base_input": tool_base_input,
+                        "answer": None,
+                    }
+                except Exception as e:
+                    import sys
+                    error_msg = f"Coverage lookup failed: {e}"
+                    print(f"[ERROR] {error_msg}", file=sys.stderr)
+                    raise RuntimeError(
+                        f"Coverage-Abfrage fehlgeschlagen. Tool-Gateway erreichbar? "
+                        f"({TOOL_BASE_URL}). Fehler: {e}"
+                    ) from e
             else:
-                stichtag = today_iso
-            resolved_from_date = stichtag
-            resolved_to_date = stichtag
+                stichtag = explicit_as_of
+                if isinstance(stichtag, str):
+                    stichtag = stichtag[:10]
+                else:
+                    from datetime import date
+                    stichtag = date.today().isoformat()
+                resolved_from_date = stichtag
+                resolved_to_date = stichtag
         else:
-            # members.list benötigt immer from/to.
-            # Ohne Zeitraum interpretieren wir "alle" als "bis heute".
+            from datetime import date
+            today_iso = date.today().isoformat()
             resolved_from_date = from_date or "0001-01-01"
             resolved_to_date = to_date or today_iso
         
@@ -521,55 +597,48 @@ Output-Format (JSON):
         }
     except Exception as e:
         import sys
-        print(f"[DEBUG] LLM parsing failed: {e}", file=sys.stderr)
+        error_msg = str(e)
+        print(f"[DEBUG] LLM parsing failed: {error_msg}", file=sys.stderr)
         return {
             "parliament_ids": [],
             "active_only": False,
             "resolved_from_date": None,
             "resolved_to_date": None,
             "tool_base_input": None,
-            "answer": None,
+            "answer": (
+                "LLM-Fehler: Parameter konnten nicht extrahiert werden "
+                "(Ollama nicht erreichbar oder ungültiges JSON). "
+                "Bitte Ollama prüfen oder Frage präzisieren."
+            ),
         }
 
 
 def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
-    """Plan node with hybrid strategy: LLM first if enabled, deterministic fallback."""
-    if MVP_USE_LLM:
-        try:
-            result = members_list_plan_llm_node(state)
-            if result.get("parliament_ids") and result.get("tool_base_input"):
-                return result
-        except Exception as e:
-            import sys
-            print(f"[DEBUG] LLM parsing failed, falling back to deterministic: {e}", file=sys.stderr)
+    """Plan node using LLM-only for parameter extraction.
     
-    question = state.get("question", "")
-    plan = _parse_members_list_plan(question)
+    This node always uses the LLM (Ollama) for parameter extraction.
+    If the LLM fails or returns invalid JSON, a clear error message is returned.
+    """
+    result = members_list_plan_llm_node(state)
     
-    missing = []
-    if not plan["parliament_ids"]:
-        missing.append("Parlament")
-    if not plan["tool_base_input"].get("party_code"):
-        missing.append("Partei")
+    if result.get("answer"):
+        return result
     
-    if missing:
+    if not result.get("parliament_ids") or not result.get("tool_base_input"):
         return {
             "parliament_ids": [],
             "active_only": False,
             "resolved_from_date": None,
             "resolved_to_date": None,
             "tool_base_input": None,
-            "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+            "answer": (
+                "LLM-Fehler: Parameter konnten nicht extrahiert werden "
+                "(Ollama nicht erreichbar oder ungültiges JSON). "
+                "Bitte Ollama prüfen oder Frage präzisieren."
+            ),
         }
     
-    return {
-        "parliament_ids": plan["parliament_ids"],
-        "active_only": plan["active_only"],
-        "resolved_from_date": plan["resolved_from_date"],
-        "resolved_to_date": plan["resolved_to_date"],
-        "tool_base_input": plan["tool_base_input"],
-        "answer": None,
-    }
+    return result
 
 
 def _merge_member_rows(rows: list[dict[str, Any]], max_sources: int = 20) -> list[dict[str, Any]]:
@@ -608,6 +677,8 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
     """Call members.list for multiple parliament_ids and aggregate results."""
     parliament_ids = state.get("parliament_ids", [])
     tool_base_input = state.get("tool_base_input")
+    as_of_by_parliament = state.get("as_of_by_parliament")
+    coverage_data = state.get("coverage_data")
     
     if not parliament_ids or not tool_base_input:
         return {"tool_result": None}
@@ -615,26 +686,47 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
     if not tool_base_input.get("party_code"):
         return {"tool_result": {"error": "party_code is required"}}
     
-    if not tool_base_input.get("from_date") or not tool_base_input.get("to_date"):
-        return {"tool_result": {"error": "from_date and to_date are required"}}
-    
     results_by_parliament: dict[str, list[dict[str, Any]]] = {}
     errors_by_parliament: dict[str, str] = {}
     all_meta_urls: set[str] = set()
     
     limit = tool_base_input.get("limit", 200)
     
+    coverage_by_pid: dict[str, dict[str, Any]] = {}
+    if coverage_data:
+        coverage_rows = coverage_data.get("rows", [])
+        coverage_by_pid = {
+            row.get("parliament_id"): row for row in coverage_rows
+        }
+    
     for parliament_id in parliament_ids:
+        coverage = coverage_by_pid.get(parliament_id, {})
+        mandates_count = coverage.get("mandates_count", 0)
+        
+        if mandates_count == 0:
+            errors_by_parliament[parliament_id] = "NO_DATA_IMPORTED"
+            continue
+        
         try:
             offset = 0
             parliament_rows: list[dict[str, Any]] = []
             parliament_meta: dict[str, Any] = {}
+            
+            as_of_for_parliament = None
+            if as_of_by_parliament and parliament_id in as_of_by_parliament:
+                as_of_for_parliament = as_of_by_parliament[parliament_id]
+            else:
+                as_of_for_parliament = tool_base_input.get("from_date") or tool_base_input.get("to_date")
             
             while True:
                 page_input = tool_base_input.copy()
                 page_input["parliament_id"] = parliament_id
                 page_input["offset"] = offset
                 page_input["limit"] = limit
+                
+                if as_of_for_parliament:
+                    page_input["from_date"] = as_of_for_parliament
+                    page_input["to_date"] = as_of_for_parliament
                 
                 result = members_list(**page_input)
                 
@@ -818,6 +910,7 @@ def _format_output_text_grouped(
     resolved_to_date: str | None,
     sources_mode: str,
     max_sources: int,
+    as_of_by_parliament: dict[str, str] | None = None,
 ) -> str:
     """Format grouped output by parliament."""
     party = tool_base_input.get("party_code") or "?"
@@ -850,7 +943,11 @@ def _format_output_text_grouped(
             continue
         
         parliament_name = PARLIAMENT_NAMES.get(parliament_id, parliament_id)
-        lines.append(f"{parliament_id}: {len(members)}")
+        as_of_str = ""
+        if as_of_by_parliament and parliament_id in as_of_by_parliament:
+            as_of_de = _format_date_de(as_of_by_parliament[parliament_id])
+            as_of_str = f" (Stichtag: {as_of_de})"
+        lines.append(f"{parliament_name}: {len(members)}{as_of_str}")
         
         for m in members:
             lines.append(f"  {format_member_row(m)}")
@@ -1270,6 +1367,8 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     active_only = state.get("active_only", False)
     resolved_from_date = state.get("resolved_from_date")
     resolved_to_date = state.get("resolved_to_date")
+    coverage_data = state.get("coverage_data")
+    as_of_by_parliament = state.get("as_of_by_parliament", {})
     
     if isinstance(tool_result, dict) and tool_result.get("error"):
         message = str(tool_result.get("error"))
@@ -1278,37 +1377,64 @@ def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     results_by_parliament = tool_result.get("results_by_parliament", {})
     errors_by_parliament = tool_result.get("errors_by_parliament", {})
     
+    coverage_by_pid: dict[str, dict[str, Any]] = {}
+    if coverage_data:
+        coverage_rows = coverage_data.get("rows", [])
+        coverage_by_pid = {
+            row.get("parliament_id"): row for row in coverage_rows
+        }
+    
     if not results_by_parliament:
         if errors_by_parliament:
-            error_msg = "; ".join([f"{pid}: {err}" for pid, err in errors_by_parliament.items()])
+            error_parts = []
+            for pid, err in errors_by_parliament.items():
+                if err == "NO_DATA_IMPORTED":
+                    parliament_name = PARLIAMENT_NAMES.get(pid, pid)
+                    error_parts.append(f"für {parliament_name} keine Daten importiert")
+                else:
+                    error_parts.append(f"{pid}: {err}")
+            error_msg = "; ".join(error_parts)
             return {"answer": f"Fehler bei der Abfrage: {error_msg}"}
 
-        # Keine Fehler, aber auch keine Treffer.
         if active_only and resolved_from_date and resolved_to_date and resolved_from_date[:10] == resolved_to_date[:10]:
             stichtag_de = _format_date_de(resolved_from_date)
             scope_desc = _format_scope_description(parliament_ids)
-            return {
-                "answer": (
-                    f"Keine Ergebnisse gefunden ({scope_desc}, Stichtag: {stichtag_de}).\n"
-                    "Hinweis: Das bedeutet in der Praxis meist, dass der importierte Datenstand diesen Stichtag nicht abdeckt "
-                    "(oder dass für einige Parlamente noch keine Mandate importiert wurden).\n"
-                    "Optionen: (1) Stichtag explizit innerhalb des Datenbestands angeben (z. B. 'Stand 2020-12-31'), "
-                    "oder (2) neuere Daten importieren."
-                )
-            }
+            
+            hints = []
+            for pid in parliament_ids:
+                coverage = coverage_by_pid.get(pid, {})
+                max_end = coverage.get("max_end")
+                mandates_count = coverage.get("mandates_count", 0)
+                
+                if mandates_count == 0:
+                    parliament_name = PARLIAMENT_NAMES.get(pid, pid)
+                    hints.append(f"für {parliament_name} keine Daten importiert")
+                elif max_end and max_end[:10] < resolved_from_date[:10]:
+                    max_end_de = _format_date_de(max_end)
+                    parliament_name = PARLIAMENT_NAMES.get(pid, pid)
+                    hints.append(f"Datenstand für {parliament_name} endet am {max_end_de}")
+            
+            answer = f"Keine Ergebnisse gefunden ({scope_desc}, Stichtag: {stichtag_de})."
+            if hints:
+                answer += f"\nHinweis: {'; '.join(hints)}."
+            
+            return {"answer": answer}
 
         return {"answer": "Keine Ergebnisse gefunden."}
 
     output_format = state.get("output_format", "text")
     sources_mode = state.get("sources_mode", "top")
     max_sources = state.get("max_sources", 20)
+    as_of_by_parliament = state.get("as_of_by_parliament")
 
+    coverage_missing_by_parliament = state.get("coverage_missing_by_parliament")
+    
     if output_format == "json":
         answer = _format_output_json_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
     elif output_format == "md":
         answer = _format_output_md_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
     else:
-        answer = _format_output_text_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources)
+        answer = _format_output_text_grouped(results_by_parliament, tool_base_input, tool_result, parliament_ids, active_only, resolved_from_date, resolved_to_date, sources_mode, max_sources, as_of_by_parliament, coverage_data, coverage_missing_by_parliament)
 
     return {"answer": answer}
 

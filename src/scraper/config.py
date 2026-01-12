@@ -8,7 +8,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
     neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
@@ -40,8 +45,16 @@ class Settings(BaseSettings):
         self.scraper_export_dir = Path(self.scraper_export_dir)
         self.scraper_registry_path = Path(self.scraper_registry_path)
         self.scraper_seeds_landtage_path = Path(self.scraper_seeds_landtage_path)
-        self.scraper_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.scraper_export_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            self.scraper_cache_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass
+        
+        try:
+            self.scraper_export_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass
 
 
 @lru_cache(maxsize=1)

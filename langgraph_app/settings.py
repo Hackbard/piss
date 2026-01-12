@@ -35,7 +35,6 @@ class MvpSettings(BaseSettings):
     ollama_base_url: str = "http://192.168.178.185:11434/v1"
     ollama_model: str = "ministral-3:14b"
     strict_evidence_default: bool = True
-    mvp_use_llm: bool = False
     openai_api_key: str = "ollama"
 
     langsmith_tracing: bool = False
@@ -53,7 +52,6 @@ TOOL_BASE_URL: str = _settings.tool_base_url
 OLLAMA_BASE_URL: str = _settings.ollama_base_url
 OLLAMA_MODEL: str = _settings.ollama_model
 STRICT_EVIDENCE_DEFAULT: bool = _settings.strict_evidence_default
-MVP_USE_LLM: bool = _settings.mvp_use_llm
 OPENAI_API_KEY: str = _settings.openai_api_key
 
 

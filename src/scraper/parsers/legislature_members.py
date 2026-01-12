@@ -12,6 +12,7 @@ from scraper.utils.hashing import sha256_hash_json
 from scraper.utils.time import utc_now_iso
 from scraper.utils.parliament_codes import get_parliament_code
 from scraper.utils.url import build_wikipedia_canonical_url
+from scraper.utils.date_normalize import normalize_date, should_store_raw_value
 
 
 def normalize_header(text: str) -> str:
@@ -214,25 +215,25 @@ def extract_mandate_from_row(
         notes = cells[notes_idx].get_text().strip()
 
     time_range = seed_data.get("expected_time_range", {})
-    start_date = parse_date_safe(time_range.get("start"))
-    end_date = parse_date_safe(time_range.get("end"))
-
+    
+    start_date_raw = None
+    end_date_raw = None
+    
     start_idx = headers.get("start")
     if start_idx is not None and start_idx < len(cells):
-        parsed_start = parse_date_safe(cells[start_idx].get_text().strip())
-        if parsed_start:
-            start_date = parsed_start
-
+        start_date_raw = cells[start_idx].get_text().strip()
+    
     end_idx = headers.get("end")
     if end_idx is not None and end_idx < len(cells):
-        parsed_end = parse_date_safe(cells[end_idx].get_text().strip())
-        if parsed_end:
-            end_date = parsed_end
-
-    if not start_date:
-        start_date = time_range.get("start")
-    if not end_date:
-        end_date = time_range.get("end")
+        end_date_raw = cells[end_idx].get_text().strip()
+    
+    if not start_date_raw:
+        start_date_raw = time_range.get("start")
+    if not end_date_raw:
+        end_date_raw = time_range.get("end")
+    
+    start_date = normalize_date(start_date_raw)
+    end_date = normalize_date(end_date_raw)
 
     events = []
     if notes:
@@ -260,8 +261,8 @@ def extract_mandate_from_row(
     mandate_id = generate_mandate_id(
         person.id,
         legislature_id or "unknown",
-        start_date or "unknown",
-        end_date or "unknown",
+        start_date or "",
+        end_date or "",
         role="member",
         party_code=party_code,
     )
@@ -271,21 +272,29 @@ def extract_mandate_from_row(
     
     mandate_evidence_refs = [membership_evidence_ref] if membership_evidence_ref else []
     
-    return Mandate(
-        id=mandate_id,
-        person_id=person.id,
-        parliament_id=parliament_id or "unknown",
-        legislature_id=legislature_id or "unknown",
-        party_code=party_code,
-        wahlkreis=wahlkreis,
-        start_date=start_date or "unknown",
-        end_date=end_date,
-        role="member",
-        events=events,
-        notes=notes,
-        evidence_refs=mandate_evidence_refs,
-        evidence_ids=[evidence_id],
-    )
+    mandate_data = {
+        "id": mandate_id,
+        "person_id": person.id,
+        "parliament_id": parliament_id or "unknown",
+        "legislature_id": legislature_id or "unknown",
+        "party_code": party_code,
+        "wahlkreis": wahlkreis,
+        "start_date": start_date,
+        "end_date": end_date,
+        "role": "member",
+        "events": events,
+        "notes": notes,
+        "evidence_refs": mandate_evidence_refs,
+        "evidence_ids": [evidence_id],
+    }
+    
+    if should_store_raw_value(start_date_raw, start_date):
+        mandate_data["start_date_raw"] = start_date_raw
+    
+    if should_store_raw_value(end_date_raw, end_date):
+        mandate_data["end_date_raw"] = end_date_raw
+    
+    return Mandate(**mandate_data)
 
 
 def find_table_index(soup: BeautifulSoup, target_table: Any) -> int:

@@ -3,6 +3,7 @@ from typing import Any, Dict
 from neo4j import GraphDatabase
 
 from scraper.config import Settings
+from scraper.utils.date_normalize import normalize_date
 
 
 class Neo4jSink:
@@ -125,6 +126,12 @@ class Neo4jSink:
                         l.name = $name,
                         l.start_date = $start_date,
                         l.end_date = $end_date,
+                        l.start_date_raw = $start_date_raw,
+                        l.end_date_raw = $end_date_raw,
+                        l.start_date_source = $start_date_source,
+                        l.end_date_source = $end_date_source,
+                        l.source_url = $source_url,
+                        l.wikipedia_title = $wikipedia_title,
                         l.evidence_ids = $evidence_ids
                     """,
                     id=legislature.id,
@@ -132,6 +139,12 @@ class Neo4jSink:
                     name=legislature.name,
                     start_date=legislature.start_date,
                     end_date=legislature.end_date,
+                    start_date_raw=getattr(legislature, "start_date_raw", None),
+                    end_date_raw=getattr(legislature, "end_date_raw", None),
+                    start_date_source=getattr(legislature, "start_date_source", None),
+                    end_date_source=getattr(legislature, "end_date_source", None),
+                    source_url=getattr(legislature, "source_url", None),
+                    wikipedia_title=getattr(legislature, "wikipedia_title", None),
                     evidence_ids=legislature.evidence_ids,
                 )
 
@@ -139,6 +152,9 @@ class Neo4jSink:
                 mandate_evidence_ids = mandate.evidence_ids
                 if not mandate_evidence_ids and mandate.evidence_refs:
                     mandate_evidence_ids = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
+                
+                start_date_normalized = normalize_date(mandate.start_date) if mandate.start_date else None
+                end_date_normalized = normalize_date(mandate.end_date) if mandate.end_date else None
                 
                 session.run(
                     """
@@ -153,6 +169,7 @@ class Neo4jSink:
                         m.role = $role,
                         m.notes = $notes,
                         m.evidence_ids = $evidence_ids
+                    REMOVE m.start_date_raw, m.end_date_raw, m.start_date_source, m.end_date_source
                     """,
                     id=mandate.id,
                     person_id=mandate.person_id,
@@ -160,12 +177,59 @@ class Neo4jSink:
                     legislature_id=mandate.legislature_id,
                     party_code=mandate.party_code,
                     wahlkreis=mandate.wahlkreis,
-                    start_date=mandate.start_date,
-                    end_date=mandate.end_date,
+                    start_date=start_date_normalized,
+                    end_date=end_date_normalized,
                     role=mandate.role,
                     notes=mandate.notes,
                     evidence_ids=mandate_evidence_ids,
                 )
+                
+                if mandate.start_date_raw:
+                    session.run(
+                        """
+                        MATCH (m:Mandate {id: $id})
+                        SET m.start_date_raw = $start_date_raw
+                        """,
+                        id=mandate.id,
+                        start_date_raw=mandate.start_date_raw,
+                    )
+                
+                if mandate.end_date_raw:
+                    session.run(
+                        """
+                        MATCH (m:Mandate {id: $id})
+                        SET m.end_date_raw = $end_date_raw
+                        """,
+                        id=mandate.id,
+                        end_date_raw=mandate.end_date_raw,
+                    )
+                
+                if mandate.legislature_id:
+                    session.run(
+                        """
+                        MATCH (m:Mandate {id: $mandate_id})
+                        MATCH (l:Legislature {id: $legislature_id})
+                        MERGE (m)-[:IN_LEGISLATURE]->(l)
+                        WITH m, l
+                        WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+                        SET m.start_date = l.start_date,
+                            m.start_date_source = "legislature"
+                        """,
+                        mandate_id=mandate.id,
+                        legislature_id=mandate.legislature_id,
+                    )
+                    
+                    session.run(
+                        """
+                        MATCH (m:Mandate {id: $mandate_id})
+                        MATCH (l:Legislature {id: $legislature_id})
+                        WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
+                        SET m.end_date = l.end_date,
+                            m.end_date_source = "legislature"
+                        """,
+                        mandate_id=mandate.id,
+                        legislature_id=mandate.legislature_id,
+                    )
                 
                 # Create EvidenceRef relationships with snippet_ref as property
                 for evidence_ref in mandate.evidence_refs:
@@ -224,8 +288,8 @@ class Neo4jSink:
                         """,
                         mandate_id=mandate.id,
                         party_id=party_id,
-                        start_date=mandate.start_date,
-                        end_date=mandate.end_date,
+                        start_date=start_date_normalized,
+                        end_date=end_date_normalized,
                     )
 
             # Upsert WikipediaPersonRecords

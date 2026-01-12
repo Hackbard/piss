@@ -41,6 +41,7 @@ def parse_intent(question: str, config: OrchestratorConfig) -> UserIntent:
         model=config.ollama_model,
         temperature=0,
         api_key=config.openai_api_key,
+        max_tokens=512,
     )
 
     prompt = f"{INTENT_PARSER_SYSTEM_PROMPT}\n\nBenutzerfrage: {question}\n\nJSON:"

@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
-from typing import Optional
+import re
+from typing import Any, Optional
 from uuid import uuid4
 
 import typer
@@ -863,6 +864,511 @@ def reset_db(
     
     typer.echo("✓ Database reset complete", err=True)
     sys.exit(0)
+
+
+@app.command()
+def repair_dates(
+    dry_run: bool = Option(False, "--dry-run", help="Show what would be changed without making changes"),
+) -> None:
+    """Repair mandate dates: remove invalid strings and backfill from legislature."""
+    from neo4j import GraphDatabase
+    
+    driver = GraphDatabase.driver(
+        settings.neo4j_uri,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+    )
+    
+    try:
+        with driver.session() as session:
+            typer.echo("Step 1: Cleaning invalid date strings...", err=True)
+            
+            cleanup_query = """
+            MATCH (m:Mandate)
+            WHERE m.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] 
+               OR m.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+            WITH m,
+                 CASE WHEN m.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] THEN null ELSE m.start_date END as clean_start,
+                 CASE WHEN m.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] THEN null ELSE m.end_date END as clean_end
+            SET m.start_date = clean_start,
+                m.end_date = clean_end
+            RETURN count(m) AS touched
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (m:Mandate)
+                WHERE m.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] 
+                   OR m.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+                RETURN count(m) AS touched
+                """
+                result = session.run(count_query)
+                touched = result.single()["touched"]
+                typer.echo(f"  Would clean {touched} mandates", err=True)
+            else:
+                result = session.run(cleanup_query)
+                touched = result.single()["touched"]
+                typer.echo(f"  ✓ Cleaned {touched} mandates", err=True)
+            
+            typer.echo("Step 2: Normalizing legislature dates...", err=True)
+            
+            legislature_normalize_query = """
+            MATCH (l:Legislature)
+            WHERE l.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+               OR l.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+            WITH l,
+                 CASE WHEN l.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] THEN null ELSE l.start_date END as clean_start,
+                 CASE WHEN l.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"] THEN null ELSE l.end_date END as clean_end
+            SET l.start_date = clean_start,
+                l.end_date = clean_end
+            RETURN count(l) AS touched
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (l:Legislature)
+                WHERE l.start_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+                   OR l.end_date IN ["unknown", "", "—", "–", "?", "n/a", "na", "-"]
+                RETURN count(l) AS touched
+                """
+                result = session.run(count_query)
+                touched = result.single()["touched"]
+                typer.echo(f"  Would normalize {touched} legislatures", err=True)
+            else:
+                result = session.run(legislature_normalize_query)
+                touched = result.single()["touched"]
+                typer.echo(f"  ✓ Normalized {touched} legislatures", err=True)
+            
+            typer.echo("Step 2.5: Deriving legislature dates from mandates (if missing)...", err=True)
+            
+            derive_legislature_dates_query = """
+            MATCH (l:Legislature)
+            WHERE l.start_date IS NULL OR l.end_date IS NULL
+            WITH l
+            OPTIONAL MATCH (m:Mandate)
+            WHERE m.legislature_id = l.id AND (m.start_date IS NOT NULL OR m.end_date IS NOT NULL)
+            WITH l,
+                 min(m.start_date) as min_start,
+                 max(m.end_date) as max_end
+            WHERE min_start IS NOT NULL OR max_end IS NOT NULL
+            WITH l, min_start, max_end
+            SET l.start_date = CASE WHEN l.start_date IS NULL THEN min_start ELSE l.start_date END,
+                l.end_date = CASE WHEN l.end_date IS NULL THEN max_end ELSE l.end_date END
+            RETURN count(l) AS updated
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (l:Legislature)
+                WHERE l.start_date IS NULL OR l.end_date IS NULL
+                WITH l
+                OPTIONAL MATCH (m:Mandate)
+                WHERE m.legislature_id = l.id AND (m.start_date IS NOT NULL OR m.end_date IS NOT NULL)
+                WITH l,
+                     min(m.start_date) as min_start,
+                     max(m.end_date) as max_end
+                WHERE min_start IS NOT NULL OR max_end IS NOT NULL
+                RETURN count(l) AS would_update
+                """
+                result = session.run(count_query)
+                updated = result.single()["would_update"]
+                typer.echo(f"  Would derive dates for {updated} legislatures", err=True)
+            else:
+                result = session.run(derive_legislature_dates_query)
+                updated = result.single()["updated"]
+                typer.echo(f"  ✓ Derived dates for {updated} legislatures", err=True)
+            
+            typer.echo("Step 2.6: Creating missing IN_LEGISLATURE relationships...", err=True)
+            
+            create_relationships_query = """
+            MATCH (m:Mandate), (l:Legislature)
+            WHERE m.legislature_id = l.id AND NOT (m)-[:IN_LEGISLATURE]->(l)
+            MERGE (m)-[:IN_LEGISLATURE]->(l)
+            RETURN count(m) AS created
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (m:Mandate), (l:Legislature)
+                WHERE m.legislature_id = l.id AND NOT (m)-[:IN_LEGISLATURE]->(l)
+                RETURN count(m) AS would_create
+                """
+                result = session.run(count_query)
+                created = result.single()["would_create"]
+                typer.echo(f"  Would create {created} relationships", err=True)
+            else:
+                result = session.run(create_relationships_query)
+                created = result.single()["created"]
+                typer.echo(f"  ✓ Created {created} relationships", err=True)
+            
+            typer.echo("Step 3: Backfilling start_date from legislature...", err=True)
+            
+            diagnostic_query = """
+            MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+            WHERE m.start_date IS NULL
+            RETURN 
+                count(m) as mandates_without_start,
+                count(CASE WHEN l.start_date IS NOT NULL THEN 1 END) as legislatures_with_start
+            """
+            result = session.run(diagnostic_query)
+            diag = result.single()
+            mandates_without = diag["mandates_without_start"]
+            legislatures_with = diag["legislatures_with_start"]
+            
+            if mandates_without > 0 or legislatures_with > 0:
+                typer.echo(f"  [Diagnostic] Mandates ohne start_date: {mandates_without}, Legislatures mit start_date: {legislatures_with}", err=True)
+            
+            backfill_start_query = """
+            MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+            WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+            SET m.start_date = l.start_date,
+                m.start_date_source = "legislature"
+            RETURN count(m) AS backfilled
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+                RETURN count(m) AS backfilled
+                """
+                result = session.run(count_query)
+                backfilled = result.single()["backfilled"]
+                typer.echo(f"  Would backfill {backfilled} mandates", err=True)
+            else:
+                result = session.run(backfill_start_query)
+                backfilled = result.single()["backfilled"]
+                typer.echo(f"  ✓ Backfilled {backfilled} mandates", err=True)
+            
+            typer.echo("Step 4: Backfilling end_date from legislature...", err=True)
+            
+            diagnostic_query = """
+            MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+            WHERE m.end_date IS NULL
+            WITH m, l
+            RETURN 
+                count(m) as mandates_without_end,
+                count(CASE WHEN l.end_date IS NOT NULL THEN 1 END) as legislatures_with_end
+            """
+            result = session.run(diagnostic_query)
+            diag = result.single()
+            mandates_without = diag["mandates_without_end"]
+            legislatures_with = diag["legislatures_with_end"]
+            
+            total_legislatures_query = """
+            MATCH (l:Legislature)
+            WHERE l.end_date IS NOT NULL
+            RETURN count(l) as total_with_end
+            """
+            result = session.run(total_legislatures_query)
+            total_with_end = result.single()["total_with_end"]
+            
+            typer.echo(f"  [Diagnostic] Mandates ohne end_date: {mandates_without}, Legislatures mit end_date (total): {total_with_end}, Legislatures mit end_date (connected): {legislatures_with}", err=True)
+            
+            backfill_end_query = """
+            MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+            WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
+            SET m.end_date = l.end_date,
+                m.end_date_source = "legislature"
+            RETURN count(m) AS backfilled
+            """
+            
+            if dry_run:
+                count_query = """
+                MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
+                RETURN count(m) AS backfilled
+                """
+                result = session.run(count_query)
+                backfilled = result.single()["backfilled"]
+                typer.echo(f"  Would backfill {backfilled} mandates", err=True)
+            else:
+                result = session.run(backfill_end_query)
+                backfilled = result.single()["backfilled"]
+                typer.echo(f"  ✓ Backfilled {backfilled} mandates", err=True)
+            
+            typer.echo("✓ Repair complete!", err=True)
+    
+    finally:
+        driver.close()
+
+
+def _extract_oldid_from_url(url: Optional[str]) -> Optional[int]:
+    if not url:
+        return None
+
+    try:
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(url)
+        q = parse_qs(parsed.query)
+        oldid = q.get("oldid", [None])[0]
+        return int(oldid) if oldid else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_title_from_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+
+    try:
+        from urllib.parse import parse_qs, unquote, urlparse
+
+        parsed = urlparse(url)
+
+        q = parse_qs(parsed.query)
+        title = q.get("title", [None])[0]
+        if title:
+            return unquote(title).replace(" ", "_")
+
+        m = re.search(r"/wiki/(?P<title>[^?#]+)", parsed.path)
+        if m:
+            return unquote(m.group("title")).replace(" ", "_")
+
+        return None
+    except Exception:
+        return None
+
+
+@app.command()
+def repair_legislature_dates(
+    parliament_id: Optional[str] = Option(None, "--parliament-id", help="Filter by parliament_id"),
+    limit: int = Option(50, "--limit", help="Max legislatures to process per run"),
+    dry_run: bool = Option(False, "--dry-run", help="Show what would be changed without making changes"),
+    force_fetch: bool = Option(False, "--force-fetch", help="Force refetch from Wikipedia API (ignore cache)"),
+    sleep_ms: int = Option(150, "--sleep-ms", help="Sleep between API calls (politeness)"),
+) -> None:
+    """Repair Legislature.start_date/end_date by re-parsing the Wikipedia list page (oldid-pinned), then backfill Mandates."""
+    import asyncio
+    import time
+    from uuid import uuid4
+
+    from neo4j import GraphDatabase
+
+    from scraper.cache.mediawiki_cache import fetch_and_cache_parse
+    from scraper.parsers.legislature_dates import extract_legislature_dates
+
+    driver = GraphDatabase.driver(
+        settings.neo4j_uri,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+    )
+
+    run_id = str(uuid4())
+
+    def log(msg: str) -> None:
+        typer.echo(msg, err=True)
+
+    def get_fallback_source(session: Any, legislature_id: str) -> tuple[Optional[str], Optional[int], Optional[str]]:
+        result = session.run(
+            """
+            MATCH (l:Legislature {id: $legislature_id})
+            OPTIONAL MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l)
+            WITH l, collect(m) AS mandates
+            WITH l, head([m IN mandates WHERE m IS NOT NULL | m]) AS m
+            WITH l, head(coalesce(m.evidence_ids, [])) AS evidence_id
+            OPTIONAL MATCH (e:Evidence {id: evidence_id})
+            RETURN e.page_title AS page_title, e.revision_id AS revision_id, e.url AS url
+            """,
+            legislature_id=legislature_id,
+        ).single()
+
+        if not result:
+            return None, None, None
+
+        return result.get("page_title"), result.get("revision_id"), result.get("url")
+
+    updated = 0
+    skipped_no_source = 0
+    skipped_no_dates = 0
+    errored = 0
+
+    try:
+        with driver.session() as session:
+            if not dry_run:
+                where_src = "WHERE l.source_url IS NULL OR l.wikipedia_title IS NULL"
+                if parliament_id:
+                    where_src += " AND l.parliament_id = $parliament_id"
+
+                session.run(
+                    f"""
+                    MATCH (l:Legislature)
+                    {where_src}
+                    OPTIONAL MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l)
+                    WITH l, collect(m) AS mandates
+                    WITH l, head([m IN mandates WHERE m IS NOT NULL | m]) AS m
+                    WITH l, head(coalesce(m.evidence_ids, [])) AS evidence_id
+                    OPTIONAL MATCH (e:Evidence {{id: evidence_id}})
+                    SET l.source_url = coalesce(l.source_url, e.url),
+                        l.wikipedia_title = coalesce(l.wikipedia_title, e.page_title)
+                    """,
+                    parliament_id=parliament_id,
+                )
+
+                session.run(
+                    """
+                    MATCH (l:Legislature)
+                    WHERE (l.start_date_raw IS NOT NULL AND (l.start_date_raw CONTAINS "<" OR l.start_date_raw CONTAINS ">" OR l.start_date_raw CONTAINS "href" OR l.start_date_raw CONTAINS '"'))
+                       OR (l.end_date_raw IS NOT NULL AND (l.end_date_raw CONTAINS "<" OR l.end_date_raw CONTAINS ">" OR l.end_date_raw CONTAINS "href" OR l.end_date_raw CONTAINS '"'))
+                    SET l.start_date_raw = CASE
+                        WHEN l.start_date_raw IS NOT NULL AND (l.start_date_raw CONTAINS "<" OR l.start_date_raw CONTAINS ">" OR l.start_date_raw CONTAINS "href" OR l.start_date_raw CONTAINS '"')
+                        THEN null
+                        ELSE l.start_date_raw
+                    END,
+                    l.end_date_raw = CASE
+                        WHEN l.end_date_raw IS NOT NULL AND (l.end_date_raw CONTAINS "<" OR l.end_date_raw CONTAINS ">" OR l.end_date_raw CONTAINS "href" OR l.end_date_raw CONTAINS '"')
+                        THEN null
+                        ELSE l.end_date_raw
+                    END
+                    """,
+                )
+
+            where = "WHERE (l.start_date IS NULL OR l.end_date IS NULL)"
+            if parliament_id:
+                where += " AND l.parliament_id = $parliament_id"
+
+            rows = session.run(
+                f"""
+                MATCH (l:Legislature)
+                {where}
+                RETURN l.id AS id,
+                       l.parliament_id AS parliament_id,
+                       l.name AS name,
+                       l.source_url AS source_url,
+                       l.wikipedia_title AS wikipedia_title
+                ORDER BY l.parliament_id, l.id
+                LIMIT $limit
+                """,
+                parliament_id=parliament_id,
+                limit=limit,
+            ).data()
+
+            log(f"Found {len(rows)} legislature(s) missing start/end dates")
+
+            for row in rows:
+                legislature_id = row["id"]
+                source_url = row.get("source_url")
+                title = row.get("wikipedia_title") or _extract_title_from_url(source_url)
+                oldid = _extract_oldid_from_url(source_url)
+
+                if not title or not oldid:
+                    fb_title, fb_revision, fb_url = get_fallback_source(session, legislature_id)
+                    title = title or fb_title or _extract_title_from_url(fb_url)
+                    oldid = oldid or (int(fb_revision) if fb_revision else _extract_oldid_from_url(fb_url))
+                    source_url = source_url or fb_url
+
+                if not title or not oldid:
+                    skipped_no_source += 1
+                    log(f"- [{legislature_id}] skipped: no source_url/evidence oldid")
+                    continue
+
+                try:
+                    response = asyncio.run(
+                        fetch_and_cache_parse(
+                            page_title=title,
+                            run_id=run_id,
+                            force=force_fetch,
+                            revalidate=False,
+                            revision_id=oldid,
+                        )
+                    )
+                    if not response:
+                        raise ValueError("fetch_and_cache_parse returned None")
+
+                    dates = extract_legislature_dates(response)
+                    if not dates.start_date and not dates.end_date and not dates.start_date_raw and not dates.end_date_raw:
+                        skipped_no_dates += 1
+                        log(f"- [{legislature_id}] skipped: no dates detected on page {title} oldid={oldid}")
+                        continue
+
+                    if dry_run:
+                        log(
+                            f"- [{legislature_id}] would update: start={dates.start_date or None} end={dates.end_date or None} raw_start={dates.start_date_raw or None} raw_end={dates.end_date_raw or None}"
+                        )
+                    else:
+                        session.run(
+                            """
+                            MATCH (l:Legislature {id: $id})
+                            WITH l,
+                                 (l.start_date IS NULL) AS missing_start,
+                                 (l.end_date IS NULL) AS missing_end
+                            SET l.wikipedia_title = coalesce(l.wikipedia_title, $title),
+                                l.source_url = coalesce(l.source_url, $source_url),
+                                l.start_date = CASE WHEN missing_start AND $start_date IS NOT NULL THEN $start_date ELSE l.start_date END,
+                                l.end_date = CASE WHEN missing_end AND $end_date IS NOT NULL THEN $end_date ELSE l.end_date END,
+                                l.start_date_source = CASE WHEN missing_start AND $start_date IS NOT NULL THEN $start_date_source ELSE l.start_date_source END,
+                                l.end_date_source = CASE WHEN missing_end AND $end_date IS NOT NULL THEN $end_date_source ELSE l.end_date_source END,
+                                l.start_date_raw = CASE WHEN missing_start AND $start_date IS NULL AND $start_date_raw IS NOT NULL THEN $start_date_raw ELSE l.start_date_raw END,
+                                l.end_date_raw = CASE WHEN missing_end AND $end_date IS NULL AND $end_date_raw IS NOT NULL THEN $end_date_raw ELSE l.end_date_raw END
+                            """,
+                            id=legislature_id,
+                            title=title,
+                            source_url=source_url,
+                            start_date=dates.start_date,
+                            end_date=dates.end_date,
+                            start_date_raw=dates.start_date_raw,
+                            end_date_raw=dates.end_date_raw,
+                            start_date_source="wikipedia_list" if dates.start_date else None,
+                            end_date_source="wikipedia_list" if dates.end_date else None,
+                        )
+                        updated += 1
+                        log(
+                            f"✓ [{legislature_id}] updated from {title} oldid={oldid} "
+                            f"(start={dates.start_date or dates.start_date_raw or 'null'}, end={dates.end_date or dates.end_date_raw or 'null'})"
+                        )
+
+                    if sleep_ms > 0:
+                        time.sleep(sleep_ms / 1000.0)
+                except Exception as e:
+                    errored += 1
+                    log(f"! [{legislature_id}] error: {e}")
+
+            log(f"Repair summary: updated={updated}, skipped_no_source={skipped_no_source}, skipped_no_dates={skipped_no_dates}, errored={errored}")
+
+            log("Backfilling Mandate dates from Legislature...")
+
+            if dry_run:
+                result = session.run(
+                    """
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+                    RETURN count(m) AS backfilled
+                    """
+                )
+                log(f"- would backfill start_date for {result.single()['backfilled']} mandates")
+            else:
+                result = session.run(
+                    """
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+                    SET m.start_date = l.start_date,
+                        m.start_date_source = "legislature"
+                    RETURN count(m) AS backfilled
+                    """
+                )
+                log(f"✓ backfilled start_date for {result.single()['backfilled']} mandates")
+
+            if dry_run:
+                result = session.run(
+                    """
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
+                    RETURN count(m) AS backfilled
+                    """
+                )
+                log(f"- would backfill end_date for {result.single()['backfilled']} mandates")
+            else:
+                result = session.run(
+                    """
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
+                    SET m.end_date = l.end_date,
+                        m.end_date_source = "legislature"
+                    RETURN count(m) AS backfilled
+                    """
+                )
+                log(f"✓ backfilled end_date for {result.single()['backfilled']} mandates")
+    finally:
+        driver.close()
 
 
 @app.command()

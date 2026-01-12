@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
 
-from scraper.models.query import LegislatureStats, MandateQueryFilter, MandateQueryResult, PersonDTO
+from scraper.models.query import (
+    LegislatureStats,
+    MandateQueryFilter,
+    MandateQueryResult,
+    ParliamentCoverageRow,
+    PersonDTO,
+)
 
 
 class MandateQueryServiceInterface(ABC):
@@ -48,6 +54,21 @@ class PersonLookupServiceInterface(ABC):
         
         Returns:
             List of PersonDTO sorted by name
+        """
+        pass
+
+
+class ParliamentCoverageServiceInterface(ABC):
+    @abstractmethod
+    def get_coverage(self, parliament_ids: list[str] | None = None) -> list[ParliamentCoverageRow]:
+        """
+        Get coverage statistics per parliament_id.
+        
+        Args:
+            parliament_ids: Optional list of parliament_ids to filter. If None or empty, returns all.
+        
+        Returns:
+            List of ParliamentCoverageRow, one per parliament_id
         """
         pass
 

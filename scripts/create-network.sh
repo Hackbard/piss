@@ -14,3 +14,6 @@ fi
 echo "Network status:"
 docker network inspect "$NETWORK_NAME" --format '{{.Name}}: {{.Scope}} ({{.Driver}})'
 
+
+
+

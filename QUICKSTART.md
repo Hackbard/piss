@@ -208,6 +208,20 @@ NEO4J_PASSWORD=password
 # Meilisearch
 MEILI_URL=http://meilisearch:7700
 MEILI_MASTER_KEY=masterKey
+
+# LangGraph MVP (Ollama erforderlich)
+PISS_TOOL_BASE_URL=http://localhost:8000/api/tools
+PISS_OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
+PISS_OLLAMA_MODEL=ministral-3:14b
+PISS_OPENAI_API_KEY=ollama
+PISS_STRICT_EVIDENCE_DEFAULT=true
+PISS_DEBUG=0  # Debug-Ausgabe für Healthcheck (0/1)
+
+# LangGraph Orchestrator (optional)
+PISS_TOOL_TIMEOUT_SECONDS=20
+PISS_TOOL_STRICT_EVIDENCE=true
+PISS_DEBUG_EXPLAIN_QUERIES=false
+PISS_DEBUG_INCLUDE_RAW_TOOL_PAYLOADS=false
 ```
 
 ### Registry anpassen
@@ -221,9 +235,12 @@ Nach Änderungen: Discovery erneut ausführen.
 
 ## LangGraph MVP: Members List CLI
 
-Ein minimaler CLI-Runner für `members.list` Abfragen ohne LLM:
+Ein minimaler CLI-Runner für `members.list` Abfragen mit LLM-basierter Parameter-Extraktion:
 
 ```bash
+# Voraussetzung: Ollama muss laufen (PISS_OLLAMA_BASE_URL gesetzt)
+# Preflight Healthcheck wird automatisch ausgeführt
+
 # Einfache Abfrage
 python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
 
@@ -232,14 +249,21 @@ python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
 
 # Mit Markdown und Quellen pro Person
 python -m langgraph_app.cli "Alle Grünen in Hessen 2020-2025" --format md --sources per-person
+
+# Healthcheck-Optionen
+python -m langgraph_app.cli --no-healthcheck "..."  # Healthcheck deaktivieren (nicht empfohlen)
+python -m langgraph_app.cli --health-timeout 10.0 "..."  # Timeout anpassen
 ```
 
 **Features:**
-- Robuste Parameter-Extraktion (alle 16 Bundesländer + Bundestag)
+- LLM-basierte Parameter-Extraktion (Ollama erforderlich, alle 16 Bundesländer + Bundestag)
+- Preflight Healthcheck (fail-fast bei Ollama-Fehlern)
 - Automatische Pagination mit Merging/Deduplizierung
 - Multiple Output-Formate (text, json, markdown)
 - Konfigurierbare Quellen-Anzeige (`--sources none|top|per-person`)
 - Verwendet `active_first_start_date`/`active_last_end_date` Felder
+
+**Wichtig:** MVP benötigt Ollama für Parameter-Extraktion. Kein deterministischer Fallback mehr.
 
 **Siehe [langgraph_app/README.md](../langgraph_app/README.md) für Details.**
 
@@ -251,7 +275,7 @@ Weitere Details zu den neuen Features:
 - **Provenance**: `docs/provenance.md` - Evidence-Modell, Hashing, Reproduzierbarkeit
 - **QA-Gates**: `docs/qa-gates.md` - Validator-Regeln, CLI, CI/CD Integration
 - **LangGraph Orchestrator**: `docs/langgraph-orchestrator.md` - Vollständiger Orchestrator mit LLM
-- **LangGraph MVP**: `langgraph_app/README.md` - Minimaler CLI-Runner ohne LLM
+- **LangGraph MVP**: `langgraph_app/README.md` - Minimaler CLI-Runner mit LLM-only Parameter-Extraktion
 - **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md` - Übersicht aller Änderungen
 
 ## Troubleshooting

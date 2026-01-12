@@ -126,6 +126,26 @@ class PersonLookupResponse(BaseModel):
     persons: list[PersonResponse]
 
 
+class ParliamentCoverageRequest(BaseModel):
+    parliament_ids: Optional[list[str]] = Field(default=None, description="Optional list of parliament_ids to filter. If None or empty, returns all.")
+
+
+class ParliamentCoverageRowResponse(BaseModel):
+    parliament_id: str
+    mandates_count: int
+    min_start: Optional[str] = None
+    max_end: Optional[str] = None
+    invalid_start_count: int = 0
+    invalid_end_count: int = 0
+    missing_evidence_count: int = 0
+
+
+class ParliamentCoverageResponse(BaseModel):
+    meta: ToolMeta
+    applied_filter: dict
+    rows: list[ParliamentCoverageRowResponse]
+
+
 class ErrorResponse(BaseModel):
     error: str
     error_code: str

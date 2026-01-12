@@ -13,15 +13,14 @@ Dieses MVP beantwortet Mitglieder-Fragen **ausschließlich auf Basis des Laravel
 
 - **Tool-Gateway** lokal: `http://localhost:8000/api/tools`
 - Python >= 3.12 (Repo-Standard)
-- **Ollama** optional: Nur für vollständigen Orchestrator (nicht für MVP)
+- **Ollama** erforderlich: MVP benötigt Ollama für Parameter-Extraktion (verpflichtend)
 
 ### Environment
 
 - **`PISS_TOOL_BASE_URL`**: default `http://localhost:8000/api/tools`
-- **`OLLAMA_BASE_URL`**: default `http://192.168.178.185:11434/v1` (optional, für LLM-Modus)
-- **`OLLAMA_MODEL`**: default `ministral-3:14b` (optional, für LLM-Modus)
+- **`PISS_OLLAMA_BASE_URL`**: default `http://192.168.178.185:11434/v1` (erforderlich für Parameter-Extraktion)
+- **`PISS_OLLAMA_MODEL`**: default `ministral-3:14b` (erforderlich für Parameter-Extraktion)
 - **`PISS_STRICT_EVIDENCE_DEFAULT`**: default `true`
-- **`PISS_MVP_USE_LLM`**: default `false` - Aktiviert LLM-basierte Parameter-Extraktion als Fallback
 - **`PISS_OPENAI_API_KEY`**: default `"ollama"` - API-Key für LLM (bei Ollama meist "ollama")
 
 ### CLI Usage
@@ -63,44 +62,80 @@ python -m langgraph_app.cli "..." --max-sources 50
 python -m langgraph_app.cli
 ```
 
-### Parameter-Extraktion
-
-**Hybrid-Strategie:**
-1. Zuerst wird ein deterministischer Parser verwendet (regex-basiert)
-2. Falls Pflichtfelder fehlen und `PISS_MVP_USE_LLM=1` gesetzt ist, wird ein LLM als Fallback verwendet
-3. Das LLM extrahiert nur Parameter aus der Frage (erfindet keine Fakten)
-4. Tool-Aufruf und Formatter bleiben deterministisch (Ground Truth = Tool)
-
-**Deterministischer Parser erkennt automatisch:**
-
-**Parteien:**
-- SPD, CDU, CSU, FDP, LINKE, AFD
-- Grüne, GRUENE, GRÜNE → GRUENE
-- Case-insensitive
-
-**Parlamente:**
-- Alle 16 Bundesländer (Niedersachsen, Hessen, Bayern, etc.)
-- Bundestag, Deutscher Bundestag
-- Varianten: "hessischer landtag", "landtag niedersachsen", etc.
-
-**Zeiträume:**
-- `2014-2020` oder `2014–2020` → 2014-01-01 bis 2020-12-31
-- `zwischen 2014 und 2020` → 2014-01-01 bis 2020-12-31
-- `ab 2014` → 2014-01-01 bis heute
-- `bis 2020` → 0001-01-01 bis 2020-12-31
-- Einzeljahre: `2018` → 2018-01-01 bis 2018-12-31
-
-**LLM-Modus (optional):**
+**Healthcheck-Optionen:**
 ```bash
-# LLM-basierte Parameter-Extraktion aktivieren
-PISS_MVP_USE_LLM=1 python -m langgraph_app.cli "Zeige mir alle SPD-Abgeordneten im niedersächsischen Landtag von 2014 bis 2020"
+# Healthcheck deaktivieren (nicht empfohlen)
+python -m langgraph_app.cli --no-healthcheck "..."
+
+# Healthcheck-Timeout anpassen (default: 5.0 Sekunden)
+python -m langgraph_app.cli --health-timeout 10.0 "..."
+
+# Warmup-Retry deaktivieren (default: aktiviert)
+python -m langgraph_app.cli --no-health-warmup "..."
 ```
 
-Das LLM wird nur verwendet, wenn der deterministische Parser nicht alle benötigten Parameter extrahieren konnte. Es extrahiert:
+### Parameter-Extraktion
+
+**LLM-only Strategie:**
+1. Das MVP verwendet **ausschließlich** das LLM (Ollama) für die Parameter-Extraktion
+2. Das LLM extrahiert nur Parameter aus der Frage (erfindet keine Fakten)
+3. Tool-Aufruf und Formatter bleiben deterministisch (Ground Truth = Tool Gateway)
+4. Wenn Ollama nicht erreichbar ist oder ungültiges JSON zurückgibt, wird eine klare Fehlermeldung ausgegeben
+
+**Das LLM extrahiert:**
 - `parliament_id`: Erlaubte Codes (NI, BT, HE, BW, BY, BE, BB, HB, HH, MV, NW, RP, SL, SN, ST, SH, TH)
 - `party_code`: Uppercase (SPD, CDU, CSU, GRUENE, FDP, AFD, LINKE, ...)
 - `from_date` / `to_date`: ISO-Format (YYYY-MM-DD)
 - Bei unklaren Angaben: Felder als `null` (löst Clarification-Message aus)
+
+**Fehlerbehandlung:**
+Wenn Ollama nicht erreichbar ist oder die Parameter-Extraktion fehlschlägt, wird folgende Fehlermeldung ausgegeben:
+```
+LLM-Fehler: Parameter konnten nicht extrahiert werden (Ollama nicht erreichbar oder ungültiges JSON). 
+Bitte Ollama prüfen oder Frage präzisieren.
+```
+
+**Wichtig:** Es gibt keinen deterministischen Fallback mehr. Das System benötigt ein funktionierendes Ollama-Instance.
+
+### Preflight Healthcheck
+
+Das MVP führt **standardmäßig** einen Healthcheck gegen Ollama durch, bevor der Graph gestartet wird (fail-fast). Dies verhindert, dass Fehler erst im Plan-Node erkannt werden.
+
+**Verhalten:**
+- **Default**: Healthcheck ist aktiviert
+- Führt einen schnellen Request gegen den OpenAI-compat Endpoint aus (`POST /chat/completions`)
+- Timeout: 5 Sekunden (konfigurierbar via `--health-timeout`)
+- **Warmup-Retry**: Wenn `--health-warmup` aktiviert ist (default), wird bei Timeout ein Retry mit 30s Timeout durchgeführt, um Modell-Loading zu erlauben
+- Bei Fehler: Exit-Code 2, klare Fehlermeldung mit Diagnose-Hinweisen
+
+**CLI-Flags:**
+- `--no-healthcheck`: Deaktiviert den Healthcheck (nicht empfohlen)
+- `--health-timeout <seconds>`: Timeout für den Healthcheck (default: 5.0)
+- `--health-warmup` / `--no-health-warmup`: Aktiviert/deaktiviert Warmup-Retry (default: aktiviert)
+
+**Diagnose bei Fehlern:**
+
+1. **Modelle anzeigen:**
+   ```bash
+   curl -sS http://192.168.178.185:11434/api/tags | jq .
+   ```
+
+2. **OpenAI-compat Endpoint testen:**
+   ```bash
+   curl -sS -X POST http://192.168.178.185:11434/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{"model":"ministral-3:14b","messages":[{"role":"user","content":"ping"}],"max_tokens":1,"temperature":0}' | jq .
+   ```
+
+3. **ENV-Variablen prüfen:**
+   - `PISS_OLLAMA_BASE_URL` (z.B. `http://192.168.178.185:11434/v1`)
+   - `PISS_OLLAMA_MODEL` (z.B. `ministral-3:14b`)
+
+**Debug-Ausgabe:**
+Wenn `PISS_DEBUG=1` gesetzt ist, wird bei erfolgreichem Healthcheck eine Debug-Ausgabe mit Latenz angezeigt:
+```
+[DEBUG] Ollama OK: http://192.168.178.185:11434/v1 model=ministral-3:14b latency_ms=234
+```
 
 ### Pagination
 

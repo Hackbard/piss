@@ -317,12 +317,50 @@ class PipelineRunner:
 
             legislature_id = generate_legislature_id(parliament_id, int(legislature_number))
             legislature_name = f"{legislature_number}. Landtag {state}" if state else f"{legislature_number}. Wahlperiode"
+            from urllib.parse import quote
+
+            from scraper.utils.date_normalize import normalize_date, should_store_raw_value
+            from scraper.parsers.legislature_dates import extract_legislature_dates
+
+            page_title_encoded = quote(response.page_title.replace("_", " "), safe="")
+            source_url = f"https://de.wikipedia.org/wiki/{page_title_encoded}"
+            source_url_canonical = (
+                f"{source_url}?oldid={response.revision_id}" if response.revision_id else source_url
+            )
+
+            start_date_raw = time_range.get("start") if isinstance(time_range, dict) else None
+            end_date_raw = time_range.get("end") if isinstance(time_range, dict) else None
+            start_date = normalize_date(start_date_raw)
+            end_date = normalize_date(end_date_raw)
+
+            extracted = extract_legislature_dates(response)
+
+            final_start_date = extracted.start_date or start_date
+            final_end_date = extracted.end_date or end_date
+
+            final_start_raw = (
+                extracted.start_date_raw
+                if extracted.start_date_raw and not final_start_date
+                else (start_date_raw if should_store_raw_value(start_date_raw, final_start_date) else None)
+            )
+            final_end_raw = (
+                extracted.end_date_raw
+                if extracted.end_date_raw and not final_end_date
+                else (end_date_raw if should_store_raw_value(end_date_raw, final_end_date) else None)
+            )
+
             legislature = Legislature(
                 id=legislature_id,
                 parliament_id=parliament_id,
                 name=legislature_name,
-                start_date=time_range.get("start", ""),
-                end_date=time_range.get("end", ""),
+                start_date=final_start_date,
+                end_date=final_end_date,
+                start_date_raw=final_start_raw,
+                end_date_raw=final_end_raw,
+                start_date_source="wikipedia_list" if extracted.start_date else ("seed_expected_time_range" if start_date else None),
+                end_date_source="wikipedia_list" if extracted.end_date else ("seed_expected_time_range" if end_date else None),
+                source_url=source_url_canonical,
+                wikipedia_title=response.page_title,
                 evidence_ids=[legislature_data.evidence_id],
             )
             legislatures[legislature_id] = legislature

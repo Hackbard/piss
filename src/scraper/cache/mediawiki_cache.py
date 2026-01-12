@@ -86,10 +86,20 @@ def get_seed(seed_key: str) -> Dict[str, Any]:
 
 
 async def fetch_and_cache_parse(
-    page_title: str, run_id: str, force: bool = False, revalidate: bool = False
+    page_title: str,
+    run_id: str,
+    force: bool = False,
+    revalidate: bool = False,
+    revision_id: Optional[int] = None,
 ) -> Optional[MediaWikiParseResponse]:
     """Fetch and cache parse response, handling cache hits and revalidation."""
     client = get_client()
+
+    if revision_id:
+        cache_path = get_cache_path(page_title, revision_id, "parse")
+        raw_path = cache_path / "raw.json"
+        if not force and raw_path.exists():
+            return load_cached_parse_response(raw_path)
 
     if revalidate:
         query_response = await client.fetch_query(page_title)
@@ -116,14 +126,28 @@ async def fetch_and_cache_parse(
         if raw_path.exists():
             return load_cached_parse_response(raw_path)
 
-    response_json = await client.fetch_parse(page_title, include_sections=True)
+    response_json = await client.fetch_parse(page_title, include_sections=True, oldid=revision_id)
     parse_data = response_json.get("parse", {})
     page_id = parse_data.get("pageid", 0)
-    revision_id = parse_data.get("revid", 0)
-    html = parse_data.get("text", {}).get("*", "")
+    resolved_revision_id = parse_data.get("revid", 0)
+    text_field = parse_data.get("text", "")
+    if isinstance(text_field, dict):
+        html = text_field.get("*", "")
+    elif isinstance(text_field, str):
+        html = text_field
+    else:
+        html = ""
+
+    wikitext_field = parse_data.get("wikitext", None)
+    if isinstance(wikitext_field, dict):
+        wikitext = wikitext_field.get("*", None)
+    elif isinstance(wikitext_field, str):
+        wikitext = wikitext_field
+    else:
+        wikitext = None
     displaytitle = parse_data.get("displaytitle")
 
-    cache_path = get_cache_path(page_title, revision_id, "parse")
+    cache_path = get_cache_path(page_title, resolved_revision_id, "parse")
     cache_path.mkdir(parents=True, exist_ok=True)
 
     raw_path = cache_path / "raw.json"
@@ -135,31 +159,40 @@ async def fetch_and_cache_parse(
     raw_path.write_text(json.dumps(response_json, ensure_ascii=False, indent=2), encoding="utf-8")
 
     metadata = CachedResponseMetadata(
-        request_params={"action": "parse", "page": page_title},
+        request_params={
+            "action": "parse",
+            "page": page_title,
+            **({"oldid": revision_id} if revision_id else {}),
+        },
         response_headers={},
         retrieved_at=retrieved_at,
         sha256=sha256,
-        url=f"{client.BASE_URL}?action=parse&page={page_title}",
+        url=(
+            f"{client.BASE_URL}?action=parse&page={page_title}&oldid={revision_id}"
+            if revision_id
+            else f"{client.BASE_URL}?action=parse&page={page_title}"
+        ),
         page_title=page_title,
         page_id=page_id,
-        revision_id=revision_id,
+        revision_id=resolved_revision_id,
         endpoint_kind="parse",
     )
     metadata_path.write_text(metadata.model_dump_json(indent=2), encoding="utf-8")
 
-    latest_manifest = LatestCacheManifest(
-        revision_id=revision_id,
-        retrieved_at=retrieved_at,
-        sha256=sha256,
-        endpoint_kind="parse",
-    )
-    latest_path.write_text(latest_manifest.model_dump_json(indent=2), encoding="utf-8")
+    if not revision_id:
+        latest_manifest = LatestCacheManifest(
+            revision_id=resolved_revision_id,
+            retrieved_at=retrieved_at,
+            sha256=sha256,
+            endpoint_kind="parse",
+        )
+        latest_path.write_text(latest_manifest.model_dump_json(indent=2), encoding="utf-8")
     
     # Update evidence index
     from scraper.cache.evidence_index import update_evidence_index
     from scraper.utils.ids import generate_evidence_id
     
-    evidence_id = generate_evidence_id(page_id, revision_id, "parse", sha256)
+    evidence_id = generate_evidence_id(page_id, resolved_revision_id, "parse", sha256)
     update_evidence_index(
         evidence_id=evidence_id,
         source_kind="mediawiki",
@@ -167,16 +200,17 @@ async def fetch_and_cache_parse(
         cache_raw_path=raw_path,
         page_title=page_title,
         page_id=page_id,
-        revision_id=revision_id,
+        revision_id=resolved_revision_id,
         sha256=sha256,
     )
 
     return MediaWikiParseResponse(
         parse=parse_data,
         page_id=page_id,
-        revision_id=revision_id,
+        revision_id=resolved_revision_id,
         page_title=page_title,
         html=html,
+        wikitext=wikitext,
         displaytitle=displaytitle,
     )
 
@@ -207,12 +241,29 @@ def extract_query_data(response_json: Dict[str, Any]) -> Dict[str, Any]:
 def load_cached_parse_response(raw_path: Path) -> MediaWikiParseResponse:
     response_json = json.loads(raw_path.read_text(encoding="utf-8"))
     parse_data = response_json.get("parse", {})
+    text_field = parse_data.get("text", "")
+    if isinstance(text_field, dict):
+        html = text_field.get("*", "")
+    elif isinstance(text_field, str):
+        html = text_field
+    else:
+        html = ""
+
+    wikitext_field = parse_data.get("wikitext", None)
+    if isinstance(wikitext_field, dict):
+        wikitext = wikitext_field.get("*", None)
+    elif isinstance(wikitext_field, str):
+        wikitext = wikitext_field
+    else:
+        wikitext = None
+
     return MediaWikiParseResponse(
         parse=parse_data,
         page_id=parse_data.get("pageid", 0),
         revision_id=parse_data.get("revid", 0),
         page_title=parse_data.get("title", ""),
-        html=parse_data.get("text", {}).get("*", ""),
+        html=html,
+        wikitext=wikitext,
         displaytitle=parse_data.get("displaytitle"),
     )
 

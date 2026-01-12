@@ -11,7 +11,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from langgraph_app.settings import _settings
+from langgraph_app.healthcheck import check_ollama_or_die
+from langgraph_app.settings import OLLAMA_BASE_URL, OLLAMA_MODEL, _settings
 
 DEFAULT_QUESTION = "Gib mir alle SPD-Abgeordneten im Landtag Niedersachsen zwischen 2014 und 2020."
 
@@ -118,8 +119,38 @@ def main() -> None:
         default=20,
         help="Maximum number of sources to display (default: 20)",
     )
+    parser.add_argument(
+        "--no-healthcheck",
+        action="store_true",
+        help="Skip Ollama healthcheck before starting (not recommended)",
+    )
+    parser.add_argument(
+        "--health-timeout",
+        type=float,
+        default=5.0,
+        help="Healthcheck timeout in seconds (default: 5.0)",
+    )
+    parser.add_argument(
+        "--health-warmup",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable warmup retry for model loading (default: True). "
+        "If enabled, retries with 30s timeout on first timeout to allow model loading.",
+    )
 
     args = parser.parse_args()
+
+    if not args.no_healthcheck:
+        try:
+            check_ollama_or_die(
+                base_url=OLLAMA_BASE_URL,
+                model=OLLAMA_MODEL,
+                timeout_s=args.health_timeout,
+                warmup=args.health_warmup,
+            )
+        except RuntimeError as e:
+            print(f"Fehler: {e}", file=sys.stderr)
+            sys.exit(2)
 
     question = " ".join(args.question).strip() if args.question else ""
 

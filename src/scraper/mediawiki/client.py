@@ -33,16 +33,22 @@ class MediaWikiClient:
         wait=wait_exponential(multiplier=1, min=2, max=10),
     )
     async def fetch_parse(
-        self, page_title: str, include_sections: bool = False
+        self,
+        page_title: str,
+        include_sections: bool = False,
+        oldid: Optional[int] = None,
     ) -> Dict[str, Any]:
         await self._rate_limit()
 
         params: Dict[str, Any] = {
             "action": "parse",
-            "page": page_title,
-            "prop": "text|revid|displaytitle",
+            "prop": "text|wikitext|revid|displaytitle",
             "format": "json",
         }
+        if oldid:
+            params["oldid"] = oldid
+        else:
+            params["page"] = page_title
         if include_sections:
             params["prop"] += "|sections"
 
