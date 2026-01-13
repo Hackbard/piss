@@ -4,6 +4,7 @@ from neo4j import GraphDatabase
 
 from scraper.config import Settings
 from scraper.utils.date_normalize import normalize_date
+from scraper.utils.day_only_dates import assert_day_invariant
 
 
 class Neo4jSink:
@@ -22,6 +23,7 @@ class Neo4jSink:
                 "CREATE CONSTRAINT party_id IF NOT EXISTS FOR (p:Party) REQUIRE p.id IS UNIQUE",
                 "CREATE CONSTRAINT party_code IF NOT EXISTS FOR (p:Party) REQUIRE p.code IS UNIQUE",
                 "CREATE CONSTRAINT legislature_id IF NOT EXISTS FOR (l:Legislature) REQUIRE l.id IS UNIQUE",
+                "CREATE CONSTRAINT legislature_term_id IF NOT EXISTS FOR (t:LegislatureTerm) REQUIRE t.id IS UNIQUE",
                 "CREATE CONSTRAINT mandate_id IF NOT EXISTS FOR (m:Mandate) REQUIRE m.id IS UNIQUE",
                 "CREATE CONSTRAINT evidence_id IF NOT EXISTS FOR (e:Evidence) REQUIRE e.id IS UNIQUE",
                 "CREATE CONSTRAINT canonical_person_id IF NOT EXISTS FOR (c:CanonicalPerson) REQUIRE c.id IS UNIQUE",
@@ -119,15 +121,34 @@ class Neo4jSink:
                 )
 
             for legislature in normalized_data.get("legislatures", []):
+                start_precision = getattr(legislature, "start_date_precision", None)
+                end_precision = getattr(legislature, "end_date_precision", None)
+                assert_day_invariant(
+                    {
+                        "start_date": legislature.start_date,
+                        "start_date_precision": start_precision,
+                    },
+                    "start_date",
+                )
+                assert_day_invariant(
+                    {
+                        "end_date": legislature.end_date,
+                        "end_date_precision": end_precision,
+                    },
+                    "end_date",
+                )
                 session.run(
                     """
                     MERGE (l:Legislature {id: $id})
                     SET l.parliament_id = $parliament_id,
+                        l.term_number = $term_number,
                         l.name = $name,
                         l.start_date = $start_date,
                         l.end_date = $end_date,
                         l.start_date_raw = $start_date_raw,
                         l.end_date_raw = $end_date_raw,
+                        l.start_date_precision = $start_date_precision,
+                        l.end_date_precision = $end_date_precision,
                         l.start_date_source = $start_date_source,
                         l.end_date_source = $end_date_source,
                         l.source_url = $source_url,
@@ -136,11 +157,14 @@ class Neo4jSink:
                     """,
                     id=legislature.id,
                     parliament_id=legislature.parliament_id,
+                    term_number=getattr(legislature, "term_number", None),
                     name=legislature.name,
                     start_date=legislature.start_date,
                     end_date=legislature.end_date,
                     start_date_raw=getattr(legislature, "start_date_raw", None),
                     end_date_raw=getattr(legislature, "end_date_raw", None),
+                    start_date_precision=start_precision,
+                    end_date_precision=end_precision,
                     start_date_source=getattr(legislature, "start_date_source", None),
                     end_date_source=getattr(legislature, "end_date_source", None),
                     source_url=getattr(legislature, "source_url", None),

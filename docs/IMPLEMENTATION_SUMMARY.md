@@ -20,8 +20,33 @@ Alle 5 Aufgaben wurden implementiert:
   - **Person.normalized_name** hinzugefügt
   - **Mandate.parliament_id** hinzugefügt (required)
   - **Mandate.party_code** hinzugefügt (statt party_name)
-  - **Mandate.start_date** ist jetzt required
+  - **Mandate.start_date** ist jetzt **nullable** (day-only oder `null`) – Backfill erfolgt aus `Legislature.start_date` sobald day-precision vorliegt
   - **Evidence** Entity erweitert (url, retrieved_at, content_hash, source_type, locator, snapshot_path)
+
+### Legislature Dates (STRICT / Day-Only)
+
+- `src/scraper/utils/day_only_dates.py` (NEU)
+  - `apply_day_only_date()` kapselt die Write-Policy: **nur day-Precision** wird als `*_date` persistiert, sonst `*_raw` + `*_precision`
+  - `assert_day_invariant()` fail-fast wenn ein Datum gesetzt ist, aber `*_precision != "day"`
+
+- `src/scraper/parsers/legislature_dates.py` (NEU/erweitert)
+  - Extrahiert `start_date`/`end_date` **nur** wenn explizit day-precise belegbar, sonst `*_raw` + `*_precision`
+
+- `src/scraper/sinks/neo4j.py`
+  - `Legislature` erweitert: `term_number`, `*_precision`, `*_raw`, `*_source`, `source_url`, `wikipedia_title`
+  - `LegislatureTerm` Node + `(:Legislature)-[:HAS_TERM]->(:LegislatureTerm)` Upserts
+
+- `langgraph_app/cli.py`
+  - `list-missing-legislature-starts` (Enrichment Queue, JSON/CSV)
+  - `ingest-official-terms` (Registry → `LegislatureTerm`)
+  - `ingest-wikidata-term` (revision-pinned Wikidata → `LegislatureTerm`)
+  - `propagate-legislature-starts` (best-ranked Term → `Legislature` + Mandate-Backfill)
+
+- `langgraph_app/sources/official_sources.yaml` (NEU)
+  - Registry für offizielle Quellen (day-only konstituierende Sitzung)
+
+- `langgraph_app/sources/official_registry.py`, `langgraph_app/sources/wikidata_terms.py` (NEU)
+  - Loader/Parser für Registry und Wikidata-Terms (Precision Handling)
 
 ### Utilities
 
@@ -166,8 +191,8 @@ pytest --cov=src/scraper --cov-report=html
    - Alte Code-Stellen müssen angepasst werden
    - `party_name` wird nicht mehr unterstützt
 
-2. **Mandate.start_date** ist jetzt **required**
-   - Bestehende Mandate ohne `start_date` werden Validierungsfehler verursachen
+2. **Mandate.start_date**: Domain erlaubt `null`, aber der Validator (`scraper validate`) behandelt fehlende `start_date` weiterhin als ERROR
+   - Das ist beabsichtigt: fehlende day-only Startdaten müssen über Term-Enrichment/Propagation nachgezogen werden
 
 3. **Legislature** hat jetzt **parliament_id** statt `parliament` (string)
    - Alte Code-Stellen müssen angepasst werden

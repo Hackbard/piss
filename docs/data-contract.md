@@ -37,10 +37,16 @@
 - **parliament_id** (string, required): Parliament-Code (z.B. `NI`, `BY`, `BT`, `BR`)
 - **legislature_id** (string, required): Legislature-ID
 - **party_code** (string, optional): Parteikürzel (z.B. "SPD", "CDU")
-- **start_date** (string, required): Startdatum (ISO-Format: YYYY-MM-DD)
-- **end_date** (string, optional, nullable): Enddatum (ISO-Format, nullable = offen)
+- **start_date** (string, optional, nullable): Startdatum (ISO-Format: YYYY-MM-DD, day-only oder `null`)
+- **end_date** (string, optional, nullable): Enddatum (ISO-Format: YYYY-MM-DD, day-only oder `null` = offen/unbekannt)
+- **start_date_raw** (string, optional, nullable): Raw-Startwert wenn keine day-Precision vorliegt
+- **end_date_raw** (string, optional, nullable): Raw-Endwert wenn keine day-Precision vorliegt
+- **start_date_source** (string, optional, nullable): Quelle (z.B. `"legislature"`)
+- **end_date_source** (string, optional, nullable): Quelle (z.B. `"legislature"`)
 - **role** (string, optional): Rolle (z.B. "MdL", "MdB")
 - **evidence_refs** (List[EvidenceRef], optional): Entity-Level Evidence-Referenzen
+
+**QA-Hinweis:** Der Validator (`scraper validate`) behandelt `Mandate.start_date` aktuell als Pflichtfeld und liefert bei `null` einen ERROR.
 
 **Beispiel:**
 ```json
@@ -71,9 +77,18 @@
 
 - **id** (string, UUID, required): Stabile, deterministische UUID5-ID
 - **parliament_id** (string, required): Parliament-Code (z.B. `NI`, `BY`, `BT`, `BR`)
+- **term_number** (int, optional, nullable): Wahlperiode/Term-Nummer (z.B. `17`)
 - **name** (string, required): Name (z.B. "17. Landtag Niedersachsen")
-- **start_date** (string, required): Startdatum (ISO-Format)
-- **end_date** (string, required): Enddatum (ISO-Format)
+- **start_date** (string, optional, nullable): Startdatum (ISO, day-only) der **konstituierenden Sitzung / ersten Sitzung**, sonst `null`
+- **end_date** (string, optional, nullable): Enddatum (ISO, day-only) oder `null`
+- **start_date_raw** (string, optional, nullable): Raw-Startwert (z.B. "November 1986") wenn day-Precision fehlt
+- **end_date_raw** (string, optional, nullable): Raw-Endwert wenn day-Precision fehlt
+- **start_date_precision** (string, optional, nullable): `"day"|"month"|"year"|"unknown"` (MUSS `"day"` sein, wenn `start_date` gesetzt ist)
+- **end_date_precision** (string, optional, nullable): `"day"|"month"|"year"|"unknown"` (MUSS `"day"` sein, wenn `end_date` gesetzt ist)
+- **start_date_source** (string, optional, nullable): `"official"|"wikidata"|"wikipedia"` (oder projektspezifischer Source-Key)
+- **end_date_source** (string, optional, nullable): `"official"|"wikidata"|"wikipedia"` (oder projektspezifischer Source-Key)
+- **source_url** (string, optional, nullable): Canonical Wikipedia-URL mit `oldid` (Reproduzierbarkeit)
+- **wikipedia_title** (string, optional, nullable): Wikipedia-Seitentitel
 - **evidence_ids** (List[string], optional): Evidence-IDs
 
 **Beispiel:**
@@ -81,11 +96,37 @@
 {
   "id": "7219e8b8-3d63-59ae-823e-df5a7a0d2253",
   "parliament_id": "NI",
+  "term_number": 17,
   "name": "17. Landtag Niedersachsen",
   "start_date": "2013-01-20",
-  "end_date": "2017-11-14"
+  "start_date_precision": "day",
+  "start_date_source": "official",
+  "end_date": "2017-11-14",
+  "end_date_precision": "day"
 }
 ```
+
+### LegislatureTerm
+
+`LegislatureTerm` hält term-spezifische Daten pro Quelle getrennt und wird anschließend in `Legislature` propagiert.
+
+- **id** (string, required): Deterministische ID (z.B. `"official:NI:17"` oder `"wikidata:Q123:123456"`)
+- **qid** (string, optional, nullable): Wikidata-QID (falls Quelle Wikidata)
+- **parliament_id** (string, required)
+- **term_number** (int, required)
+- **name** (string, optional, nullable)
+- **start_date** (string, optional, nullable): ISO day-only oder `null`
+- **start_date_raw** (string, optional, nullable)
+- **start_date_precision** (string, optional, nullable): `"day"|"month"|"year"|"unknown"`
+- **end_date** (string, optional, nullable): ISO day-only oder `null`
+- **end_date_raw** (string, optional, nullable)
+- **end_date_precision** (string, optional, nullable): `"day"|"month"|"year"|"unknown"`
+- **source_primary** (string, required): `"official"|"wikidata"|"wikipedia"`
+- **source_meta_json** (string, optional, nullable): Canonical JSON string mit Revision/Snapshot-Meta
+- **evidence_urls** (List[string], optional): Liste von Evidence-URLs (z.B. revision-pinned Wikidata EntityData URL)
+
+**Beziehungen:**
+- `(l:Legislature)-[:HAS_TERM]->(t:LegislatureTerm)`
 
 ### Parliament
 

@@ -14,6 +14,35 @@ class LegislatureDates:
     end_date: Optional[str]
     start_date_raw: Optional[str]
     end_date_raw: Optional[str]
+    start_date_precision: str
+    end_date_precision: str
+
+
+def _infer_precision(raw: Optional[str], value_iso: Optional[str]) -> str:
+    if value_iso:
+        return "day"
+    if not raw:
+        return "unknown"
+
+    v = raw.strip()
+    if re.match(r"^\d{4}$", v):
+        return "year"
+    if re.match(
+        r"^(?:Januar|Februar|März|Maerz|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4}$",
+        v,
+        flags=re.IGNORECASE,
+    ):
+        return "month"
+    if re.match(r"^\d{1,2}\.\d{1,2}\.\d{4}$", v):
+        return "day"
+    if re.match(
+        r"^\d{1,2}\.\s*(?:Januar|Februar|März|Maerz|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4}$",
+        v,
+        flags=re.IGNORECASE,
+    ):
+        return "day"
+
+    return "unknown"
 
 
 _GERMAN_MONTHS: dict[str, int] = {
@@ -153,6 +182,8 @@ def _extract_from_kv_lines(text: str) -> LegislatureDates:
         end_date=end_date,
         start_date_raw=start_raw if should_store_raw_value(start_raw, start_date) else None,
         end_date_raw=end_raw if should_store_raw_value(end_raw, end_date) else None,
+        start_date_precision=_infer_precision(start_raw, start_date),
+        end_date_precision=_infer_precision(end_raw, end_date),
     )
 
 
@@ -171,14 +202,13 @@ def _extract_from_prose(text: str) -> LegislatureDates:
         start_raw = _sanitize_raw(range_match.group("start"))
         end_raw = _sanitize_raw(range_match.group("end"))
 
-        start_date = _normalize_candidate(start_raw)
-        end_date = _normalize_candidate(end_raw)
-
         return LegislatureDates(
-            start_date=start_date,
-            end_date=end_date,
-            start_date_raw=start_raw if should_store_raw_value(start_raw, start_date) else None,
-            end_date_raw=end_raw if should_store_raw_value(end_raw, end_date) else None,
+            start_date=None,
+            end_date=None,
+            start_date_raw=start_raw,
+            end_date_raw=end_raw,
+            start_date_precision=_infer_precision(start_raw, None),
+            end_date_precision=_infer_precision(end_raw, None),
         )
 
     start_patterns = [
@@ -210,6 +240,8 @@ def _extract_from_prose(text: str) -> LegislatureDates:
         end_date=end_date,
         start_date_raw=start_raw if should_store_raw_value(start_raw, start_date) else None,
         end_date_raw=end_raw if should_store_raw_value(end_raw, end_date) else None,
+        start_date_precision=_infer_precision(start_raw, start_date),
+        end_date_precision=_infer_precision(end_raw, end_date),
     )
 
 
@@ -226,6 +258,13 @@ def extract_legislature_dates(response: MediaWikiParseResponse) -> LegislatureDa
         if c.start_date or c.end_date or c.start_date_raw or c.end_date_raw:
             return c
 
-    return LegislatureDates(start_date=None, end_date=None, start_date_raw=None, end_date_raw=None)
+    return LegislatureDates(
+        start_date=None,
+        end_date=None,
+        start_date_raw=None,
+        end_date_raw=None,
+        start_date_precision="unknown",
+        end_date_precision="unknown",
+    )
 
 

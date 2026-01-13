@@ -1185,6 +1185,17 @@ def repair_legislature_dates(
     try:
         with driver.session() as session:
             if not dry_run:
+                session.run(
+                    """
+                    MATCH (l:Legislature)
+                    WHERE l.term_number IS NULL AND l.wikipedia_title IS NOT NULL
+                    WITH l,
+                         apoc.text.regexGroups(l.wikipedia_title, "\\\\((\\\\d+)\\\\.\\\\s*Wahlperiode\\\\)") AS g
+                    WITH l, CASE WHEN size(g) > 0 THEN toInteger(g[0][1]) ELSE null END AS n
+                    SET l.term_number = coalesce(l.term_number, n)
+                    """,
+                )
+
                 where_src = "WHERE l.source_url IS NULL OR l.wikipedia_title IS NULL"
                 if parliament_id:
                     where_src += " AND l.parliament_id = $parliament_id"
@@ -1275,7 +1286,12 @@ def repair_legislature_dates(
                         raise ValueError("fetch_and_cache_parse returned None")
 
                     dates = extract_legislature_dates(response)
-                    if not dates.start_date and not dates.end_date and not dates.start_date_raw and not dates.end_date_raw:
+                    if (
+                        not dates.start_date
+                        and not dates.end_date
+                        and not dates.start_date_raw
+                        and not dates.end_date_raw
+                    ):
                         skipped_no_dates += 1
                         log(f"- [{legislature_id}] skipped: no dates detected on page {title} oldid={oldid}")
                         continue
@@ -1295,6 +1311,16 @@ def repair_legislature_dates(
                                 l.source_url = coalesce(l.source_url, $source_url),
                                 l.start_date = CASE WHEN missing_start AND $start_date IS NOT NULL THEN $start_date ELSE l.start_date END,
                                 l.end_date = CASE WHEN missing_end AND $end_date IS NOT NULL THEN $end_date ELSE l.end_date END,
+                                l.start_date_precision = CASE
+                                    WHEN missing_start AND $start_date IS NOT NULL THEN "day"
+                                    WHEN missing_start AND $start_date IS NULL AND $start_date_precision IS NOT NULL THEN $start_date_precision
+                                    ELSE l.start_date_precision
+                                END,
+                                l.end_date_precision = CASE
+                                    WHEN missing_end AND $end_date IS NOT NULL THEN "day"
+                                    WHEN missing_end AND $end_date IS NULL AND $end_date_precision IS NOT NULL THEN $end_date_precision
+                                    ELSE l.end_date_precision
+                                END,
                                 l.start_date_source = CASE WHEN missing_start AND $start_date IS NOT NULL THEN $start_date_source ELSE l.start_date_source END,
                                 l.end_date_source = CASE WHEN missing_end AND $end_date IS NOT NULL THEN $end_date_source ELSE l.end_date_source END,
                                 l.start_date_raw = CASE WHEN missing_start AND $start_date IS NULL AND $start_date_raw IS NOT NULL THEN $start_date_raw ELSE l.start_date_raw END,
@@ -1307,8 +1333,10 @@ def repair_legislature_dates(
                             end_date=dates.end_date,
                             start_date_raw=dates.start_date_raw,
                             end_date_raw=dates.end_date_raw,
-                            start_date_source="wikipedia_list" if dates.start_date else None,
-                            end_date_source="wikipedia_list" if dates.end_date else None,
+                            start_date_precision=dates.start_date_precision,
+                            end_date_precision=dates.end_date_precision,
+                            start_date_source="wikipedia" if dates.start_date else None,
+                            end_date_source="wikipedia" if dates.end_date else None,
                         )
                         updated += 1
                         log(
@@ -1367,6 +1395,155 @@ def repair_legislature_dates(
                     """
                 )
                 log(f"✓ backfilled end_date for {result.single()['backfilled']} mandates")
+    finally:
+        driver.close()
+
+
+@app.command()
+def repair_mandate_ids(
+    parliament_id: Optional[str] = Option(None, "--parliament-id", help="Filter by parliament_id"),
+    limit: int = Option(0, "--limit", help="Limit number of mandates to process (0 = all)"),
+    dry_run: bool = Option(False, "--dry-run", help="Show what would be changed without making changes"),
+    max_print: int = Option(25, "--max-print", help="Max number of changes to print (summary always printed)"),
+) -> None:
+    """
+    Repair Mandate IDs after date backfills.
+
+    Problem:
+    - Mandate.id is deterministic and includes start_date/end_date.
+    - If start_date/end_date were missing at ingest and later backfilled, the node properties change
+      but the ID does not. This can create duplicate mandates (same person/legislature/party/date range)
+      with different IDs, causing validator overlap errors.
+
+    Fix:
+    - Recompute the canonical deterministic mandate ID from current properties and merge duplicates.
+    - Idempotent: re-running does nothing once IDs are canonical.
+    """
+    from neo4j import GraphDatabase
+
+    from scraper.utils.ids import generate_mandate_id
+
+    driver = GraphDatabase.driver(
+        settings.neo4j_uri,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+    )
+
+    processed = 0
+    changed = 0
+    skipped = 0
+    printed = 0
+
+    try:
+        with driver.session() as session:
+            where = "WHERE m.start_date IS NOT NULL AND m.person_id IS NOT NULL AND m.legislature_id IS NOT NULL"
+            params: dict[str, Any] = {}
+            if parliament_id:
+                where += " AND m.parliament_id = $parliament_id"
+                params["parliament_id"] = parliament_id
+
+            limit_clause = ""
+            if limit and limit > 0:
+                limit_clause = "LIMIT $limit"
+                params["limit"] = limit
+
+            rows = session.run(
+                f"""
+                MATCH (m:Mandate)
+                {where}
+                RETURN m.id AS id,
+                       m.person_id AS person_id,
+                       m.legislature_id AS legislature_id,
+                       m.start_date AS start_date,
+                       m.end_date AS end_date,
+                       m.role AS role,
+                       m.party_code AS party_code
+                ORDER BY m.parliament_id, m.legislature_id, m.person_id, m.start_date, m.id
+                {limit_clause}
+                """,
+                **params,
+            ).data()
+
+            for r in rows:
+                processed += 1
+
+                old_id = r.get("id")
+                person_id = r.get("person_id")
+                legislature_id = r.get("legislature_id")
+                start_date = r.get("start_date") or ""
+                end_date = r.get("end_date") or ""
+                role = r.get("role") or ""
+                party_code = r.get("party_code")
+
+                if not old_id or not person_id or not legislature_id or not start_date:
+                    skipped += 1
+                    continue
+
+                new_id = generate_mandate_id(
+                    person_id=person_id,
+                    legislature_id=legislature_id,
+                    start=start_date,
+                    end=end_date,
+                    role=role,
+                    party_code=party_code,
+                )
+
+                if new_id == old_id:
+                    continue
+
+                if dry_run:
+                    if printed < max_print:
+                        typer.echo(f"- would re-key mandate {old_id} -> {new_id}", err=True)
+                        printed += 1
+                    changed += 1
+                    continue
+
+                session.run(
+                    """
+                    MATCH (old:Mandate {id: $old_id})
+                    MERGE (new:Mandate {id: $new_id})
+                    SET new.person_id = coalesce(new.person_id, old.person_id),
+                        new.parliament_id = coalesce(new.parliament_id, old.parliament_id),
+                        new.legislature_id = coalesce(new.legislature_id, old.legislature_id),
+                        new.party_code = coalesce(new.party_code, old.party_code),
+                        new.role = coalesce(new.role, old.role),
+                        new.start_date = coalesce(new.start_date, old.start_date),
+                        new.end_date = coalesce(new.end_date, old.end_date),
+                        new.wahlkreis = coalesce(new.wahlkreis, old.wahlkreis),
+                        new.notes = coalesce(new.notes, old.notes),
+                        new.evidence_ids = coalesce(new.evidence_ids, old.evidence_ids)
+                    WITH old, new
+                    OPTIONAL MATCH (p:Person)-[:HELD]->(old)
+                    WITH old, new, collect(p) AS persons
+                    FOREACH (p IN persons | MERGE (p)-[:HELD]->(new))
+                    WITH old, new
+                    OPTIONAL MATCH (old)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WITH old, new, collect(l) AS legislatures
+                    FOREACH (l IN legislatures | MERGE (new)-[:IN_LEGISLATURE]->(l))
+                    WITH old, new
+                    OPTIONAL MATCH (old)-[:IN_PARTY]->(pa:Party)
+                    WITH old, new, collect(pa) AS parties
+                    FOREACH (pa IN parties | MERGE (new)-[:IN_PARTY]->(pa))
+                    WITH old, new
+                    OPTIONAL MATCH (old)-[r:SUPPORTED_BY]->(e:Evidence)
+                    WITH old, new, collect({purpose: r.purpose, snippet_ref_json: r.snippet_ref_json, evidence_id: e.id}) AS refs
+                    FOREACH (ref IN refs |
+                        MERGE (e2:Evidence {id: ref.evidence_id})
+                        MERGE (new)-[:SUPPORTED_BY {purpose: coalesce(ref.purpose, ''), snippet_ref_json: coalesce(ref.snippet_ref_json, '')}]->(e2)
+                    )
+                    DETACH DELETE old
+                    """,
+                    old_id=old_id,
+                    new_id=new_id,
+                )
+                changed += 1
+                if printed < max_print:
+                    typer.echo(f"- re-keyed mandate {old_id} -> {new_id}", err=True)
+                    printed += 1
+
+            typer.echo(
+                f"✓ repair-mandate-ids: processed={processed} changed={changed} skipped={skipped} printed={printed}",
+                err=True,
+            )
     finally:
         driver.close()
 

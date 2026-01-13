@@ -73,11 +73,18 @@ class Party(BaseModel):
 class Legislature(BaseModel):
     id: str = Field(..., description="Deterministic UUID5 ID")
     parliament_id: str = Field(..., description="Parliament ID")
+    term_number: Optional[int] = Field(None, description="Term number / Wahlperiode (int)")
     name: str = Field(..., description="Legislature name (e.g. '17. Landtag Niedersachsen')")
     start_date: Optional[str] = Field(None, description="Start date (ISO format YYYY-MM-DD, or None)")
     end_date: Optional[str] = Field(None, description="End date (ISO format YYYY-MM-DD, or None = offen)")
     start_date_raw: Optional[str] = Field(None, description="Original raw start_date value if normalization failed")
     end_date_raw: Optional[str] = Field(None, description="Original raw end_date value if normalization failed")
+    start_date_precision: Optional[str] = Field(
+        None, description="Precision: day/month/year/unknown. MUST be 'day' when start_date is set."
+    )
+    end_date_precision: Optional[str] = Field(
+        None, description="Precision: day/month/year/unknown. MUST be 'day' when end_date is set."
+    )
     start_date_source: Optional[str] = Field(None, description="Source of start_date (e.g. 'wikipedia_list')")
     end_date_source: Optional[str] = Field(None, description="Source of end_date (e.g. 'wikipedia_list')")
     source_url: Optional[str] = Field(None, description="Evidence URL for the legislature list page (canonical with oldid)")

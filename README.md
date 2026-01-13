@@ -13,17 +13,19 @@ Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit
 - **DIP Integration**: Bundestag-Daten via DIP OpenAPI
 - **Identity Resolution**: Deterministische Zusammenführung von Wikipedia- und DIP-Personen
 - **Seed Discovery**: Automatische Entdeckung von Landtags-Mitgliederlisten aus Registry-Konfiguration
+- **Strict Day-Only Dates**: `Legislature.start_date` wird nur bei day-Precision gesetzt (konstituierende Sitzung/erste Sitzung), sonst bleiben `*_date = null` und `*_raw`/`*_precision` werden befüllt
 
 ## Quick Start
 
 **Siehe [QUICKSTART.md](QUICKSTART.md) für eine komplette Schritt-für-Schritt-Anleitung.**
 
 **Kurzfassung:**
-1. **Seeds entdecken**: `docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions`
-2. **ALLE Daten laden**: `docker compose run --rm scraper scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili --fetch-person-pages`
+1. **Seeds entdecken**: `docker compose run --rm --build scraper scraper seed --discover --landtage --pin-revisions`
+2. **ALLE Daten laden**: `docker compose run --rm --build scraper scraper pipeline --ingest-dip --reconcile --write-neo4j --write-meili --fetch-person-pages`
    - Lädt automatisch **ALLE** Seeds (167+ Landtags-Mitgliederlisten)
    - Lädt automatisch **ALLE** DIP Wahlperioden (1-50)
    - Lädt **ALLE** Personenseiten für vollständige Daten
+3. **Legislature-Startdaten (day-only) propagieren**: siehe Schritt 2.5 in `QUICKSTART.md`
 
 ## Datenfluss
 
@@ -53,7 +55,7 @@ flowchart TD
 docker compose up -d neo4j meilisearch
 
 # Seeds für alle 16 Landtage automatisch entdecken
-docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
+docker compose run --rm --build scraper scraper seed --discover --landtage --pin-revisions
 
 # Output: data/exports/seeds_landtage.yaml (167+ Seeds)
 ```
@@ -66,7 +68,7 @@ docker compose run --rm scraper scraper seed --discover --landtage --pin-revisio
 # DIP_API_KEY in .env setzen für Bundestag-Daten
 
 # Pipeline OHNE --seed = lädt ALLE Seeds automatisch (167+ Landtags-Mitgliederlisten)
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -83,7 +85,7 @@ docker compose run --rm scraper scraper pipeline \
 
 **Mit `--force` (ignoriert Cache, lädt alles neu):**
 ```bash
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -94,7 +96,7 @@ docker compose run --rm scraper scraper pipeline \
 
 **Für einen einzelnen Landtag-Seed:**
 ```bash
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --seed be_ah_1 \
   --ingest-dip \
   --reconcile \
@@ -244,10 +246,10 @@ scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5]
 **Beispiele:**
 ```bash
 # Resolve two evidence IDs with snippets in Markdown format (mit table_row preference)
-docker compose run --rm scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets --prefer table_row
+docker compose run --rm --build scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets --prefer table_row
 
 # Resolve evidence from Meilisearch search results (mit Row-level Citations)
-docker compose run --rm scraper scraper evidence --resolve-from-meili \
+docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
   --query "Stephan Weil" \
   --index persons \
   --limit 1 \
@@ -349,7 +351,7 @@ Das System verwendet eine **zweistufige Architektur** für Evidence und Row-leve
 
 **Resolver Output:**
 ```bash
-docker compose run --rm scraper scraper evidence --resolve-from-meili \
+docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
   --query "Stephan Weil" \
   --index persons \
   --limit 1 \
@@ -554,12 +556,12 @@ pytest -q
 
 **Im Docker-Container:**
 ```bash
-docker compose run --rm scraper pytest -q
+docker compose run --rm --build scraper pytest -q
 ```
 
 **Spezifische Tests:**
 ```bash
-docker compose run --rm scraper pytest tests/test_parse_legislature_members_nds_17.py tests/test_parse_legislature_members_nds_18.py -v
+docker compose run --rm --build scraper pytest tests/test_parse_legislature_members_nds_17.py tests/test_parse_legislature_members_nds_18.py -v
 ```
 
 Tests befinden sich in `tests/`:
@@ -581,10 +583,10 @@ Nach Code-Änderungen am Datenmodell (z.B. Parliament-Identifier, Evidence-Prope
 
 ```bash
 # Neo4j und Meilisearch zurücksetzen (mit Bestätigung)
-docker compose run --rm scraper scraper reset-db --neo4j --meili
+docker compose run --rm --build scraper scraper reset-db --neo4j --meili
 
 # Ohne Bestätigung (für Scripts)
-docker compose run --rm scraper scraper reset-db --neo4j --meili --yes
+docker compose run --rm --build scraper scraper reset-db --neo4j --meili --yes
 ```
 
 **Was passiert:**
@@ -597,7 +599,7 @@ docker compose run --rm scraper scraper reset-db --neo4j --meili --yes
 
 ```bash
 # Pipeline mit allen Seeds ausführen
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --write-neo4j \
   --write-meili \
   --fetch-person-pages
@@ -605,7 +607,7 @@ docker compose run --rm scraper scraper pipeline \
 
 **Mit DIP + Reconciliation:**
 ```bash
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -689,10 +691,10 @@ python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen am 30.
 
 ```bash
 # Datenqualität prüfen
-docker compose run --rm scraper scraper validate --strict
+docker compose run --rm --build scraper scraper validate --strict
 
 # Spezifischen Parliament prüfen
-docker compose run --rm scraper scraper validate --parliament NI --strict
+docker compose run --rm --build scraper scraper validate --parliament NI --strict
 ```
 
 ## Troubleshooting
@@ -791,7 +793,7 @@ scraper fetch legislature --seed nds_lt_17 --force
 
 ✅ `docker compose up -d neo4j meilisearch` läuft; Volumes unter `./data/*` werden befüllt
 
-✅ `docker compose run --rm scraper scraper pipeline run --seed nds_lt_17` erzeugt:
+✅ `docker compose run --rm --build scraper scraper pipeline --seed nds_lt_17` erzeugt:
 - Raw Cache unter `./data/cache/...`
 - Export unter `./data/exports/<run_id>/...`
 - Manifest unter `./data/cache/manifests/<run_id>.json`

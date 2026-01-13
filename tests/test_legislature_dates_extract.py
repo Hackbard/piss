@@ -23,6 +23,8 @@ def test_extracts_dates_from_wikitext_kv_lines_with_german_months():
     dates = extract_legislature_dates(_response(wikitext=wt))
     assert dates.start_date == "2017-10-15"
     assert dates.end_date == "2022-11-08"
+    assert dates.start_date_precision == "day"
+    assert dates.end_date_precision == "day"
 
 
 def test_stores_raw_when_only_year_is_present():
@@ -35,6 +37,8 @@ def test_stores_raw_when_only_year_is_present():
     assert dates.end_date is None
     assert dates.start_date_raw == "2017"
     assert dates.end_date_raw == "2022"
+    assert dates.start_date_precision == "year"
+    assert dates.end_date_precision == "year"
 
 
 def test_extracts_from_prose_iso_and_ddmm():
@@ -42,6 +46,8 @@ def test_extracts_from_prose_iso_and_ddmm():
     dates = extract_legislature_dates(_response(wikitext=wt))
     assert dates.start_date == "2017-10-15"
     assert dates.end_date == "2022-11-08"
+    assert dates.start_date_precision == "day"
+    assert dates.end_date_precision == "day"
 
 
 def test_extracts_range_in_parentheses_with_month_year_as_raw():
@@ -51,5 +57,7 @@ def test_extracts_range_in_parentheses_with_month_year_as_raw():
     assert dates.end_date is None
     assert dates.start_date_raw == "November 1986"
     assert dates.end_date_raw == "Mai 1987"
+    assert dates.start_date_precision == "month"
+    assert dates.end_date_precision == "month"
 
 

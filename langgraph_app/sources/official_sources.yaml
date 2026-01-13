@@ -1,0 +1,920 @@
+# Official sources registry (ALL parliaments) — STRICT day-only start dates
+# Rule: We only set Legislature.start_date when we can extract an explicit YYYY-MM-DD
+# from an official parliament source that clearly refers to the constituting session / assembly
+# ("Konstituierende Sitzung", "Zusammentritt", "Erste Sitzung").
+#
+# Fill in URLs per parliament. Keep them stable and, where possible, link to pages that list
+# constituting session dates per term (Wahlperiode). If only per-term pages exist, add one
+# entry per term (or add a templated URL pattern if your parser supports it).
+#
+# Evidence policy:
+# - For each fetched page, store retrieved_at + sha256(content) in source_meta.
+# - Do not estimate dates. If no day is present => keep NULL and store raw + precision.
+
+version: 1
+default:
+  kind: html
+  date_regex_hints:
+    - "Konstituierende Sitzung"
+    - "Zusammentritt"
+    - "Erste Sitzung"
+    - "Konstituierung"
+  http:
+    timeout_seconds: 20
+    max_retries: 3
+    backoff_seconds: 1.0
+    rate_limit_ms: 150
+
+parliaments:
+  # Bundesebene
+  BT:
+    name: "Deutscher Bundestag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+      - term_number: 20
+        start_date: null
+        evidence_urls: []
+  BR:
+    name: "Bundesrat"
+    homepage: ""
+    terms: []
+
+  # Länder (16)
+  BW:
+    name: "Landtag Baden-Württemberg"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+  BY:
+    name: "Bayerischer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+  BE:
+    name: "Abgeordnetenhaus von Berlin"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+  BB:
+    name: "Landtag Brandenburg"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+  HB:
+    name: "Bremische Bürgerschaft"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+      - term_number: 20
+        start_date: null
+        evidence_urls: []
+      - term_number: 21
+        start_date: null
+        evidence_urls: []
+  HH:
+    name: "Hamburgische Bürgerschaft"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+      - term_number: 20
+        start_date: null
+        evidence_urls: []
+      - term_number: 21
+        start_date: null
+        evidence_urls: []
+      - term_number: 22
+        start_date: null
+        evidence_urls: []
+      - term_number: 23
+        start_date: null
+        evidence_urls: []
+  HE:
+    name: "Hessischer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+      - term_number: 20
+        start_date: null
+        evidence_urls: []
+      - term_number: 21
+        start_date: null
+        evidence_urls: []
+  MV:
+    name: "Landtag Mecklenburg-Vorpommern"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+  NI:
+    name: "Niedersächsischer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+      - term_number: 19
+        start_date: null
+        evidence_urls: []
+  NW:
+    name: "Landtag Nordrhein-Westfalen"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+  RP:
+    name: "Landtag Rheinland-Pfalz"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+  SL:
+    name: "Landtag des Saarlandes"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+  SN:
+    name: "Sächsischer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+  ST:
+    name: "Landtag Sachsen-Anhalt"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+  SH:
+    name: "Schleswig-Holsteinischer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+      - term_number: 9
+        start_date: null
+        evidence_urls: []
+      - term_number: 10
+        start_date: null
+        evidence_urls: []
+      - term_number: 11
+        start_date: null
+        evidence_urls: []
+      - term_number: 12
+        start_date: null
+        evidence_urls: []
+      - term_number: 13
+        start_date: null
+        evidence_urls: []
+      - term_number: 14
+        start_date: null
+        evidence_urls: []
+      - term_number: 15
+        start_date: null
+        evidence_urls: []
+      - term_number: 16
+        start_date: null
+        evidence_urls: []
+      - term_number: 17
+        start_date: null
+        evidence_urls: []
+      - term_number: 18
+        start_date: null
+        evidence_urls: []
+  TH:
+    name: "Thüringer Landtag"
+    homepage: ""
+    terms:
+      - term_number: 1
+        start_date: null
+        evidence_urls: []
+      - term_number: 2
+        start_date: null
+        evidence_urls: []
+      - term_number: 3
+        start_date: null
+        evidence_urls: []
+      - term_number: 4
+        start_date: null
+        evidence_urls: []
+      - term_number: 5
+        start_date: null
+        evidence_urls: []
+      - term_number: 6
+        start_date: null
+        evidence_urls: []
+      - term_number: 7
+        start_date: null
+        evidence_urls: []
+      - term_number: 8
+        start_date: null
+        evidence_urls: []
+
+# terms entry shape (examples; leave empty until you add real day-only dates):
+#
+# terms:
+#   - term_number: 17
+#     start_date: "2013-01-20"
+#     end_date: "2017-11-14"
+#     evidence_urls:
+#       - "https://example.parliament.de/konstituierende-sitzung?wp=17"
+#     source_meta:
+#       canonical_url: "https://example.parliament.de/konstituierende-sitzung?wp=17"
+#       retrieved_at: "2026-01-13T00:00:00Z"
+#       content_hash: "sha256:..."

@@ -11,6 +11,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+import csv
+
 from langgraph_app.healthcheck import check_ollama_or_die
 from langgraph_app.settings import OLLAMA_BASE_URL, OLLAMA_MODEL, _settings
 
@@ -92,6 +94,475 @@ def _read_stdin_interactive() -> str | None:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "list-missing-legislature-starts":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli list-missing-legislature-starts")
+        sub.add_argument("--format", choices=["json", "csv"], default="json")
+        sub.add_argument("--out", type=str, default="")
+        sub.add_argument("--parliament-id", type=str, default="")
+        sub.add_argument(
+            "--official-registry",
+            type=str,
+            default="langgraph_app/sources/official_sources.yaml",
+            help="Path to official sources registry YAML",
+        )
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+        from langgraph_app.sources.official_registry import load_official_registry
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+
+        official_entries = load_official_registry(Path(args.official_registry))
+        official_map: dict[tuple[str, int], Any] = {
+            (e.parliament_id, e.term_number): e for e in official_entries
+        }
+
+        def parse_term_number(name: str | None, title: str | None) -> int | None:
+            for s in (title, name):
+                if not s:
+                    continue
+                m = __import__("re").search(r"\((\d+)\.\s*Wahlperiode\)", s)
+                if m:
+                    return int(m.group(1))
+                m = __import__("re").search(r"^(\d+)\.", s.strip())
+                if m:
+                    return int(m.group(1))
+            return None
+
+        try:
+            with driver.session() as session:
+                where = "WHERE l.start_date IS NULL"
+                params: dict[str, Any] = {}
+                if args.parliament_id:
+                    where += " AND l.parliament_id = $parliament_id"
+                    params["parliament_id"] = args.parliament_id
+
+                rows = session.run(
+                    f"""
+                    MATCH (l:Legislature)
+                    {where}
+                    OPTIONAL MATCH (l)-[:HAS_TERM]->(t:LegislatureTerm)
+                    RETURN l.parliament_id AS parliament_id,
+                           l.term_number AS term_number,
+                           l.name AS legislature_name,
+                           l.wikipedia_title AS wikipedia_title,
+                           l.source_url AS members_list_url,
+                           l.start_date_raw AS start_date_raw,
+                           l.start_date_precision AS start_date_precision,
+                           collect({{
+                               source_primary: t.source_primary,
+                               start_date: t.start_date,
+                               start_date_precision: t.start_date_precision,
+                               qid: t.qid,
+                               evidence_urls: t.evidence_urls
+                           }}) AS terms
+                    ORDER BY l.parliament_id, l.term_number, l.name
+                    """,
+                    **params,
+                ).data()
+
+            out_rows: list[dict[str, Any]] = []
+            for r in rows:
+                parliament_id = r.get("parliament_id")
+                legislature_name = r.get("legislature_name")
+                wikipedia_title = r.get("wikipedia_title")
+                term_number = r.get("term_number")
+                if term_number is None:
+                    term_number = parse_term_number(legislature_name, wikipedia_title)
+
+                terms = r.get("terms") or []
+                has_wikidata_term = any(
+                    isinstance(t, dict) and t.get("source_primary") == "wikidata" for t in terms
+                )
+                has_wikidata_day_precision = any(
+                    isinstance(t, dict)
+                    and t.get("source_primary") == "wikidata"
+                    and t.get("start_date")
+                    and t.get("start_date_precision") == "day"
+                    for t in terms
+                )
+
+                has_official_source = False
+                if parliament_id and isinstance(term_number, int):
+                    entry = official_map.get((parliament_id, term_number))
+                    has_official_source = bool(entry and entry.start_date)
+
+                out_rows.append(
+                    {
+                        "parliament_id": parliament_id,
+                        "term_number": term_number,
+                        "legislature_name": legislature_name,
+                        "members_list_oldid_url": r.get("members_list_url"),
+                        "wikipedia_title": wikipedia_title,
+                        "start_date_raw": r.get("start_date_raw"),
+                        "start_date_precision": r.get("start_date_precision") or "unknown",
+                        "has_official_source": has_official_source,
+                        "has_wikidata_term": has_wikidata_term,
+                        "has_wikidata_day_precision": has_wikidata_day_precision,
+                        "needs_registry_entry": (not has_official_source) and (not has_wikidata_day_precision),
+                        "recommended_action": "Add official source URL for constituting session date",
+                    }
+                )
+
+            output_path = Path(args.out) if args.out else None
+
+            if args.format == "json":
+                payload = {"generated_at": datetime.now(timezone.utc).isoformat(), "rows": out_rows}
+                content = json.dumps(payload, ensure_ascii=False, indent=2)
+                if output_path:
+                    output_path.write_text(content, encoding="utf-8")
+                else:
+                    print(content)
+                return
+
+            fieldnames = list(out_rows[0].keys()) if out_rows else [
+                "parliament_id",
+                "term_number",
+                "legislature_name",
+                "members_list_oldid_url",
+                "wikipedia_title",
+                "start_date_raw",
+                "start_date_precision",
+                "has_official_source",
+                "has_wikidata_term",
+                "has_wikidata_day_precision",
+                "needs_registry_entry",
+                "recommended_action",
+            ]
+            if output_path:
+                with output_path.open("w", encoding="utf-8", newline="") as f:
+                    w = csv.DictWriter(f, fieldnames=fieldnames)
+                    w.writeheader()
+                    for row in out_rows:
+                        w.writerow(row)
+            else:
+                w = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
+                w.writeheader()
+                for row in out_rows:
+                    w.writerow(row)
+            return
+        finally:
+            driver.close()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "ingest-official-terms":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli ingest-official-terms")
+        sub.add_argument(
+            "--official-registry",
+            type=str,
+            default="langgraph_app/sources/official_sources.yaml",
+            help="Path to official sources registry YAML",
+        )
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+        from langgraph_app.sources.official_registry import load_official_registry
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+
+        entries = load_official_registry(Path(args.official_registry))
+
+        def is_iso_day(value: str | None) -> bool:
+            return bool(value and __import__("re").match(r"^\\d{4}-\\d{2}-\\d{2}$", value))
+
+        try:
+            with driver.session() as session:
+                for e in entries:
+                    term_id = f"official:{e.parliament_id}:{e.term_number}"
+                    session.run(
+                        """
+                        MERGE (t:LegislatureTerm {id: $id})
+                        SET t.parliament_id = $parliament_id,
+                            t.term_number = $term_number,
+                            t.source_primary = "official",
+                            t.start_date = $start_date,
+                            t.start_date_precision = $start_date_precision,
+                            t.end_date = $end_date,
+                            t.end_date_precision = $end_date_precision,
+                            t.evidence_urls = $evidence_urls,
+                            t.source_meta_json = $source_meta_json
+                        """,
+                        id=term_id,
+                        parliament_id=e.parliament_id,
+                        term_number=e.term_number,
+                        start_date=e.start_date if is_iso_day(e.start_date) else None,
+                        start_date_precision="day" if is_iso_day(e.start_date) else "unknown",
+                        end_date=e.end_date if is_iso_day(e.end_date) else None,
+                        end_date_precision="day" if is_iso_day(e.end_date) else "unknown",
+                        evidence_urls=e.evidence_urls,
+                        source_meta_json=json.dumps(e.source_meta, ensure_ascii=False, sort_keys=True),
+                    )
+                    session.run(
+                        """
+                        MATCH (l:Legislature {parliament_id: $parliament_id, term_number: $term_number})
+                        MATCH (t:LegislatureTerm {id: $term_id})
+                        MERGE (l)-[:HAS_TERM]->(t)
+                        """,
+                        parliament_id=e.parliament_id,
+                        term_number=e.term_number,
+                        term_id=term_id,
+                    )
+        finally:
+            driver.close()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "generate-official-terms-skeleton":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli generate-official-terms-skeleton")
+        sub.add_argument(
+            "--official-registry",
+            type=str,
+            default="langgraph_app/sources/official_sources.yaml",
+            help="Path to official sources registry YAML (will be updated in-place unless --out is set)",
+        )
+        sub.add_argument(
+            "--out",
+            type=str,
+            default="",
+            help="Optional output path (if set, writes there instead of updating the input file)",
+        )
+        sub.add_argument(
+            "--include-bt",
+            action="store_true",
+            help="Also generate Bundestag terms (1..20) skeleton",
+        )
+        sub.add_argument(
+            "--include-br",
+            action="store_true",
+            help="Also generate Bundesrat placeholder terms skeleton (disabled by default)",
+        )
+        args = sub.parse_args(sys.argv[2:])
+
+        import yaml
+        from neo4j import GraphDatabase
+        from scraper.config import get_settings
+
+        in_path = Path(args.official_registry)
+        out_path = Path(args.out) if args.out else in_path
+
+        payload = yaml.safe_load(in_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            payload = {}
+
+        payload.setdefault("version", 1)
+        payload.setdefault("default", {})
+        payload.setdefault("parliaments", {})
+
+        parliaments = payload.get("parliaments")
+        if not isinstance(parliaments, dict):
+            parliaments = {}
+            payload["parliaments"] = parliaments
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                rows = session.run(
+                    """
+                    MATCH (l:Legislature)
+                    WHERE l.term_number IS NOT NULL
+                    RETURN l.parliament_id AS parliament_id,
+                           min(l.term_number) AS min_term,
+                           max(l.term_number) AS max_term
+                    ORDER BY parliament_id
+                    """
+                ).data()
+        finally:
+            driver.close()
+
+        ranges: dict[str, tuple[int, int]] = {}
+        for r in rows:
+            pid = r.get("parliament_id")
+            a = r.get("min_term")
+            b = r.get("max_term")
+            if isinstance(pid, str) and isinstance(a, int) and isinstance(b, int) and a > 0 and b >= a:
+                ranges[pid] = (a, b)
+
+        if args.include_bt:
+            ranges["BT"] = (1, 20)
+        if args.include_br and "BR" not in ranges:
+            ranges["BR"] = (1, 1)
+
+        for pid, (a, b) in ranges.items():
+            cfg = parliaments.get(pid)
+            if not isinstance(cfg, dict):
+                cfg = {"name": "", "homepage": "", "terms": []}
+                parliaments[pid] = cfg
+
+            terms = cfg.get("terms")
+            if not isinstance(terms, list):
+                terms = []
+                cfg["terms"] = terms
+
+            existing: dict[int, dict[str, Any]] = {}
+            for t in terms:
+                if isinstance(t, dict) and isinstance(t.get("term_number"), int):
+                    existing[int(t["term_number"])] = t
+
+            new_terms: list[dict[str, Any]] = []
+            for n in range(a, b + 1):
+                if n in existing:
+                    entry = existing[n]
+                    entry.setdefault("evidence_urls", [])
+                    new_terms.append(entry)
+                    continue
+                new_terms.append({"term_number": n, "start_date": None, "evidence_urls": []})
+
+            cfg["terms"] = new_terms
+
+        out_path.write_text(
+            yaml.safe_dump(payload, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "ingest-wikidata-term":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli ingest-wikidata-term")
+        sub.add_argument("--qid", type=str, required=True)
+        sub.add_argument("--parliament-id", type=str, default="")
+        sub.add_argument("--term-number", type=int, default=0)
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+        from langgraph_app.sources.wikidata_terms import fetch_entity_pinned, fetch_lastrevid, parse_term_from_entitydata
+
+        qid = args.qid.strip().upper()
+        revision = fetch_lastrevid(qid)
+        entitydata = fetch_entity_pinned(qid, revision)
+        term = parse_term_from_entitydata(qid, revision, entitydata)
+
+        def precision_label(p: int) -> str:
+            if p == 11:
+                return "day"
+            if p == 10:
+                return "month"
+            if p == 9:
+                return "year"
+            return "unknown"
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                term_id = f"wikidata:{qid}:{revision}"
+                session.run(
+                    """
+                    MERGE (t:LegislatureTerm {id: $id})
+                    SET t.qid = $qid,
+                        t.parliament_id = $parliament_id,
+                        t.term_number = $term_number,
+                        t.name = $name,
+                        t.source_primary = "wikidata",
+                        t.start_date = $start_date,
+                        t.start_date_precision = $start_date_precision,
+                        t.start_date_raw = $start_date_raw,
+                        t.end_date = $end_date,
+                        t.end_date_precision = $end_date_precision,
+                        t.end_date_raw = $end_date_raw,
+                        t.evidence_urls = $evidence_urls,
+                        t.source_meta_json = $source_meta_json
+                    """,
+                    id=term_id,
+                    qid=term.qid,
+                    parliament_id=args.parliament_id or None,
+                    term_number=args.term_number or None,
+                    name=term.name,
+                    start_date=term.start.value_iso,
+                    start_date_precision=precision_label(term.start.precision),
+                    start_date_raw=term.start.raw,
+                    end_date=term.end.value_iso,
+                    end_date_precision=precision_label(term.end.precision),
+                    end_date_raw=term.end.raw,
+                    evidence_urls=[term.evidence_url],
+                    source_meta_json=json.dumps(term.source_meta, ensure_ascii=False, sort_keys=True),
+                )
+                if args.parliament_id and args.term_number:
+                    session.run(
+                        """
+                        MATCH (l:Legislature {parliament_id: $parliament_id, term_number: $term_number})
+                        MATCH (t:LegislatureTerm {id: $term_id})
+                        MERGE (l)-[:HAS_TERM]->(t)
+                        """,
+                        parliament_id=args.parliament_id,
+                        term_number=args.term_number,
+                        term_id=term_id,
+                    )
+        finally:
+            driver.close()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "propagate-legislature-starts":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli propagate-legislature-starts")
+        sub.add_argument("--parliament-id", type=str, default="")
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                where = "WHERE l.start_date IS NULL"
+                params: dict[str, Any] = {}
+                if args.parliament_id:
+                    where += " AND l.parliament_id = $parliament_id"
+                    params["parliament_id"] = args.parliament_id
+
+                result = session.run(
+                    f"""
+                    MATCH (l:Legislature)
+                    {where}
+                    MATCH (l)-[:HAS_TERM]->(t:LegislatureTerm)
+                    WHERE t.start_date IS NOT NULL AND t.start_date_precision = "day"
+                    WITH l, t,
+                         CASE t.source_primary
+                            WHEN "official" THEN 1
+                            WHEN "wikidata" THEN 2
+                            WHEN "wikipedia" THEN 3
+                            ELSE 99
+                         END AS rank
+                    ORDER BY rank ASC
+                    WITH l, head(collect(t)) AS best
+                    SET l.start_date = best.start_date,
+                        l.start_date_precision = "day",
+                        l.start_date_source = best.source_primary,
+                        l.start_date_evidence_urls = best.evidence_urls,
+                        l.start_date_source_meta_json = best.source_meta_json
+                    RETURN count(l) AS updated
+                    """,
+                    **params,
+                )
+                updated = result.single().get("updated")
+                mandate_backfilled = session.run(
+                    """
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
+                    SET m.start_date = l.start_date,
+                        m.start_date_source = "legislature"
+                    RETURN count(m) AS backfilled
+                    """
+                ).single().get("backfilled")
+
+                print(
+                    json.dumps(
+                        {
+                            "legislatures_updated": updated,
+                            "mandates_start_backfilled": mandate_backfilled,
+                        }
+                    )
+                )
+        finally:
+            driver.close()
+        return
+
     parser = argparse.ArgumentParser(
         description="CLI for members.list MVP runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,

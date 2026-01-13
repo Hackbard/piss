@@ -330,13 +330,13 @@ class PipelineRunner:
 
             start_date_raw = time_range.get("start") if isinstance(time_range, dict) else None
             end_date_raw = time_range.get("end") if isinstance(time_range, dict) else None
-            start_date = normalize_date(start_date_raw)
-            end_date = normalize_date(end_date_raw)
+            start_date = None
+            end_date = None
 
             extracted = extract_legislature_dates(response)
 
-            final_start_date = extracted.start_date or start_date
-            final_end_date = extracted.end_date or end_date
+            final_start_date = extracted.start_date
+            final_end_date = extracted.end_date
 
             final_start_raw = (
                 extracted.start_date_raw
@@ -352,13 +352,16 @@ class PipelineRunner:
             legislature = Legislature(
                 id=legislature_id,
                 parliament_id=parliament_id,
+                term_number=int(legislature_number),
                 name=legislature_name,
                 start_date=final_start_date,
                 end_date=final_end_date,
                 start_date_raw=final_start_raw,
                 end_date_raw=final_end_raw,
-                start_date_source="wikipedia_list" if extracted.start_date else ("seed_expected_time_range" if start_date else None),
-                end_date_source="wikipedia_list" if extracted.end_date else ("seed_expected_time_range" if end_date else None),
+                start_date_precision=extracted.start_date_precision,
+                end_date_precision=extracted.end_date_precision,
+                start_date_source="wikipedia" if extracted.start_date else None,
+                end_date_source="wikipedia" if extracted.end_date else None,
                 source_url=source_url_canonical,
                 wikipedia_title=response.page_title,
                 evidence_ids=[legislature_data.evidence_id],

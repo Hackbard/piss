@@ -9,7 +9,7 @@
 docker compose up -d neo4j meilisearch
 
 # Seeds für alle 16 Landtage automatisch entdecken
-docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
+docker compose run --rm --build scraper scraper seed --discover --landtage --pin-revisions
 ```
 
 **Was passiert:**
@@ -28,7 +28,7 @@ docker compose run --rm scraper scraper seed --discover --landtage --pin-revisio
 # DIP_API_KEY muss in .env gesetzt sein
 
 # Pipeline OHNE --seed = lädt ALLE Seeds automatisch
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -45,7 +45,7 @@ docker compose run --rm scraper scraper pipeline \
 
 **Mit `--force` (ignoriert Cache, lädt alles neu):**
 ```bash
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -56,7 +56,7 @@ docker compose run --rm scraper scraper pipeline \
 
 **Ohne Personenseiten (schneller, aber weniger Daten):**
 ```bash
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -70,23 +70,50 @@ docker compose run --rm scraper scraper pipeline \
 - `--fetch-person-pages` (default: aktiviert) lädt auch einzelne Personenseiten für Intro, Geburtsdatum, etc.
 - Ohne `--no-fetch-person-pages` ist es schneller, aber weniger Daten
 
+### Schritt 2.5: Legislature-Startdaten vervollständigen (Teil vom Gesamt-Quickstart)
+
+Damit `scraper validate` **grün** werden kann, müssen Mandate day-only `start_date` haben. Diese werden **nicht geschätzt**, sondern streng aus **day-precise** `Legislature.start_date` propagiert (konstituierende Sitzung / erste Sitzung). Wenn der Tag nicht belegt ist, bleibt `Legislature.start_date = null` und es wird nur `start_date_raw` + `start_date_precision` gespeichert.
+
+Der komplette Ablauf besteht aus vier Schritten:
+
+```bash
+# A) Wikipedia-Listen erneut parsen (oldid-pinned) → füllt source_url/wikipedia_title + RAW/PRECISION
+docker compose run --rm --build scraper scraper repair-legislature-dates --limit 500
+
+# B) Enrichment-Queue erzeugen → zeigt, welche Wahlperioden noch KEIN day-only start_date haben
+docker compose run --rm --build scraper python -m langgraph_app.cli list-missing-legislature-starts \
+  --format json
+
+# C) Offizielle Quellen einpflegen (einmalig): langgraph_app/sources/official_sources.yaml
+#    - Pro Parlament `terms[]` mit `term_number` + day-only `start_date` hinterlegen (konstituierende Sitzung / erste Sitzung)
+#    - Wenn kein day-only Datum belegbar ist: start_date leer lassen (NULL bleibt korrekt)
+docker compose run --rm --build scraper python -m langgraph_app.cli ingest-official-terms
+
+# D) Propagieren: official > wikidata > wikipedia (nur precision == day)
+#    → setzt Legislature.start_date und backfilled Mandate.start_date
+docker compose run --rm --build scraper python -m langgraph_app.cli propagate-legislature-starts
+
+# E) Mandate-IDs nach Backfill reparieren (verhindert Duplikate/Overlap-Errors im Validator)
+docker compose run --rm --build scraper scraper repair-mandate-ids
+```
+
 ### Schritt 3: Daten validieren
 
 ```bash
 # Validator ausführen (prüft Datenqualität)
-docker compose run --rm scraper scraper validate
+docker compose run --rm --build scraper scraper validate
 
 # Mit Datumsfilter
-docker compose run --rm scraper scraper validate --from 2014-01-01 --to 2020-12-31
+docker compose run --rm --build scraper scraper validate --from 2014-01-01 --to 2020-12-31
 
 # Mit Parliament-Filter
-docker compose run --rm scraper scraper validate --parliament NI
+docker compose run --rm --build scraper scraper validate --parliament NI
 
 # Strict Mode (Missing Evidence = ERROR)
-docker compose run --rm scraper scraper validate --strict
+docker compose run --rm --build scraper scraper validate --strict
 
 # JSON Output (für CI/CD)
-docker compose run --rm scraper scraper validate --json
+docker compose run --rm --build scraper scraper validate --json
 ```
 
 **Was wird geprüft:**
@@ -97,6 +124,8 @@ docker compose run --rm scraper scraper validate --json
 - ✅ Überlappende Mandate (verschiedene Parteien) → WARN (Parteiwechsel)
 - ✅ Unbekannte `party_code` → WARN
 - ✅ Fehlende Evidence → WARN (oder ERROR im strict mode)
+
+**Hinweis:** Wenn du noch keine day-only `Legislature.start_date` propagiert hast, sind Mandate oft noch ohne `start_date` → der Validator schlägt dann (korrekt) fehl. Dann erst Schritt 2.5 sauber fertig machen, danach validieren.
 
 **Exit Codes:**
 - `0` = Keine Errors (Warnings sind OK)
@@ -126,7 +155,7 @@ curl "http://localhost:7700/indexes/persons/search" \
 
 ```bash
 # Lädt ALLE Seeds (167+ Landtags-Mitgliederlisten) + ALLE DIP Wahlperioden (1-50)
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -144,7 +173,7 @@ docker compose run --rm scraper scraper pipeline \
 
 ```bash
 # Lädt nur Bundestags-Daten (alle Wahlperioden 1-50)
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --write-neo4j \
   --write-meili \
@@ -159,7 +188,7 @@ docker compose run --rm scraper scraper pipeline \
 
 ```bash
 # Z.B. Berlin Abgeordnetenhaus, 1. Wahlperiode
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --seed be_ah_1 \
   --write-neo4j \
   --write-meili \
@@ -175,7 +204,7 @@ docker compose run --rm scraper scraper pipeline \
 
 ```bash
 # Lädt einen Landtag + nur bestimmte Bundestags-Wahlperioden
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --seed be_ah_1 \
   --ingest-dip \
   --dip-wahlperiode "19,20" \
@@ -352,11 +381,11 @@ docker compose build scraper
 docker compose up -d neo4j meilisearch
 
 # 3. Seeds entdecken (nutzt Cache, findet ~167 Seeds)
-docker compose run --rm scraper scraper seed --discover --landtage --pin-revisions
+docker compose run --rm --build scraper scraper seed --discover --landtage --pin-revisions
 
 # 4. ALLES laden (ALLE Seeds + ALLE DIP Wahlperioden + ALLE Personenseiten)
 #    Cache wird automatisch genutzt - keine Duplikate!
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -364,10 +393,10 @@ docker compose run --rm scraper scraper pipeline \
   --fetch-person-pages
 
 # 5. Daten validieren
-docker compose run --rm scraper scraper validate
+docker compose run --rm --build scraper scraper validate
 
 # 6. Evidence Resolver testen - mit Row-level Citations
-docker compose run --rm scraper scraper evidence --resolve-from-meili \
+docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
   --query "Stephan Weil" \
   --index persons \
   --limit 1 \
@@ -387,7 +416,7 @@ docker compose run --rm scraper scraper evidence --resolve-from-meili \
 docker compose build scraper
 
 # Pipeline läuft - nutzt automatisch Cache, schreibt nur in Neo4j/Meili neu
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -395,7 +424,7 @@ docker compose run --rm scraper scraper pipeline \
   --fetch-person-pages
 
 # Validieren
-docker compose run --rm scraper scraper validate
+docker compose run --rm --build scraper scraper validate
 ```
 
 **Vorteil:** Schnell, nutzt gecachte Wikipedia/DIP-Responses. Nur Neo4j/Meilisearch werden aktualisiert.
@@ -407,7 +436,7 @@ docker compose run --rm scraper scraper validate
 docker compose build scraper
 
 # Pipeline mit --force (lädt ALLES neu, ignoriert Cache)
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --ingest-dip \
   --reconcile \
   --write-neo4j \
@@ -416,7 +445,7 @@ docker compose run --rm scraper scraper pipeline \
   --force
 
 # Validieren
-docker compose run --rm scraper scraper validate
+docker compose run --rm --build scraper scraper validate
 ```
 
 **Vorteil:** Vollständig aktuelle Daten. **Nachteil:** Langsam (30-60 Minuten), Rate-Limiting.
@@ -425,14 +454,14 @@ docker compose run --rm scraper scraper validate
 
 ```bash
 # Einzelner Seed neu laden (nutzt Cache für andere Seeds)
-docker compose run --rm scraper scraper pipeline \
+docker compose run --rm --build scraper scraper pipeline \
   --seed nds_lt_17 \
   --write-neo4j \
   --write-meili \
   --fetch-person-pages
 
 # Validieren
-docker compose run --rm scraper scraper validate
+docker compose run --rm --build scraper scraper validate
 ```
 
 **Vorteil:** Selektiv, schnell für einzelne Landtage.
