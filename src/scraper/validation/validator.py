@@ -1,5 +1,5 @@
-from datetime import date
-from typing import Any, Dict, List, Optional
+from datetime import date, datetime, timezone
+from typing import Any, Dict, List, Literal, Optional
 
 from scraper.models.domain import Mandate, Party, Person
 from scraper.utils.intervals import interval_overlaps, parse_date_iso
@@ -10,12 +10,40 @@ class ValidationError(Exception):
     pass
 
 
+ValidationMode = Literal["integrity", "completeness", "all"]
+
+
+def is_integrity_issue(code: str) -> bool:
+    """Check if a validation code represents an integrity issue."""
+    integrity_codes = {
+        "MANDATE_END_BEFORE_START",
+        "MANDATE_INVALID_START_DATE",
+        "MANDATE_DUPLICATE",
+        "MANDATE_OVERLAP_SAME_PARTY",
+        "DATE_CANONICAL_WITHOUT_EVIDENCE",
+        "DATE_RAW_WITHOUT_PRECISION",
+        "DATE_PRECISION_INVALID",
+        "DATE_CONFLICT",
+    }
+    return code in integrity_codes
+
+
+def is_completeness_issue(code: str) -> bool:
+    """Check if a validation code represents a completeness issue."""
+    completeness_codes = {
+        "MANDATE_MISSING_START_DATE",
+        "LEGISLATURE_MISSING_START_DATE",
+    }
+    return code in completeness_codes
+
+
 class ValidationResult:
     """Result of a validation run."""
     
-    def __init__(self):
+    def __init__(self, mode: ValidationMode = "integrity"):
         self.errors: List[Dict[str, Any]] = []
         self.warnings: List[Dict[str, Any]] = []
+        self.mode: ValidationMode = mode
     
     def add_error(self, code: str, message: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None) -> None:
         """Add an error to the result."""
@@ -39,20 +67,60 @@ class ValidationResult:
         """Check if there are any errors."""
         return len(self.errors) > 0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def classify_by_mode(self) -> None:
+        """Reclassify errors and warnings based on validation mode."""
+        if self.mode == "all":
+            return
+        
+        integrity_errors = []
+        completeness_errors = []
+        integrity_warnings = []
+        completeness_warnings = []
+        other_errors = []
+        other_warnings = []
+        
+        for error in self.errors:
+            if is_integrity_issue(error["code"]):
+                integrity_errors.append(error)
+            elif is_completeness_issue(error["code"]):
+                completeness_errors.append(error)
+            else:
+                other_errors.append(error)
+        
+        for warning in self.warnings:
+            if is_integrity_issue(warning["code"]):
+                integrity_warnings.append(warning)
+            elif is_completeness_issue(warning["code"]):
+                completeness_warnings.append(warning)
+            else:
+                other_warnings.append(warning)
+        
+        if self.mode == "integrity":
+            self.errors = integrity_errors + other_errors
+            self.warnings = completeness_errors + completeness_warnings + integrity_warnings + other_warnings
+        elif self.mode == "completeness":
+            self.errors = []
+            self.warnings = completeness_errors + completeness_warnings + integrity_errors + integrity_warnings + other_errors + other_warnings
+    
+    def to_dict(self, version: Optional[str] = None) -> Dict[str, Any]:
         """Convert result to dictionary."""
         return {
             "errors": self.errors,
             "warnings": self.warnings,
             "error_count": len(self.errors),
             "warning_count": len(self.warnings),
+            "meta": {
+                "mode": self.mode,
+                "executed_at": datetime.now(timezone.utc).isoformat(),
+                "version": version,
+            },
         }
 
 
 class DataValidator:
     """Validator for domain entities."""
     
-    def __init__(self, strict_mode: bool = False, strict_completeness: bool = False):
+    def __init__(self, strict_mode: bool = False, strict_completeness: bool = False, mode: ValidationMode = "integrity"):
         """
         Initialize validator.
         
@@ -60,9 +128,11 @@ class DataValidator:
             strict_mode: If True, missing evidence is treated as ERROR instead of WARN
             strict_completeness: If True, missing start_date is treated as ERROR (completeness gap).
                                 If False (default), missing start_date is treated as WARNING.
+            mode: Validation mode - "integrity" (default), "completeness", or "all"
         """
         self.strict_mode = strict_mode
         self.strict_completeness = strict_completeness
+        self.mode = mode
         self.known_party_codes: set[str] = set()
     
     def validate_mandate(self, mandate: Mandate, result: ValidationResult) -> None:
@@ -247,7 +317,7 @@ class DataValidator:
         Returns:
             ValidationResult with errors and warnings
         """
-        result = ValidationResult()
+        result = ValidationResult(mode=self.mode)
         
         if parties:
             self.known_party_codes = {p.code for p in parties if p.code}
@@ -270,6 +340,7 @@ class DataValidator:
             person_mandates = [m for m in filtered_mandates if m.person_id == person_id]
             self.validate_mandate_overlaps(person_mandates, result, person_id=person_id)
         
+        result.classify_by_mode()
         return result
 
 
@@ -299,7 +370,7 @@ class DataValidator:
             ValidationResult with errors and warnings
         """
         if result is None:
-            result = ValidationResult()
+            result = ValidationResult(mode=self.mode)
 
         rows = session.run(
             f"""
@@ -326,7 +397,7 @@ class DataValidator:
                 )
 
             if row.get("conflict") is True:
-                result.add_warning(
+                result.add_error(
                     "DATE_CONFLICT",
                     f"{entity_type} {entity_id} has a date conflict on {field}",
                     entity_id=entity_id,
@@ -355,4 +426,5 @@ class DataValidator:
                     entity_type=entity_type,
                 )
 
+        result.classify_by_mode()
         return result

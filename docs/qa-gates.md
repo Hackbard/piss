@@ -68,14 +68,24 @@ scraper validate --parliament NI
 scraper validate --from 2014-01-01 --to 2020-12-31 --parliament NI
 ```
 
-### Strict Mode
+### Validation Modes
 
 ```bash
-# Missing Evidence wird zu ERROR
-scraper validate --strict
+# Integrity Mode (default): Nur Dateninkonsistenzen sind Errors
+# Missing start_date → WARNING (completeness gap)
+scraper validate --mode integrity
 
-# Strict Completeness: Missing start_date wird zu ERROR (default: WARNING)
+# Completeness Mode: Fokus auf Completeness-Gaps
+scraper validate --mode completeness
+
+# All Mode: Beide Arten von Problemen sind Errors
+scraper validate --mode all
+
+# Strict Completeness (Legacy-Alias für --mode all)
 scraper validate --strict-completeness
+
+# Strict Evidence: Missing Evidence wird zu ERROR
+scraper validate --strict
 
 # Kombiniert: Strict Evidence + Strict Completeness
 scraper validate --strict --strict-completeness
@@ -85,7 +95,8 @@ scraper validate --strict --strict-completeness
 
 ```bash
 # Output als JSON (für CI/Programmierung)
-scraper validate --json
+# Reines JSON zu stdout, Logs zu stderr (jq-kompatibel)
+scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
 ```
 
 ### Exit Codes
@@ -114,13 +125,19 @@ scraper validate --json
 {
   "errors": [
     {
-      "code": "MANDATE_MISSING_START_DATE",
-      "message": "Mandate mandate-123 is missing required start_date",
-      "entity_id": "mandate-123",
+      "code": "MANDATE_END_BEFORE_START",
+      "message": "Mandate mandate-456 has end_date (2020-01-01) before start_date (2020-12-31)",
+      "entity_id": "mandate-456",
       "entity_type": "Mandate"
     }
   ],
   "warnings": [
+    {
+      "code": "MANDATE_MISSING_START_DATE",
+      "message": "Mandate mandate-123 is missing start_date (completeness gap)",
+      "entity_id": "mandate-123",
+      "entity_type": "Mandate"
+    },
     {
       "code": "MANDATE_UNKNOWN_PARTY_CODE",
       "message": "Mandate mandate-789 has unknown party_code: UNKNOWN",
@@ -129,7 +146,12 @@ scraper validate --json
     }
   ],
   "error_count": 1,
-  "warning_count": 1
+  "warning_count": 2,
+  "meta": {
+    "mode": "integrity",
+    "executed_at": "2024-01-15T10:30:00Z",
+    "version": "1.0.0"
+  }
 }
 ```
 
@@ -140,7 +162,8 @@ scraper validate --json
 ```yaml
 - name: Validate Data
   run: |
-    docker compose run --rm scraper scraper validate --json > validation.json
+    docker compose run --rm --build scraper scraper validate --json > validation.json
+    jq '{error_count, warning_count, meta: .meta}' validation.json
     if [ $? -ne 0 ]; then
       echo "Validation failed"
       cat validation.json

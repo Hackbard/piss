@@ -106,7 +106,8 @@ docker compose run --rm --build scraper scraper repair-mandate-ids
 
 ```bash
 # Validator ausführen (prüft Datenqualität)
-# Default: Missing start_date ist WARNING (completeness gap, nicht hard error)
+# Default (integrity mode): Missing start_date ist WARNING (completeness gap, nicht hard error)
+# Nur Integrity-Fehler (Dateninkonsistenzen) blockieren die Pipeline
 docker compose run --rm --build scraper scraper validate
 
 # Mit Datumsfilter
@@ -115,7 +116,16 @@ docker compose run --rm --build scraper scraper validate --from 2014-01-01 --to 
 # Mit Parliament-Filter
 docker compose run --rm --build scraper scraper validate --parliament NI
 
-# Strict Completeness Mode (Missing start_date = ERROR)
+# Integrity Mode (explizit, Standard)
+docker compose run --rm --build scraper scraper validate --mode integrity
+
+# Completeness Mode (nur Completeness-Gaps)
+docker compose run --rm --build scraper scraper validate --mode completeness
+
+# All Mode (beide Arten von Fehlern blockieren)
+docker compose run --rm --build scraper scraper validate --mode all
+
+# Strict Completeness Mode (Legacy-Alias für --mode all)
 docker compose run --rm --build scraper scraper validate --strict-completeness
 
 # Strict Mode (Missing Evidence = ERROR)
@@ -124,18 +134,20 @@ docker compose run --rm --build scraper scraper validate --strict
 # Kombiniert: Strict Evidence + Strict Completeness
 docker compose run --rm --build scraper scraper validate --strict --strict-completeness
 
-# JSON Output (für CI/CD)
-docker compose run --rm --build scraper scraper validate --json
+# JSON Output (für CI/CD): Reines JSON zu stdout, Logs zu stderr (jq-kompatibel)
+docker compose run --rm --build scraper scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
 ```
 
 **Was wird geprüft:**
-- ✅ Fehlende `start_date` → **WARNING** (default) oder **ERROR** (mit `--strict-completeness`)
+- ✅ Fehlende `start_date` → **WARNING** (default/integrity mode) oder **ERROR** (mit `--mode all` / `--strict-completeness`)
 - ✅ `end_date < start_date` → ERROR (Integrity-Fehler)
 - ✅ Doppelte Mandate → ERROR (Integrity-Fehler)
 - ✅ Überlappende Mandate (gleiche Partei) → ERROR (Integrity-Fehler)
 - ✅ Überlappende Mandate (verschiedene Parteien) → WARN (Parteiwechsel)
 - ✅ Unbekannte `party_code` → WARN
 - ✅ Fehlende Evidence → WARN (oder ERROR im strict mode)
+- ✅ `DATE_CANONICAL_WITHOUT_EVIDENCE` → ERROR (Integrity-Fehler)
+- ✅ `DATE_CONFLICT` → ERROR (Integrity-Fehler) oder WARN (je nach Mode)
 
 **Hinweis:** 
 - **Default-Modus**: Missing `start_date` ist ein **WARNING** (Completeness-Gap, kein Hard-Error). Dies erlaubt es, die Pipeline auch dann auszuführen, wenn noch nicht alle Term-Startdaten verfügbar sind.

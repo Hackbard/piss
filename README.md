@@ -202,10 +202,20 @@ scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5]
 
 #### Validator
 ```bash
-# Default: Missing start_date = WARNING (completeness gap)
+# Default (integrity mode): Missing start_date = WARNING (completeness gap)
+# Only integrity issues (data inconsistencies) are errors
 scraper validate [--json]
 
-# Strict Completeness: Missing start_date = ERROR
+# Integrity mode (explicit): Same as default
+scraper validate --mode integrity [--json]
+
+# Completeness mode: Focus on completeness gaps only
+scraper validate --mode completeness [--json]
+
+# All mode: Both integrity and completeness issues are errors
+scraper validate --mode all [--json]
+
+# Strict Completeness (legacy alias for --mode all)
 scraper validate --strict-completeness [--json]
 
 # Strict Evidence: Missing evidence = ERROR
@@ -213,6 +223,9 @@ scraper validate --strict [--json]
 
 # Kombiniert
 scraper validate --strict --strict-completeness [--json]
+
+# JSON Output: Pure JSON to stdout, logs to stderr (jq-compatible)
+scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
 ```
 
 ## LangGraph MVP: Members List CLI

@@ -489,14 +489,45 @@ def validate(
     to_date: Optional[str] = Option(None, "--to", help="Filter to date (YYYY-MM-DD)"),
     parliament: Optional[str] = Option(None, "--parliament", help="Filter by parliament ID"),
     strict: bool = Option(False, "--strict", help="Strict mode: missing evidence is ERROR"),
-    strict_completeness: bool = Option(False, "--strict-completeness", help="Strict completeness: missing start_date is ERROR (default: WARNING)"),
-    json_output: bool = Option(False, "--json", help="Output as JSON"),
+    strict_completeness: bool = Option(False, "--strict-completeness", help="Strict completeness: missing start_date is ERROR (default: WARNING). Equivalent to --mode all."),
+    mode: str = Option("integrity", "--mode", help="Validation mode: integrity (default), completeness, or all"),
+    json_output: bool = Option(False, "--json", help="Output as JSON (stdout only, logs go to stderr)"),
 ) -> None:
     """Validate data quality."""
+    import json
+    import logging
     from datetime import date as date_type
-    from scraper.validation.validator import DataValidator
+    from scraper.validation.validator import DataValidator, ValidationMode
     from scraper.sinks.neo4j import Neo4jSink
     from scraper.models.domain import Mandate, Party
+    
+    if json_output:
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.CRITICAL + 1)
+        stdout_handlers = []
+        for handler in list(root_logger.handlers):
+            if isinstance(handler, logging.StreamHandler):
+                try:
+                    stream = getattr(handler, 'stream', None)
+                    if stream is sys.stdout:
+                        stdout_handlers.append(handler)
+                        root_logger.removeHandler(handler)
+                except (AttributeError, OSError, ValueError):
+                    pass
+        if stdout_handlers:
+            stderr_handler = logging.StreamHandler(sys.stderr)
+            if stdout_handlers[0].formatter:
+                stderr_handler.setFormatter(stdout_handlers[0].formatter)
+            stderr_handler.setLevel(logging.CRITICAL + 1)
+            root_logger.addHandler(stderr_handler)
+    
+    if mode not in ["integrity", "completeness", "all"]:
+        typer.echo(f"✗ Invalid mode: {mode}. Must be one of: integrity, completeness, all", err=True)
+        sys.exit(1)
+    
+    validation_mode: ValidationMode = mode
+    if strict_completeness:
+        validation_mode = "all"
     
     try:
         from_date_obj = date_type.fromisoformat(from_date) if from_date else None
@@ -564,7 +595,7 @@ def validate(
         if skipped_parties_count > 0:
             typer.echo(f"⚠ Skipped {skipped_parties_count} party/parties without code (legacy data)", err=True)
     
-    validator = DataValidator(strict_mode=strict, strict_completeness=strict_completeness)
+    validator = DataValidator(strict_mode=strict, strict_completeness=strict_completeness, mode=validation_mode)
     result = validator.validate_all(
         mandates=mandates,
         parties=parties,
@@ -573,9 +604,17 @@ def validate(
         parliament_id=parliament,
     )
     
+    try:
+        import importlib.metadata
+        version = importlib.metadata.version("piss")
+    except Exception:
+        version = None
+    
     if json_output:
-        import json
-        print(json.dumps(result.to_dict(), indent=2))
+        json_output_str = json.dumps(result.to_dict(version=version), ensure_ascii=False)
+        sys.stdout.write(json_output_str)
+        sys.stdout.write('\n')
+        sys.stdout.flush()
     else:
         if result.errors:
             typer.echo(f"✗ Validation failed: {len(result.errors)} errors, {len(result.warnings)} warnings", err=True)
