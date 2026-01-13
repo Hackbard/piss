@@ -74,7 +74,7 @@ docker compose run --rm --build scraper scraper pipeline \
 
 Damit `scraper validate` **grün** werden kann, müssen Mandate day-only `start_date` haben. Diese werden **nicht geschätzt**, sondern streng aus **day-precise** `Legislature.start_date` propagiert (konstituierende Sitzung / erste Sitzung). Wenn der Tag nicht belegt ist, bleibt `Legislature.start_date = null` und es wird nur `start_date_raw` + `start_date_precision` gespeichert.
 
-Der komplette Ablauf besteht aus vier Schritten:
+Der komplette Ablauf besteht aus sechs Schritten:
 
 ```bash
 # A) Wikipedia-Listen erneut parsen (oldid-pinned) → füllt source_url/wikipedia_title + RAW/PRECISION
@@ -89,11 +89,16 @@ docker compose run --rm --build scraper python -m langgraph_app.cli list-missing
 #    - Wenn kein day-only Datum belegbar ist: start_date leer lassen (NULL bleibt korrekt)
 docker compose run --rm --build scraper python -m langgraph_app.cli ingest-official-terms
 
-# D) Propagieren: official > wikidata > wikipedia (nur precision == day)
-#    → setzt Legislature.start_date und backfilled Mandate.start_date
+# D) Wikidata-Terms einpflegen (optional, aber empfohlen): langgraph_app/sources/wikidata_mapping.yaml
+#    - Mapping-Datei mit QIDs pro Parliament/Term befüllen
+#    - Nur day-precision Terms werden verarbeitet (precision=11)
+docker compose run --rm --build scraper python -m langgraph_app.cli ingest-wikidata-terms --all
+
+# E) Propagieren: official > wikidata > wikipedia (nur precision == day)
+#    → setzt Legislature.start_date und backfilled Mandate.start_date automatisch
 docker compose run --rm --build scraper python -m langgraph_app.cli propagate-legislature-starts
 
-# E) Mandate-IDs nach Backfill reparieren (verhindert Duplikate/Overlap-Errors im Validator)
+# F) Mandate-IDs nach Backfill reparieren (verhindert Duplikate/Overlap-Errors im Validator)
 docker compose run --rm --build scraper scraper repair-mandate-ids
 ```
 
@@ -101,6 +106,7 @@ docker compose run --rm --build scraper scraper repair-mandate-ids
 
 ```bash
 # Validator ausführen (prüft Datenqualität)
+# Default: Missing start_date ist WARNING (completeness gap, nicht hard error)
 docker compose run --rm --build scraper scraper validate
 
 # Mit Datumsfilter
@@ -109,23 +115,32 @@ docker compose run --rm --build scraper scraper validate --from 2014-01-01 --to 
 # Mit Parliament-Filter
 docker compose run --rm --build scraper scraper validate --parliament NI
 
+# Strict Completeness Mode (Missing start_date = ERROR)
+docker compose run --rm --build scraper scraper validate --strict-completeness
+
 # Strict Mode (Missing Evidence = ERROR)
 docker compose run --rm --build scraper scraper validate --strict
+
+# Kombiniert: Strict Evidence + Strict Completeness
+docker compose run --rm --build scraper scraper validate --strict --strict-completeness
 
 # JSON Output (für CI/CD)
 docker compose run --rm --build scraper scraper validate --json
 ```
 
 **Was wird geprüft:**
-- ✅ Fehlende `start_date` → ERROR
-- ✅ `end_date < start_date` → ERROR
-- ✅ Doppelte Mandate → ERROR
-- ✅ Überlappende Mandate (gleiche Partei) → ERROR
+- ✅ Fehlende `start_date` → **WARNING** (default) oder **ERROR** (mit `--strict-completeness`)
+- ✅ `end_date < start_date` → ERROR (Integrity-Fehler)
+- ✅ Doppelte Mandate → ERROR (Integrity-Fehler)
+- ✅ Überlappende Mandate (gleiche Partei) → ERROR (Integrity-Fehler)
 - ✅ Überlappende Mandate (verschiedene Parteien) → WARN (Parteiwechsel)
 - ✅ Unbekannte `party_code` → WARN
 - ✅ Fehlende Evidence → WARN (oder ERROR im strict mode)
 
-**Hinweis:** Wenn du noch keine day-only `Legislature.start_date` propagiert hast, sind Mandate oft noch ohne `start_date` → der Validator schlägt dann (korrekt) fehl. Dann erst Schritt 2.5 sauber fertig machen, danach validieren.
+**Hinweis:** 
+- **Default-Modus**: Missing `start_date` ist ein **WARNING** (Completeness-Gap, kein Hard-Error). Dies erlaubt es, die Pipeline auch dann auszuführen, wenn noch nicht alle Term-Startdaten verfügbar sind.
+- **Strict-Completeness-Modus**: Mit `--strict-completeness` werden Missing `start_date` als **ERROR** behandelt (für CI/CD-Gates, wenn 100% Coverage erforderlich ist).
+- Wenn du noch keine day-only `Legislature.start_date` propagiert hast, sind Mandate oft noch ohne `start_date` → im Default-Modus gibt es Warnings, aber keine Errors.
 
 **Exit Codes:**
 - `0` = Keine Errors (Warnings sind OK)
@@ -142,6 +157,21 @@ docker compose exec neo4j cypher-shell -u neo4j -p password \
 docker compose exec neo4j cypher-shell -u neo4j -p password \
   "MATCH (a:PersonLinkAssertion) RETURN a.status, count(a) as count"
 
+# Neo4j: Legislatures ohne start_date zählen
+docker compose exec neo4j cypher-shell -u neo4j -p password \
+  "MATCH (l:Legislature) WHERE l.start_date IS NULL RETURN count(l) AS missing_leg_start"
+
+# Neo4j: Welche Parlamente/Terms blockieren die meisten Mandate?
+docker compose exec neo4j cypher-shell -u neo4j -p password \
+  "MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature) WHERE m.start_date IS NULL RETURN l.parliament_id AS parliament_id, coalesce(l.term_number, -1) AS term_number, coalesce(l.name, l.parliament) AS legislature, count(m) AS mandates_missing_start ORDER BY mandates_missing_start DESC LIMIT 50"
+
+# Neo4j: Legislatures mit start_date zählen (Validierung der Propagation)
+docker compose exec neo4j cypher-shell -u neo4j -p password \
+  "MATCH (l:Legislature) WHERE l.start_date IS NOT NULL RETURN l.parliament_id AS parliament_id, count(l) AS legislatures_with_start ORDER BY legislatures_with_start DESC"
+
+# Enrichment-Queue: Welche Terms brauchen noch Quellen?
+docker compose run --rm --build scraper python -m langgraph_app.cli list-missing-starts --format json
+
 # Meilisearch: Personen suchen
 curl "http://localhost:7700/indexes/persons/search" \
   -H "Authorization: Bearer masterKey" \
@@ -149,162 +179,19 @@ curl "http://localhost:7700/indexes/persons/search" \
   --data-binary '{"q": "Merkel"}'
 ```
 
-## Verschiedene Szenarien
-
-### Szenario 1: ALLES laden (empfohlen für vollständige Daten)
-
-```bash
-# Lädt ALLE Seeds (167+ Landtags-Mitgliederlisten) + ALLE DIP Wahlperioden (1-50)
-docker compose run --rm --build scraper scraper pipeline \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
-
-**Ergebnis:**
-- Alle 167+ Landtags-Mitgliederlisten
-- Alle Bundestags-Personen (Wahlperioden 1-50)
-- Alle Personenseiten (Intro, Geburtsdatum, etc.)
-- Vollständige Reconciliation
-
-### Szenario 2: Nur Bundestag (ohne Landtag)
-
-```bash
-# Lädt nur Bundestags-Daten (alle Wahlperioden 1-50)
-docker compose run --rm --build scraper scraper pipeline \
-  --ingest-dip \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
-
-**Ergebnis:**
-- Alle Bundestags-Personen
-- Keine Landtags-Daten
-
-### Szenario 3: Nur ein einzelner Landtag
-
-```bash
-# Z.B. Berlin Abgeordnetenhaus, 1. Wahlperiode
-docker compose run --rm --build scraper scraper pipeline \
-  --seed be_ah_1 \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
-
-**Ergebnis:**
-- Nur eine Mitgliederliste (be_ah_1)
-- Keine DIP-Daten
-- Keine Reconciliation
-
-### Szenario 4: Einzelner Landtag + bestimmte Bundestags-Wahlperioden
-
-```bash
-# Lädt einen Landtag + nur bestimmte Bundestags-Wahlperioden
-docker compose run --rm --build scraper scraper pipeline \
-  --seed be_ah_1 \
-  --ingest-dip \
-  --dip-wahlperiode "19,20" \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
-
-**Ergebnis:**
-- Eine Mitgliederliste (be_ah_1)
-- Nur Bundestags-Wahlperioden 19 und 20
-- Reconciliation zwischen diesem Landtag und den 2 Wahlperioden
 
 ## Konfiguration
 
-### Environment-Variablen (`.env`)
+Siehe [README.md](README.md) für vollständige Liste der Environment-Variablen.
 
-```bash
-# DIP API (für Bundestag)
-DIP_API_KEY=your_api_key_here
-DIP_BASE_URL=https://search.dip.bundestag.de/api/v1
-DIP_MAX_WAHLPERIODE=50  # Maximum Wahlperiode (default: 50)
-
-# Neo4j
-NEO4J_URI=bolt://neo4j:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=password
-
-# Meilisearch
-MEILI_URL=http://meilisearch:7700
-MEILI_MASTER_KEY=masterKey
-
-# LangGraph MVP (Ollama erforderlich)
-PISS_TOOL_BASE_URL=http://localhost:8000/api/tools
-PISS_OLLAMA_BASE_URL=http://192.168.178.185:11434/v1
-PISS_OLLAMA_MODEL=ministral-3:14b
-PISS_OPENAI_API_KEY=ollama
-PISS_STRICT_EVIDENCE_DEFAULT=true
-PISS_DEBUG=0  # Debug-Ausgabe für Healthcheck (0/1)
-
-# LangGraph Orchestrator (optional)
-PISS_TOOL_TIMEOUT_SECONDS=20
-PISS_TOOL_STRICT_EVIDENCE=true
-PISS_DEBUG_EXPLAIN_QUERIES=false
-PISS_DEBUG_INCLUDE_RAW_TOOL_PAYLOADS=false
-```
-
-### Registry anpassen
-
-Die Registry `config/landtage_registry.yaml` kann angepasst werden:
-- Suchqueries erweitern
-- Neue Landtage hinzufügen
-- Key-Prefixes ändern
-
-Nach Änderungen: Discovery erneut ausführen.
-
-## LangGraph MVP: Members List CLI
-
-Ein minimaler CLI-Runner für `members.list` Abfragen mit LLM-basierter Parameter-Extraktion:
-
-```bash
-# Voraussetzung: Ollama muss laufen (PISS_OLLAMA_BASE_URL gesetzt)
-# Preflight Healthcheck wird automatisch ausgeführt
-
-# Einfache Abfrage
-python -m langgraph_app.cli "Alle SPD-Mitglieder im Landtag Niedersachsen zwischen 2014-2020"
-
-# Mit JSON Output
-python -m langgraph_app.cli "Liste CDU im Bundestag 2018-2021" --format json
-
-# Mit Markdown und Quellen pro Person
-python -m langgraph_app.cli "Alle Grünen in Hessen 2020-2025" --format md --sources per-person
-
-# Healthcheck-Optionen
-python -m langgraph_app.cli --no-healthcheck "..."  # Healthcheck deaktivieren (nicht empfohlen)
-python -m langgraph_app.cli --health-timeout 10.0 "..."  # Timeout anpassen
-```
-
-**Features:**
-- LLM-basierte Parameter-Extraktion (Ollama erforderlich, alle 16 Bundesländer + Bundestag)
-- Preflight Healthcheck (fail-fast bei Ollama-Fehlern)
-- Automatische Pagination mit Merging/Deduplizierung
-- Multiple Output-Formate (text, json, markdown)
-- Konfigurierbare Quellen-Anzeige (`--sources none|top|per-person`)
-- Verwendet `active_first_start_date`/`active_last_end_date` Felder
-
-**Wichtig:** MVP benötigt Ollama für Parameter-Extraktion. Kein deterministischer Fallback mehr.
-
-**Siehe [langgraph_app/README.md](../langgraph_app/README.md) für Details.**
 
 ## Dokumentation
 
-Weitere Details zu den neuen Features:
+Weitere Details:
 
 - **Data Contract**: `docs/data-contract.md` - Entities, Zeitlogik, Constraints
 - **Provenance**: `docs/provenance.md` - Evidence-Modell, Hashing, Reproduzierbarkeit
 - **QA-Gates**: `docs/qa-gates.md` - Validator-Regeln, CLI, CI/CD Integration
-- **LangGraph Orchestrator**: `docs/langgraph-orchestrator.md` - Vollständiger Orchestrator mit LLM
-- **LangGraph MVP**: `langgraph_app/README.md` - Minimaler CLI-Runner mit LLM-only Parameter-Extraktion
 - **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md` - Übersicht aller Änderungen
 
 ## Troubleshooting
@@ -316,57 +203,30 @@ Wenn Code geändert wurde, muss der Container neu gebaut werden:
 docker compose build scraper
 ```
 
-**Warum:** Der Python-Code wird beim Build in das Image kopiert. Änderungen am Code sind erst nach einem Rebuild aktiv.
-
 ### Validator findet Legacy-Daten
 
 Wenn der Validator Legacy-Daten findet (ohne `parliament_id` oder `code`):
-```bash
-# Validator zeigt Warnungen für übersprungene Legacy-Daten
-⚠ Skipped 274 mandate(s) without parliament_id (legacy data)
-⚠ Skipped 5 party/parties without code (legacy data)
-```
+- Validator zeigt Warnungen für übersprungene Legacy-Daten
+- **Lösung:** Neue Daten importieren (siehe "Vollständiger Befehl zum Neuaufbau" oben)
 
-**Lösung:** Daten migrieren (siehe `docs/IMPLEMENTATION_SUMMARY.md` für Migrationsschritte) oder neue Daten importieren.
+### Legislature-Daten fehlen
 
-### Evidence Resolver findet keine Evidence-IDs
-
-Wenn der Evidence Resolver keine Evidence-IDs findet:
-1. **Pipeline neu laufen:** Die Evidence-IDs müssen erst generiert und im Index gespeichert werden
-2. **Meilisearch leeren:** Falls alte Evidence-IDs vorhanden sind, die nicht mehr im Cache sind:
+Wenn viele Mandate ohne `start_date` sind:
+1. Prüfen, ob Legislatures `start_date` haben:
    ```bash
-   docker compose exec meilisearch curl -X DELETE "http://localhost:7700/indexes/persons" -H "Authorization: Bearer masterKey"
+   docker compose exec neo4j cypher-shell -u neo4j -p password \
+     "MATCH (l:Legislature) WHERE l.start_date IS NULL RETURN count(l) AS missing"
    ```
-3. **Pipeline erneut ausführen:** Siehe "Vollständiger Befehl zum Neuaufbau" oben
+2. `repair-legislature-dates` ausführen (siehe Schritt 2.5)
+3. Enrichment-Queue prüfen:
+   ```bash
+   docker compose run --rm --build scraper python -m langgraph_app.cli list-missing-starts --format json
+   ```
 
 ### DIP_API_KEY fehlt
 ```bash
 # Fehler: "DIP_API_KEY not set"
 # Lösung: In .env setzen
-```
-
-### Cache leeren (nur wenn nötig)
-
-```bash
-# Cache komplett löschen (alle gecachten Wikipedia/DIP-Responses)
-rm -rf data/cache/*
-
-# Nur MediaWiki-Cache löschen
-rm -rf data/cache/mediawiki/*
-
-# Nur DIP-Cache löschen
-rm -rf data/cache/dip/*
-```
-
-**Wann Cache löschen:**
-- Wenn Cache korrupt ist
-- Wenn man sicherstellen will, dass alles neu geladen wird
-- **Normalerweise nicht nötig** - Pipeline nutzt Cache automatisch intelligent
-
-### Seeds kombinieren
-```bash
-# Landtage-Seeds mit bestehenden Seeds kombinieren
-cat config/seeds.yaml data/exports/seeds_landtage.yaml > config/seeds_combined.yaml
 ```
 
 ## Vollständiger Befehl zum Neuaufbau (ALLE Daten)
@@ -392,10 +252,20 @@ docker compose run --rm --build scraper scraper pipeline \
   --write-meili \
   --fetch-person-pages
 
-# 5. Daten validieren
-docker compose run --rm --build scraper scraper validate
+# 5. Legislature-Startdaten vervollständigen (siehe Schritt 2.5)
+docker compose run --rm --build scraper scraper repair-legislature-dates --limit 500
+docker compose run --rm --build scraper python -m langgraph_app.cli ingest-official-terms
+docker compose run --rm --build scraper python -m langgraph_app.cli ingest-wikidata-terms --all
+docker compose run --rm --build scraper python -m langgraph_app.cli propagate-legislature-starts
+docker compose run --rm --build scraper scraper repair-mandate-ids
 
-# 6. Evidence Resolver testen - mit Row-level Citations
+# 6. Daten validieren (Default: Missing start_date = WARNING, nicht ERROR)
+docker compose run --rm --build scraper scraper validate --json
+
+# 7. Enrichment-Queue prüfen (welche Terms brauchen noch Quellen?)
+docker compose run --rm --build scraper python -m langgraph_app.cli list-missing-starts --format json
+
+# 8. Evidence Resolver testen - mit Row-level Citations
 docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
   --query "Stephan Weil" \
   --index persons \
@@ -409,8 +279,6 @@ docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
 
 **Cache wird automatisch genutzt** - keine Duplikate, idempotente Imports!
 
-### Option 1: Nur Neo4j/Meilisearch neu schreiben (nutzt Cache)
-
 ```bash
 # Container neu bauen (falls Code geändert wurde)
 docker compose build scraper
@@ -423,126 +291,16 @@ docker compose run --rm --build scraper scraper pipeline \
   --write-meili \
   --fetch-person-pages
 
-# Validieren
-docker compose run --rm --build scraper scraper validate
-```
-
-**Vorteil:** Schnell, nutzt gecachte Wikipedia/DIP-Responses. Nur Neo4j/Meilisearch werden aktualisiert.
-
-### Option 2: Alles neu laden (mit --force, ignoriert Cache)
-
-```bash
-# Container neu bauen
-docker compose build scraper
-
-# Pipeline mit --force (lädt ALLES neu, ignoriert Cache)
-docker compose run --rm --build scraper scraper pipeline \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages \
-  --force
+# Legislature-Daten aktualisieren
+docker compose run --rm --build scraper scraper repair-legislature-dates --limit 500
+docker compose run --rm --build scraper python -m langgraph_app.cli propagate-legislature-starts
+docker compose run --rm --build scraper scraper repair-mandate-ids
 
 # Validieren
 docker compose run --rm --build scraper scraper validate
 ```
 
-**Vorteil:** Vollständig aktuelle Daten. **Nachteil:** Langsam (30-60 Minuten), Rate-Limiting.
-
-### Option 3: Nur bestimmte Seeds neu laden
-
-```bash
-# Einzelner Seed neu laden (nutzt Cache für andere Seeds)
-docker compose run --rm --build scraper scraper pipeline \
-  --seed nds_lt_17 \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-
-# Validieren
-docker compose run --rm --build scraper scraper validate
-```
-
-**Vorteil:** Selektiv, schnell für einzelne Landtage.
-
-### Cache-Verhalten
-
-- **Ohne `--force`**: Cache wird automatisch genutzt
-  - Gecachte Wikipedia-Seiten werden nicht neu geladen
-  - Gecachte DIP-Responses werden nicht neu geladen
-  - Neo4j/Meilisearch werden aktualisiert (Upsert, keine Duplikate)
-  
-- **Mit `--force`**: Cache wird ignoriert
-  - Alle Wikipedia-Seiten werden neu geladen
-  - Alle DIP-Responses werden neu geladen
-  - Cache wird aktualisiert
-  - Neo4j/Meilisearch werden aktualisiert
-
-**Cache-Pfad:** `./data/cache/` (wird nicht gelöscht bei Pipeline-Runs)
-
-**Was wird geladen:**
-- ✅ **167+ Landtags-Mitgliederlisten** (alle 16 Bundesländer, alle Wahlperioden)
-- ✅ **Alle Bundestags-Personen** (Wahlperioden 1-50, konfigurierbar via `DIP_MAX_WAHLPERIODE`)
-- ✅ **Alle Personenseiten** (Intro, Geburtsdatum, etc. für alle gefundenen Personen)
-- ✅ **Vollständige Reconciliation** (Wikipedia ↔ DIP Identity Resolution)
-- ✅ **Row-level Citations** (snippet_ref für Tabellenzeilen)
-
-**Dauer:** Abhängig von Cache-Status. Mit Cache: ~5-10 Minuten. Ohne Cache: ~30-60 Minuten (wegen Rate-Limiting).
-
-**Erwartete Ausgabe des Evidence Resolvers:**
-- Evidence-Referenzen werden aus Meilisearch geladen (preferred: `evidence_refs` mit Row-level `snippet_ref`)
-- Zwei Evidence-IDs werden gefunden (Mitgliederliste + Personenseite)
-- **Mitgliederliste**: Zeigt `table_row` snippet mit der korrekten Tabellenzeile (Stephan Weil + SPD)
-- **Personenseite**: Zeigt `lead_paragraph` snippet (Intro-Text)
-- Canonical URLs mit `oldid` Parameter für Reproduzierbarkeit
-- Snippets werden extrahiert und bereinigt (ohne Fußnoten-Marker)
-- Markdown-Format mit vollständiger Provenance (revision_id, sha256, retrieved_at, purpose, snippet_ref)
-
-**Beispiel-Output für "Stephan Weil":**
-```
-Found 2 evidence references from Meilisearch (preferred)
-
-- Evidence `98a37cb9-1cc5-51a1-a51e-5992856c4fa0`
-  - **Source**: mediawiki
-  - **Page**: Liste der Mitglieder des Niedersächsischen Landtages (17. Wahlperiode)
-  - **Revision**: 256198867
-  - **URL**: https://de.wikipedia.org/w/index.php?title=Liste_der_Mitglieder_des_Niedersächsischen_Landtages_(17._Wahlperiode)&oldid=256198867
-  - **Retrieved**: 2024-01-15T10:30:00Z
-  - **SHA256**: `a1b2c3d4e5f6...`
-  - **Snippet**: "Stephan Weil | SPD | Wahlkreis Hannover-Linden | ..."
-  - **Snippet Source**: table_row
-  - **Purpose**: membership_row
-  - **Snippet Ref**: ```json
-    {
-        "version": 1,
-        "type": "table_row",
-        "table_index": 0,
-        "row_index": 5,
-        "row_kind": "data",
-        "title_hint": "Liste_der_Mitglieder_des_Niedersächsischen_Landtages_(17._Wahlperiode)",
-        "match": {
-            "person_title": "Stephan_Weil",
-            "name_cell": "Stephan Weil"
-        }
-    }
-    ```
-
-- Evidence `b2c3d4e5-f6a7-89b0-c1d2-e3f4a5b6c7d8`
-  - **Source**: mediawiki
-  - **Page**: Stephan Weil
-  - **Revision**: 245123456
-  - **URL**: https://de.wikipedia.org/w/index.php?title=Stephan_Weil&oldid=245123456
-  - **Retrieved**: 2024-01-15T10:31:00Z
-  - **SHA256**: `b2c3d4e5f6a7...`
-  - **Snippet**: "Stephan Weil (* 15. März 1958 in Hamburg) ist ein deutscher Politiker (SPD). Seit 2013 ist er Ministerpräsident von Niedersachsen..."
-  - **Snippet Source**: lead_paragraph
-  - **Purpose**: person_page_intro
-```
-
-**Wichtig:**
-- Die **Mitgliederlisten-Evidence** zeigt jetzt die **korrekte Tabellenzeile** von Stephan Weil (nicht die letzte verarbeitete Zeile)
-- `snippet_source: table_row` bedeutet, dass die spezifische Zeile aus der Tabelle extrahiert wurde
-- `purpose: membership_row` zeigt, dass dies die Mitgliedschafts-Referenz ist
-- `snippet_ref` enthält die vollständige Row-Level-Referenz (table_index, row_index, match-Informationen)
+**Cache-Verhalten:**
+- **Ohne `--force`**: Cache wird automatisch genutzt (empfohlen)
+- **Mit `--force`**: Cache wird ignoriert, alles neu geladen (langsam, 30-60 Minuten)
 

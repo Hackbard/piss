@@ -187,6 +187,130 @@ def _extract_from_kv_lines(text: str) -> LegislatureDates:
     )
 
 
+def extract_constituting_session_date_from_text(text: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Extract day-precision constituting session date from German text.
+    
+    Looks for patterns like:
+    - "Die konstituierende Sitzung fand am 26. März 2025 statt."
+    - "konstituierenden Sitzung ... am 1. Januar 2000"
+    - "konstituierende Sitzung ... am 26.03.2025"
+    
+    Returns:
+        Tuple of (start_iso: Optional[str], raw: Optional[str])
+        - start_iso: ISO date string (YYYY-MM-DD) if day-precision found, else None
+        - raw: Matched substring or original date string, else None
+    """
+    cleaned = _strip_markup(text)
+    
+    # Pattern 1: German month name format
+    # "konstituierend(e|en) Sitzung ... am DD. Monat YYYY"
+    pattern1 = re.compile(
+        r"konstituierend(?:e|en)\s+sitzung.*?\bam\s+([0-3]?\d)\.\s*([A-Za-zÄÖÜäöüß]+)\s+(\d{4})",
+        re.IGNORECASE | re.DOTALL,
+    )
+    
+    # Pattern 2: Numeric date format
+    # "konstituierend(e|en) Sitzung ... am DD.MM.YYYY"
+    pattern2 = re.compile(
+        r"konstituierend(?:e|en)\s+sitzung.*?\bam\s+([0-3]?\d)\.([01]?\d)\.(\d{4})",
+        re.IGNORECASE | re.DOTALL,
+    )
+    
+    # Pattern 3: Alternative phrasing "erste Sitzung" (only if clearly tied to constituting)
+    pattern3 = re.compile(
+        r"(?:erste|ersten)\s+sitzung.*?(?:konstituierend|konstituierung).*?\bam\s+([0-3]?\d)\.\s*([A-Za-zÄÖÜäöüß]+)\s+(\d{4})",
+        re.IGNORECASE | re.DOTALL,
+    )
+    
+    # Pattern 4: "Konstituierung" alone (more general)
+    pattern4 = re.compile(
+        r"konstituierung.*?\bam\s+([0-3]?\d)\.\s*([A-Za-zÄÖÜäöüß]+)\s+(\d{4})",
+        re.IGNORECASE | re.DOTALL,
+    )
+    
+    candidates = []
+    
+    # Try pattern 1 (German month name)
+    for match in pattern1.finditer(cleaned):
+        day_str = match.group(1)
+        month_str = match.group(2).lower().strip()
+        year_str = match.group(3)
+        
+        # Remove trailing punctuation from month
+        month_str = re.sub(r"[^\wäöüß]+$", "", month_str)
+        
+        month = _GERMAN_MONTHS.get(month_str)
+        if month:
+            try:
+                day = int(day_str)
+                year = int(year_str)
+                date_obj = date(year, month, day)
+                raw = match.group(0)
+                candidates.append((date_obj.isoformat(), raw))
+            except (ValueError, TypeError):
+                continue
+    
+    # Try pattern 2 (numeric)
+    for match in pattern2.finditer(cleaned):
+        day_str = match.group(1)
+        month_str = match.group(2)
+        year_str = match.group(3)
+        
+        try:
+            day = int(day_str)
+            month = int(month_str)
+            year = int(year_str)
+            if 1 <= month <= 12:
+                date_obj = date(year, month, day)
+                raw = match.group(0)
+                candidates.append((date_obj.isoformat(), raw))
+        except (ValueError, TypeError):
+            continue
+    
+    # Try pattern 3 (erste Sitzung)
+    for match in pattern3.finditer(cleaned):
+        day_str = match.group(1)
+        month_str = match.group(2).lower().strip()
+        year_str = match.group(3)
+        
+        month_str = re.sub(r"[^\wäöüß]+$", "", month_str)
+        month = _GERMAN_MONTHS.get(month_str)
+        if month:
+            try:
+                day = int(day_str)
+                year = int(year_str)
+                date_obj = date(year, month, day)
+                raw = match.group(0)
+                candidates.append((date_obj.isoformat(), raw))
+            except (ValueError, TypeError):
+                continue
+    
+    # Try pattern 4 (Konstituierung alone)
+    for match in pattern4.finditer(cleaned):
+        day_str = match.group(1)
+        month_str = match.group(2).lower().strip()
+        year_str = match.group(3)
+        
+        month_str = re.sub(r"[^\wäöüß]+$", "", month_str)
+        month = _GERMAN_MONTHS.get(month_str)
+        if month:
+            try:
+                day = int(day_str)
+                year = int(year_str)
+                date_obj = date(year, month, day)
+                raw = match.group(0)
+                candidates.append((date_obj.isoformat(), raw))
+            except (ValueError, TypeError):
+                continue
+    
+    # Return first match (most specific patterns tried first)
+    if candidates:
+        return candidates[0]
+    
+    return None, None
+
+
 def _extract_from_prose(text: str) -> LegislatureDates:
     cleaned = _strip_markup(text)
 
@@ -246,6 +370,25 @@ def _extract_from_prose(text: str) -> LegislatureDates:
 
 
 def extract_legislature_dates(response: MediaWikiParseResponse) -> LegislatureDates:
+    # First, try extracting constituting session date from lead text (highest priority for day-precision)
+    text_source = response.wikitext if response.wikitext else response.html
+    if text_source:
+        # Extract lead text (up to first section heading ==)
+        lead_text = text_source.split("==")[0] if "==" in text_source else text_source
+        start_iso, start_raw = extract_constituting_session_date_from_text(lead_text)
+        
+        if start_iso:
+            # Found day-precision constituting session date - return immediately
+            return LegislatureDates(
+                start_date=start_iso,
+                end_date=None,
+                start_date_raw=start_raw,
+                end_date_raw=None,
+                start_date_precision="day",
+                end_date_precision="unknown",
+            )
+    
+    # Fall back to existing extraction methods
     if response.wikitext:
         candidates = [
             _extract_from_kv_lines(response.wikitext),

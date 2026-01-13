@@ -46,7 +46,7 @@
 - **role** (string, optional): Rolle (z.B. "MdL", "MdB")
 - **evidence_refs** (List[EvidenceRef], optional): Entity-Level Evidence-Referenzen
 
-**QA-Hinweis:** Der Validator (`scraper validate`) behandelt `Mandate.start_date` aktuell als Pflichtfeld und liefert bei `null` einen ERROR.
+**QA-Hinweis:** Der Validator (`scraper validate`) behandelt `Mandate.start_date` im Default-Modus als **WARNING** (Completeness-Gap). Mit `--strict-completeness` wird es zu einem **ERROR**.
 
 **Beispiel:**
 ```json

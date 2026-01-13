@@ -52,25 +52,36 @@ class ValidationResult:
 class DataValidator:
     """Validator for domain entities."""
     
-    def __init__(self, strict_mode: bool = False):
+    def __init__(self, strict_mode: bool = False, strict_completeness: bool = False):
         """
         Initialize validator.
         
         Args:
             strict_mode: If True, missing evidence is treated as ERROR instead of WARN
+            strict_completeness: If True, missing start_date is treated as ERROR (completeness gap).
+                                If False (default), missing start_date is treated as WARNING.
         """
         self.strict_mode = strict_mode
+        self.strict_completeness = strict_completeness
         self.known_party_codes: set[str] = set()
     
     def validate_mandate(self, mandate: Mandate, result: ValidationResult) -> None:
         """Validate a single mandate."""
         if not mandate.start_date:
-            result.add_error(
-                "MANDATE_MISSING_START_DATE",
-                f"Mandate {mandate.id} is missing required start_date",
-                entity_id=mandate.id,
-                entity_type="Mandate",
-            )
+            if self.strict_completeness:
+                result.add_error(
+                    "MANDATE_MISSING_START_DATE",
+                    f"Mandate {mandate.id} is missing required start_date",
+                    entity_id=mandate.id,
+                    entity_type="Mandate",
+                )
+            else:
+                result.add_warning(
+                    "MANDATE_MISSING_START_DATE",
+                    f"Mandate {mandate.id} is missing start_date (completeness gap)",
+                    entity_id=mandate.id,
+                    entity_type="Mandate",
+                )
             return
         
         start_date = parse_date_iso(mandate.start_date)

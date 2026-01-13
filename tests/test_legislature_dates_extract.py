@@ -1,5 +1,5 @@
 from scraper.mediawiki.types import MediaWikiParseResponse
-from scraper.parsers.legislature_dates import extract_legislature_dates
+from scraper.parsers.legislature_dates import extract_legislature_dates, extract_constituting_session_date_from_text
 
 
 def _response(*, wikitext: str | None = None, html: str = "") -> MediaWikiParseResponse:
@@ -59,5 +59,84 @@ def test_extracts_range_in_parentheses_with_month_year_as_raw():
     assert dates.end_date_raw == "Mai 1987"
     assert dates.start_date_precision == "month"
     assert dates.end_date_precision == "month"
+
+
+def test_extract_constituting_session_date_german_month():
+    text = "Die konstituierende Sitzung fand am 26. März 2025 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2025-03-26"
+    assert raw is not None
+    assert "konstituierende sitzung" in raw.lower()
+
+
+def test_extract_constituting_session_date_numeric():
+    text = "Die konstituierende Sitzung fand am 26.03.2025 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2025-03-26"
+    assert raw is not None
+
+
+def test_extract_constituting_session_date_with_ref():
+    text = "Die konstituierende Sitzung fand am 26. März 2025 statt.[1]"
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2025-03-26"
+    assert raw is not None
+
+
+def test_extract_constituting_session_date_konstituierenden():
+    text = "Die konstituierenden Sitzung fand am 1. Januar 2000 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2000-01-01"
+    assert raw is not None
+
+
+def test_extract_constituting_session_date_erste_sitzung():
+    text = "Die erste Sitzung wurde konstituierend am 15. Februar 2010 abgehalten."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2010-02-15"
+    assert raw is not None
+
+
+def test_extract_constituting_session_date_konstituierung_alone():
+    text = "Die Konstituierung fand am 10. Dezember 2023 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso == "2023-12-10"
+    assert raw is not None
+
+
+def test_extract_constituting_session_date_rejects_month_only():
+    text = "Die konstituierende Sitzung fand im März 2025 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso is None
+    assert raw is None
+
+
+def test_extract_constituting_session_date_rejects_year_only():
+    text = "Die konstituierende Sitzung fand 2025 statt."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso is None
+    assert raw is None
+
+
+def test_extract_constituting_session_date_rejects_unrelated_dates():
+    text = "Die Wahl fand am 15. Oktober 2024 statt. Die konstituierende Sitzung war später."
+    start_iso, raw = extract_constituting_session_date_from_text(text)
+    assert start_iso is None
+    assert raw is None
+
+
+def test_extract_constituting_session_date_in_wikitext_lead():
+    wt = "Die konstituierende Sitzung fand am 26. März 2025 statt.\n\n== Mitglieder =="
+    dates = extract_legislature_dates(_response(wikitext=wt))
+    assert dates.start_date == "2025-03-26"
+    assert dates.start_date_precision == "day"
+    assert dates.start_date_raw is not None
+
+
+def test_extract_constituting_session_date_takes_priority_over_other_patterns():
+    wt = "Die konstituierende Sitzung fand am 26. März 2025 statt.\n\n| Beginn = 2017"
+    dates = extract_legislature_dates(_response(wikitext=wt))
+    assert dates.start_date == "2025-03-26"
+    assert dates.start_date_precision == "day"
 
 

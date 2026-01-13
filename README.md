@@ -14,6 +14,9 @@ Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit
 - **Identity Resolution**: Deterministische Zusammenführung von Wikipedia- und DIP-Personen
 - **Seed Discovery**: Automatische Entdeckung von Landtags-Mitgliederlisten aus Registry-Konfiguration
 - **Strict Day-Only Dates**: `Legislature.start_date` wird nur bei day-Precision gesetzt (konstituierende Sitzung/erste Sitzung), sonst bleiben `*_date = null` und `*_raw`/`*_precision` werden befüllt
+- **Wikidata Term Ingestion**: Automatische Extraktion von day-precision Term-Startdaten aus Wikidata (revision-pinned)
+- **Constituting Session Extraction**: Automatische Extraktion von "konstituierende Sitzung" Daten aus Wikipedia-Mitgliederlisten (Lead-Text, oldid-pinned)
+- **Completeness vs Integrity Validation**: Trennung zwischen Completeness-Gaps (WARNING) und Integrity-Fehlern (ERROR)
 
 ## Quick Start
 
@@ -48,62 +51,7 @@ flowchart TD
 
 ## Quick Start
 
-### 1. Seeds für alle Landtage automatisch entdecken
-
-```bash
-# Services starten
-docker compose up -d neo4j meilisearch
-
-# Seeds für alle 16 Landtage automatisch entdecken
-docker compose run --rm --build scraper scraper seed --discover --landtage --pin-revisions
-
-# Output: data/exports/seeds_landtage.yaml (167+ Seeds)
-```
-
-### 2. ALLE Daten laden (Bundestag + alle Landtage)
-
-**Schnellste Variante - lädt ALLES automatisch:**
-```bash
-# Environment-Variablen setzen (falls noch nicht geschehen)
-# DIP_API_KEY in .env setzen für Bundestag-Daten
-
-# Pipeline OHNE --seed = lädt ALLE Seeds automatisch (167+ Landtags-Mitgliederlisten)
-docker compose run --rm --build scraper scraper pipeline \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
-
-**Was passiert:**
-1. **DIP Ingest**: Lädt **ALLE** Bundestags-Personen (Wahlperioden 1-50, konfigurierbar via `DIP_MAX_WAHLPERIODE`)
-2. **Wikipedia Scraping**: Lädt **ALLE** Landtags-Mitgliederlisten aus Wikipedia (alle 167+ Seeds automatisch)
-3. **Personenseiten**: Lädt für **ALLE** Personen die individuellen Wikipedia-Seiten (Intro, Geburtsdatum, etc.)
-4. **Reconciliation**: Führt Wikipedia- und DIP-Personen zusammen (Identity Resolution)
-5. **Sinks**: Speichert alles in Neo4j und Meilisearch
-
-**Mit `--force` (ignoriert Cache, lädt alles neu):**
-```bash
-docker compose run --rm --build scraper scraper pipeline \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages \
-  --force
-```
-
-**Für einen einzelnen Landtag-Seed:**
-```bash
-docker compose run --rm --build scraper scraper pipeline \
-  --seed be_ah_1 \
-  --ingest-dip \
-  --reconcile \
-  --write-neo4j \
-  --write-meili \
-  --fetch-person-pages
-```
+**Siehe [QUICKSTART.md](QUICKSTART.md) für eine komplette Schritt-für-Schritt-Anleitung.**
 
 ## Setup
 
@@ -229,6 +177,15 @@ scraper pipeline --write-neo4j --write-meili --fetch-person-pages
 scraper pipeline --seed nds_lt_17 [--write-neo4j] [--write-meili] [--force] [--revalidate]
 ```
 
+#### Enrichment-Queue
+```bash
+# Zeigt, welche Terms noch keine day-only start_date haben
+python -m langgraph_app.cli list-missing-starts --format json [--out /tmp/missing.json]
+
+# Zeigt Legislatures ohne start_date (mit Term-Informationen)
+python -m langgraph_app.cli list-missing-legislature-starts --format json
+```
+
 #### Export
 ```bash
 scraper export json --out /data/exports/<run_id>/
@@ -243,19 +200,19 @@ scraper evidence --resolve --ids <id1,id2,...> [--format json|yaml|md] [--with-s
 scraper evidence --resolve-from-meili --query "Weil" --index persons [--limit 5] [--with-snippets] [--prefer table_row] [--format md]
 ```
 
-**Beispiele:**
+#### Validator
 ```bash
-# Resolve two evidence IDs with snippets in Markdown format (mit table_row preference)
-docker compose run --rm --build scraper scraper evidence --resolve --ids "ev-123,ev-456" --format md --with-snippets --prefer table_row
+# Default: Missing start_date = WARNING (completeness gap)
+scraper validate [--json]
 
-# Resolve evidence from Meilisearch search results (mit Row-level Citations)
-docker compose run --rm --build scraper scraper evidence --resolve-from-meili \
-  --query "Stephan Weil" \
-  --index persons \
-  --limit 1 \
-  --prefer table_row \
-  --with-snippets \
-  --format md
+# Strict Completeness: Missing start_date = ERROR
+scraper validate --strict-completeness [--json]
+
+# Strict Evidence: Missing evidence = ERROR
+scraper validate --strict [--json]
+
+# Kombiniert
+scraper validate --strict --strict-completeness [--json]
 ```
 
 ## LangGraph MVP: Members List CLI
@@ -308,21 +265,10 @@ Der Evidence Resolver löst Evidence-IDs in zitierfähige Quellenobjekte auf:
 
 Das System verwendet eine **zweistufige Architektur** für Evidence und Row-level Citations:
 
-#### Architektur
-
 1. **Evidence (page-level)**: Unveränderlich, repräsentiert die gesamte Seite/Response
-   - Enthält: `id`, `page_title`, `page_id`, `revision_id`, `sha256`, `source_url`
-   - **KEIN** `snippet_ref` (Evidence ist page-level)
-
 2. **EvidenceRef (entity-level)**: Entity-spezifische Referenz mit Row-level `snippet_ref`
-   - Enthält: `evidence_id`, `snippet_ref` (optional), `purpose`, `confidence`
-   - Gespeichert auf: `Person.evidence_refs[]`, `Mandate.evidence_refs[]`
-   - `snippet_ref` enthält Row-Level-Informationen (`table_index`, `row_index`, `match`)
 
-#### Warum diese Architektur?
-
-- **Problem gelöst**: Vorher wurde `snippet_ref` am Evidence-Objekt gespeichert. Da Evidence page-level ist, überschrieb jede weitere Tabellenzeile den `snippet_ref` → Resolver lieferte zufällige/falsche Personenzeile.
-- **Lösung**: Evidence bleibt unveränderlich (page-level). Row-level Referenz ist entity-specific (EvidenceRef).
+Siehe [docs/provenance.md](docs/provenance.md) für Details.
 
 #### Beispiel: Stephan Weil
 
@@ -534,46 +480,21 @@ overrides:
 
 ## Provenance & Evidence
 
-Jede extrahierte Entität enthält:
-- `evidence_ids[]`: Liste von Evidence-IDs
-- `provenance`: Zusammenfassung mit `page_id`, `page_title`, `source_url`, `revision_id`, `retrieved_at`, `sha256`
-
-Evidence-Objekte enthalten:
-- `id`: Deterministische UUID5-ID
-- `endpoint_kind`: "parse" oder "query"
-- `page_title`, `page_id`, `revision_id`
-- `source_url`, `retrieved_at`, `sha256`
-- `snippet_ref`: Optionaler Verweis auf spezifisches Snippet
+Jede extrahierte Entität enthält Evidence-Referenzen mit vollständiger Provenance-Kette. Siehe [docs/provenance.md](docs/provenance.md) für Details.
 
 ## Tests
 
 Alle Tests sind offline und verwenden gecachte Fixtures:
 
-**Lokal (mit Python/uv):**
 ```bash
-pytest -q
-```
-
-**Im Docker-Container:**
-```bash
+# Im Docker-Container
 docker compose run --rm --build scraper pytest -q
+
+# Spezifische Tests
+docker compose run --rm --build scraper pytest tests/test_legislature_dates_extract.py -v
 ```
 
-**Spezifische Tests:**
-```bash
-docker compose run --rm --build scraper pytest tests/test_parse_legislature_members_nds_17.py tests/test_parse_legislature_members_nds_18.py -v
-```
-
-Tests befinden sich in `tests/`:
-- `test_seed_validation.py`: Seed-Schema-Validierung
-- `test_cache_paths_and_manifest.py`: Cache-Pfad-Logik
-- `test_parse_legislature_members_nds_17.py`: Parser-Test für 17. WP
-- `test_parse_legislature_members_nds_18.py`: Parser-Test für 18. WP
-- `test_parse_person_infobox.py`: Person-Page-Parser-Test
-- `test_dip_pagination_and_cache.py`: DIP Pagination und Cache
-- `test_reconcile_ruleset_v1_unique_match.py`: Reconciliation eindeutiger Match
-- `test_reconcile_ruleset_v1_ambiguous_pending.py`: Reconciliation Ambiguität
-- `test_link_overrides_apply.py`: Manual Overrides
+Tests befinden sich in `tests/`. Siehe [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md) für Details.
 
 ## Reset & Reimport Workflow
 
@@ -789,18 +710,18 @@ scraper fetch legislature --seed nds_lt_17 --force
 └── README.md
 ```
 
-## Akzeptanzkriterien (MVP)
+## Akzeptanzkriterien
 
-✅ `docker compose up -d neo4j meilisearch` läuft; Volumes unter `./data/*` werden befüllt
+✅ Vollständiger Workflow (siehe [QUICKSTART.md](QUICKSTART.md)):
+- Seeds entdecken
+- Pipeline ausführen (ALLE Seeds + ALLE DIP Wahlperioden)
+- Legislature-Startdaten vervollständigen
+- Validierung erfolgreich (Warnings OK, keine Errors)
 
-✅ `docker compose run --rm --build scraper scraper pipeline --seed nds_lt_17` erzeugt:
-- Raw Cache unter `./data/cache/...`
-- Export unter `./data/exports/<run_id>/...`
-- Manifest unter `./data/cache/manifests/<run_id>.json`
-
-✅ Wiederholter Run ist idempotent: Cache wird genutzt; keine Duplikate in Neo4j/Meili
-
-✅ Meili Query nach einem enthaltenen Namen findet Person, inkl. `evidence_ids[]`
+✅ Deterministisch und reproduzierbar:
+- Cache-basiert, oldid-pinned URLs
+- UUID5-basierte IDs
+- Vollständige Provenance-Kette
 
 ✅ Tests laufen offline: `pytest -q` ist grün
 

@@ -489,6 +489,7 @@ def validate(
     to_date: Optional[str] = Option(None, "--to", help="Filter to date (YYYY-MM-DD)"),
     parliament: Optional[str] = Option(None, "--parliament", help="Filter by parliament ID"),
     strict: bool = Option(False, "--strict", help="Strict mode: missing evidence is ERROR"),
+    strict_completeness: bool = Option(False, "--strict-completeness", help="Strict completeness: missing start_date is ERROR (default: WARNING)"),
     json_output: bool = Option(False, "--json", help="Output as JSON"),
 ) -> None:
     """Validate data quality."""
@@ -563,7 +564,7 @@ def validate(
         if skipped_parties_count > 0:
             typer.echo(f"⚠ Skipped {skipped_parties_count} party/parties without code (legacy data)", err=True)
     
-    validator = DataValidator(strict_mode=strict)
+    validator = DataValidator(strict_mode=strict, strict_completeness=strict_completeness)
     result = validator.validate_all(
         mandates=mandates,
         parties=parties,

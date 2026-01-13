@@ -6,8 +6,9 @@
 
 #### MANDATE_MISSING_START_DATE
 - **Bedingung**: `start_date` fehlt
-- **Aktion**: ERROR
+- **Aktion**: **WARNING** (default) oder **ERROR** (mit `--strict-completeness`)
 - **Beispiel**: Mandate ohne `start_date`
+- **Hinweis**: Im Default-Modus ist Missing `start_date` ein Completeness-Gap (kein Hard-Error), da noch nicht alle Term-Startdaten verfügbar sein müssen
 
 #### MANDATE_END_BEFORE_START
 - **Bedingung**: `end_date < start_date`
@@ -72,6 +73,12 @@ scraper validate --from 2014-01-01 --to 2020-12-31 --parliament NI
 ```bash
 # Missing Evidence wird zu ERROR
 scraper validate --strict
+
+# Strict Completeness: Missing start_date wird zu ERROR (default: WARNING)
+scraper validate --strict-completeness
+
+# Kombiniert: Strict Evidence + Strict Completeness
+scraper validate --strict --strict-completeness
 ```
 
 ### JSON Output

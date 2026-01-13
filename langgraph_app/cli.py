@@ -94,6 +94,119 @@ def _read_stdin_interactive() -> str | None:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "list-missing-starts":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli list-missing-starts")
+        sub.add_argument("--format", choices=["json", "csv"], default="json")
+        sub.add_argument("--out", type=str, default="")
+        sub.add_argument("--parliament-id", type=str, default="")
+        sub.add_argument("--group-by", type=str, default="parliament,term", help="Comma-separated list: parliament,term")
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                where = ""
+                params: dict[str, Any] = {}
+                if args.parliament_id:
+                    where = "WHERE m.parliament_id = $parliament_id"
+                    params["parliament_id"] = args.parliament_id
+
+                rows = session.run(
+                    f"""
+                    MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
+                    {where}
+                    WHERE m.start_date IS NULL
+                    WITH m.parliament_id AS parliament_id,
+                         coalesce(l.term_number, -1) AS term_number,
+                         coalesce(l.name, l.parliament) AS legislature_name,
+                         count(m) AS mandates_missing_start,
+                         collect(DISTINCT l.source_url)[0..5] AS members_list_urls,
+                         collect(DISTINCT l.wikipedia_title)[0..5] AS wikipedia_titles
+                    RETURN parliament_id,
+                           term_number,
+                           legislature_name,
+                           mandates_missing_start,
+                           members_list_urls,
+                           wikipedia_titles
+                    ORDER BY mandates_missing_start DESC, parliament_id, term_number
+                    LIMIT 500
+                    """,
+                    **params,
+                ).data()
+
+            out_rows: list[dict[str, Any]] = []
+            for r in rows:
+                parliament_id = r.get("parliament_id")
+                term_number = r.get("term_number")
+                legislature_name = r.get("legislature_name")
+                mandates_missing_start = r.get("mandates_missing_start", 0)
+                members_list_urls = r.get("members_list_urls") or []
+                wikipedia_titles = r.get("wikipedia_titles") or []
+
+                source_candidates = []
+                for url in members_list_urls:
+                    if url:
+                        source_candidates.append({"type": "members_list", "url": url})
+                for title in wikipedia_titles:
+                    if title:
+                        source_candidates.append({"type": "wikipedia_title", "title": title})
+
+                recommended_action = "Add official source entry for constituting session date (day)"
+                if not source_candidates:
+                    recommended_action = "Add Wikidata QID mapping and/or official source entry"
+
+                out_rows.append(
+                    {
+                        "parliament_id": parliament_id,
+                        "term_number": term_number if term_number != -1 else None,
+                        "legislature_name": legislature_name,
+                        "mandates_missing_start": mandates_missing_start,
+                        "source_candidates": source_candidates,
+                        "recommended_action": recommended_action,
+                    }
+                )
+
+            output_path = Path(args.out) if args.out else None
+
+            if args.format == "json":
+                payload = {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "rows": out_rows,
+                }
+                content = json.dumps(payload, ensure_ascii=False, indent=2)
+                if output_path:
+                    output_path.write_text(content, encoding="utf-8")
+                else:
+                    print(content)
+                return
+
+            fieldnames = [
+                "parliament_id",
+                "term_number",
+                "legislature_name",
+                "mandates_missing_start",
+                "recommended_action",
+            ]
+            if output_path:
+                with output_path.open("w", encoding="utf-8", newline="") as f:
+                    w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+                    w.writeheader()
+                    for row in out_rows:
+                        w.writerow({k: v for k, v in row.items() if k in fieldnames})
+            else:
+                w = csv.DictWriter(sys.stdout, fieldnames=fieldnames, extrasaction="ignore")
+                w.writeheader()
+                for row in out_rows:
+                    w.writerow({k: v for k, v in row.items() if k in fieldnames})
+            return
+        finally:
+            driver.close()
+
     if len(sys.argv) > 1 and sys.argv[1] == "list-missing-legislature-starts":
         sub = argparse.ArgumentParser(prog="langgraph_app.cli list-missing-legislature-starts")
         sub.add_argument("--format", choices=["json", "csv"], default="json")
@@ -493,6 +606,163 @@ def main() -> None:
                         term_number=args.term_number,
                         term_id=term_id,
                     )
+        finally:
+            driver.close()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "ingest-wikidata-terms":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli ingest-wikidata-terms")
+        sub.add_argument(
+            "--mapping",
+            type=str,
+            default="langgraph_app/sources/wikidata_mapping.yaml",
+            help="Path to YAML mapping file (parliament_id -> term_number -> qid)",
+        )
+        sub.add_argument("--all", action="store_true", help="Process all legislatures without start_date")
+        sub.add_argument("--parliament-id", type=str, default="", help="Filter by parliament_id")
+        sub.add_argument("--dry-run", action="store_true", help="Show what would be ingested without making changes")
+        args = sub.parse_args(sys.argv[2:])
+
+        import yaml
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+        from langgraph_app.sources.wikidata_terms import fetch_entity_pinned, fetch_lastrevid, parse_term_from_entitydata
+
+        def precision_label(p: int) -> str:
+            if p == 11:
+                return "day"
+            if p == 10:
+                return "month"
+            if p == 9:
+                return "year"
+            return "unknown"
+
+        mapping_path = Path(args.mapping)
+        mapping: dict[str, dict[int, str]] = {}
+        if mapping_path.exists():
+            payload = yaml.safe_load(mapping_path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                for pid, terms in payload.items():
+                    if isinstance(terms, dict):
+                        mapping[pid] = {int(k): str(v) for k, v in terms.items() if isinstance(k, (int, str)) and isinstance(v, str)}
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                where = "WHERE l.start_date IS NULL"
+                params: dict[str, Any] = {}
+                if args.parliament_id:
+                    where += " AND l.parliament_id = $parliament_id"
+                    params["parliament_id"] = args.parliament_id
+
+                rows = session.run(
+                    f"""
+                    MATCH (l:Legislature)
+                    {where}
+                    RETURN l.parliament_id AS parliament_id,
+                           l.term_number AS term_number,
+                           l.name AS legislature_name
+                    ORDER BY l.parliament_id, l.term_number
+                    """,
+                    **params,
+                ).data()
+
+                processed = 0
+                skipped_no_mapping = 0
+                skipped_no_day_precision = 0
+                errors = 0
+
+                for r in rows:
+                    parliament_id = r.get("parliament_id")
+                    term_number = r.get("term_number")
+                    if not parliament_id or not isinstance(term_number, int):
+                        skipped_no_mapping += 1
+                        continue
+
+                    qid = mapping.get(parliament_id, {}).get(term_number)
+                    if not qid:
+                        skipped_no_mapping += 1
+                        continue
+
+                    try:
+                        qid = qid.strip().upper()
+                        revision = fetch_lastrevid(qid)
+                        entitydata = fetch_entity_pinned(qid, revision)
+                        term = parse_term_from_entitydata(qid, revision, entitydata)
+
+                        if term.start.precision != 11:
+                            skipped_no_day_precision += 1
+                            if not args.dry_run:
+                                print(
+                                    f"Skipped {parliament_id}:{term_number} (QID {qid}): precision={term.start.precision}, not day",
+                                    file=sys.stderr,
+                                )
+                            continue
+
+                        if args.dry_run:
+                            print(
+                                f"Would ingest {parliament_id}:{term_number} -> QID {qid} (revision {revision}): start_date={term.start.value_iso}",
+                                file=sys.stderr,
+                            )
+                            processed += 1
+                            continue
+
+                        term_id = f"wikidata:{qid}:{revision}"
+                        session.run(
+                            """
+                            MERGE (t:LegislatureTerm {id: $id})
+                            SET t.qid = $qid,
+                                t.parliament_id = $parliament_id,
+                                t.term_number = $term_number,
+                                t.name = $name,
+                                t.source_primary = "wikidata",
+                                t.start_date = $start_date,
+                                t.start_date_precision = $start_date_precision,
+                                t.start_date_raw = $start_date_raw,
+                                t.end_date = $end_date,
+                                t.end_date_precision = $end_date_precision,
+                                t.end_date_raw = $end_date_raw,
+                                t.evidence_urls = $evidence_urls,
+                                t.source_meta_json = $source_meta_json
+                            """,
+                            id=term_id,
+                            qid=term.qid,
+                            parliament_id=parliament_id,
+                            term_number=term_number,
+                            name=term.name,
+                            start_date=term.start.value_iso,
+                            start_date_precision=precision_label(term.start.precision),
+                            start_date_raw=term.start.raw,
+                            end_date=term.end.value_iso,
+                            end_date_precision=precision_label(term.end.precision),
+                            end_date_raw=term.end.raw,
+                            evidence_urls=[term.evidence_url],
+                            source_meta_json=json.dumps(term.source_meta, ensure_ascii=False, sort_keys=True),
+                        )
+                        session.run(
+                            """
+                            MATCH (l:Legislature {parliament_id: $parliament_id, term_number: $term_number})
+                            MATCH (t:LegislatureTerm {id: $term_id})
+                            MERGE (l)-[:HAS_TERM]->(t)
+                            """,
+                            parliament_id=parliament_id,
+                            term_number=term_number,
+                            term_id=term_id,
+                        )
+                        processed += 1
+                    except Exception as e:
+                        errors += 1
+                        print(f"Error processing {parliament_id}:{term_number} (QID {qid}): {e}", file=sys.stderr)
+
+                result = {
+                    "processed": processed,
+                    "skipped_no_mapping": skipped_no_mapping,
+                    "skipped_no_day_precision": skipped_no_day_precision,
+                    "errors": errors,
+                }
+                print(json.dumps(result, ensure_ascii=False, indent=2))
         finally:
             driver.close()
         return

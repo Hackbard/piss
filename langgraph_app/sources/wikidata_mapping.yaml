@@ -1,0 +1,26 @@
+# Wikidata QID mapping for legislature terms
+# Format: parliament_id -> term_number -> QID
+# Only day-precision terms will be ingested (precision=11)
+#
+# Example:
+# NI:
+#   17: Q12345678
+#   18: Q87654321
+
+NI: {}
+BY: {}
+BE: {}
+BB: {}
+HB: {}
+HH: {}
+HE: {}
+MV: {}
+NW: {}
+RP: {}
+SL: {}
+SN: {}
+ST: {}
+SH: {}
+TH: {}
+BT: {}
+BR: {}
