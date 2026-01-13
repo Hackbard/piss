@@ -272,3 +272,87 @@ class DataValidator:
         
         return result
 
+
+    def validate_date_governance_neo4j(
+        self,
+        session,
+        entity_type: str = "Legislature",
+        field: str = "start_date",
+        result: Optional[ValidationResult] = None,
+    ) -> ValidationResult:
+        """
+        Validate date governance rules in Neo4j.
+
+        Checks for:
+        - DATE_CANONICAL_WITHOUT_EVIDENCE: canonical date without evidence_urls
+        - DATE_CONFLICT: date conflicts (flagged)
+        - DATE_RAW_WITHOUT_PRECISION: raw date without precision
+        - DATE_PRECISION_INVALID: invalid precision values
+
+        Args:
+            session: Neo4j session
+            entity_type: Entity type to validate (Legislature, Mandate, LegislatureTerm)
+            field: Field name (start_date, end_date)
+            result: Optional existing ValidationResult to add to
+
+        Returns:
+            ValidationResult with errors and warnings
+        """
+        if result is None:
+            result = ValidationResult()
+
+        rows = session.run(
+            f"""
+            MATCH (n:{entity_type})
+            WHERE n.{field} IS NOT NULL
+            RETURN n.id AS entity_id,
+                   n.{field} AS canonical_date,
+                   n.{field}_precision AS precision,
+                   n.{field}_evidence_urls AS evidence_urls,
+                   n.{field}_conflict AS conflict
+            """
+        ).data()
+
+        for row in rows:
+            entity_id = row.get("entity_id")
+            evidence_urls = row.get("evidence_urls") or []
+
+            if not evidence_urls:
+                result.add_error(
+                    "DATE_CANONICAL_WITHOUT_EVIDENCE",
+                    f"{entity_type} {entity_id} has canonical {field} but no evidence_urls",
+                    entity_id=entity_id,
+                    entity_type=entity_type,
+                )
+
+            if row.get("conflict") is True:
+                result.add_warning(
+                    "DATE_CONFLICT",
+                    f"{entity_type} {entity_id} has a date conflict on {field}",
+                    entity_id=entity_id,
+                    entity_type=entity_type,
+                )
+
+        rows_raw = session.run(
+            f"""
+            MATCH (n:{entity_type})
+            WHERE n.{field}_raw IS NOT NULL
+            RETURN n.id AS entity_id,
+                   n.{field}_raw AS raw_date,
+                   n.{field}_precision AS precision
+            """
+        ).data()
+
+        for row in rows_raw:
+            entity_id = row.get("entity_id")
+            precision = row.get("precision")
+
+            if not precision or precision not in ["day", "month", "year", "unknown", "null"]:
+                result.add_error(
+                    "DATE_RAW_WITHOUT_PRECISION",
+                    f"{entity_type} {entity_id} has {field}_raw but invalid or missing precision: {precision}",
+                    entity_id=entity_id,
+                    entity_type=entity_type,
+                )
+
+        return result

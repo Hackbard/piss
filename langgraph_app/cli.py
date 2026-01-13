@@ -368,12 +368,18 @@ def main() -> None:
             default="langgraph_app/sources/official_sources.yaml",
             help="Path to official sources registry YAML",
         )
+        sub.add_argument("--force", action="store_true", help="Allow overwriting conflicting dates")
         args = sub.parse_args(sys.argv[2:])
 
         from neo4j import GraphDatabase
 
         from scraper.config import get_settings
         from langgraph_app.sources.official_registry import load_official_registry
+        from langgraph_app.governance.dates import (
+            DatePrecision,
+            GovernedDate,
+            apply_governed_date,
+        )
 
         settings = get_settings()
         driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
@@ -381,35 +387,88 @@ def main() -> None:
         entries = load_official_registry(Path(args.official_registry))
 
         def is_iso_day(value: str | None) -> bool:
-            return bool(value and __import__("re").match(r"^\\d{4}-\\d{2}-\\d{2}$", value))
+            return bool(value and __import__("re").match(r"^\d{4}-\d{2}-\d{2}$", value))
+
+        def determine_precision(value: str | None) -> DatePrecision:
+            if not value:
+                return DatePrecision.NULL
+            if is_iso_day(value):
+                return DatePrecision.DAY
+            return DatePrecision.UNKNOWN
 
         try:
             with driver.session() as session:
                 for e in entries:
                     term_id = f"official:{e.parliament_id}:{e.term_number}"
+
                     session.run(
                         """
                         MERGE (t:LegislatureTerm {id: $id})
                         SET t.parliament_id = $parliament_id,
                             t.term_number = $term_number,
                             t.source_primary = "official",
-                            t.start_date = $start_date,
-                            t.start_date_precision = $start_date_precision,
-                            t.end_date = $end_date,
-                            t.end_date_precision = $end_date_precision,
-                            t.evidence_urls = $evidence_urls,
                             t.source_meta_json = $source_meta_json
                         """,
                         id=term_id,
                         parliament_id=e.parliament_id,
                         term_number=e.term_number,
-                        start_date=e.start_date if is_iso_day(e.start_date) else None,
-                        start_date_precision="day" if is_iso_day(e.start_date) else "unknown",
-                        end_date=e.end_date if is_iso_day(e.end_date) else None,
-                        end_date_precision="day" if is_iso_day(e.end_date) else "unknown",
-                        evidence_urls=e.evidence_urls,
                         source_meta_json=json.dumps(e.source_meta, ensure_ascii=False, sort_keys=True),
                     )
+
+                    source_url = e.evidence_urls[0] if e.evidence_urls else ""
+
+                    if e.start_date:
+                        start_precision = determine_precision(e.start_date)
+                        governed_start = GovernedDate(
+                            iso_day=e.start_date if start_precision == DatePrecision.DAY else None,
+                            precision=start_precision,
+                            raw=e.start_date,
+                            source_kind="official",
+                            source_url=source_url,
+                            evidence_urls=e.evidence_urls,
+                            method="official_registry",
+                            reason="From official sources registry",
+                        )
+
+                        def apply_start(tx):
+                            return apply_governed_date(
+                                tx,
+                                "LegislatureTerm",
+                                term_id,
+                                "start_date",
+                                governed_start,
+                                "cli:ingest-official-terms",
+                                allow_force=args.force,
+                            )
+
+                        session.write_transaction(apply_start)
+
+                    if e.end_date:
+                        end_precision = determine_precision(e.end_date)
+                        governed_end = GovernedDate(
+                            iso_day=e.end_date if end_precision == DatePrecision.DAY else None,
+                            precision=end_precision,
+                            raw=e.end_date,
+                            source_kind="official",
+                            source_url=source_url,
+                            evidence_urls=e.evidence_urls,
+                            method="official_registry",
+                            reason="From official sources registry",
+                        )
+
+                        def apply_end(tx):
+                            return apply_governed_date(
+                                tx,
+                                "LegislatureTerm",
+                                term_id,
+                                "end_date",
+                                governed_end,
+                                "cli:ingest-official-terms",
+                                allow_force=args.force,
+                            )
+
+                        session.write_transaction(apply_end)
+
                     session.run(
                         """
                         MATCH (l:Legislature {parliament_id: $parliament_id, term_number: $term_number})
@@ -538,26 +597,28 @@ def main() -> None:
         sub.add_argument("--qid", type=str, required=True)
         sub.add_argument("--parliament-id", type=str, default="")
         sub.add_argument("--term-number", type=int, default=0)
+        sub.add_argument("--force", action="store_true", help="Allow overwriting conflicting dates")
         args = sub.parse_args(sys.argv[2:])
 
         from neo4j import GraphDatabase
 
         from scraper.config import get_settings
         from langgraph_app.sources.wikidata_terms import fetch_entity_pinned, fetch_lastrevid, parse_term_from_entitydata
+        from langgraph_app.governance.dates import DatePrecision, GovernedDate, apply_governed_date
+
+        def wikidata_precision_to_enum(p: int) -> DatePrecision:
+            if p == 11:
+                return DatePrecision.DAY
+            if p == 10:
+                return DatePrecision.MONTH
+            if p == 9:
+                return DatePrecision.YEAR
+            return DatePrecision.UNKNOWN
 
         qid = args.qid.strip().upper()
         revision = fetch_lastrevid(qid)
         entitydata = fetch_entity_pinned(qid, revision)
         term = parse_term_from_entitydata(qid, revision, entitydata)
-
-        def precision_label(p: int) -> str:
-            if p == 11:
-                return "day"
-            if p == 10:
-                return "month"
-            if p == 9:
-                return "year"
-            return "unknown"
 
         settings = get_settings()
         driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
@@ -572,13 +633,6 @@ def main() -> None:
                         t.term_number = $term_number,
                         t.name = $name,
                         t.source_primary = "wikidata",
-                        t.start_date = $start_date,
-                        t.start_date_precision = $start_date_precision,
-                        t.start_date_raw = $start_date_raw,
-                        t.end_date = $end_date,
-                        t.end_date_precision = $end_date_precision,
-                        t.end_date_raw = $end_date_raw,
-                        t.evidence_urls = $evidence_urls,
                         t.source_meta_json = $source_meta_json
                     """,
                     id=term_id,
@@ -586,15 +640,61 @@ def main() -> None:
                     parliament_id=args.parliament_id or None,
                     term_number=args.term_number or None,
                     name=term.name,
-                    start_date=term.start.value_iso,
-                    start_date_precision=precision_label(term.start.precision),
-                    start_date_raw=term.start.raw,
-                    end_date=term.end.value_iso,
-                    end_date_precision=precision_label(term.end.precision),
-                    end_date_raw=term.end.raw,
-                    evidence_urls=[term.evidence_url],
                     source_meta_json=json.dumps(term.source_meta, ensure_ascii=False, sort_keys=True),
                 )
+
+                if term.start.raw:
+                    start_precision = wikidata_precision_to_enum(term.start.precision)
+                    governed_start = GovernedDate(
+                        iso_day=term.start.value_iso if start_precision == DatePrecision.DAY else None,
+                        precision=start_precision,
+                        raw=term.start.raw,
+                        source_kind="wikidata",
+                        source_url=term.evidence_url,
+                        evidence_urls=[term.evidence_url],
+                        method="wikidata_term",
+                        reason=f"From Wikidata QID {qid} (revision {revision})",
+                    )
+
+                    def apply_start(tx):
+                        return apply_governed_date(
+                            tx,
+                            "LegislatureTerm",
+                            term_id,
+                            "start_date",
+                            governed_start,
+                            "cli:ingest-wikidata-term",
+                            allow_force=args.force,
+                        )
+
+                    session.write_transaction(apply_start)
+
+                if term.end.raw:
+                    end_precision = wikidata_precision_to_enum(term.end.precision)
+                    governed_end = GovernedDate(
+                        iso_day=term.end.value_iso if end_precision == DatePrecision.DAY else None,
+                        precision=end_precision,
+                        raw=term.end.raw,
+                        source_kind="wikidata",
+                        source_url=term.evidence_url,
+                        evidence_urls=[term.evidence_url],
+                        method="wikidata_term",
+                        reason=f"From Wikidata QID {qid} (revision {revision})",
+                    )
+
+                    def apply_end(tx):
+                        return apply_governed_date(
+                            tx,
+                            "LegislatureTerm",
+                            term_id,
+                            "end_date",
+                            governed_end,
+                            "cli:ingest-wikidata-term",
+                            allow_force=args.force,
+                        )
+
+                    session.write_transaction(apply_end)
+
                 if args.parliament_id and args.term_number:
                     session.run(
                         """
@@ -628,15 +728,16 @@ def main() -> None:
 
         from scraper.config import get_settings
         from langgraph_app.sources.wikidata_terms import fetch_entity_pinned, fetch_lastrevid, parse_term_from_entitydata
+        from langgraph_app.governance.dates import DatePrecision, GovernedDate, apply_governed_date
 
-        def precision_label(p: int) -> str:
+        def wikidata_precision_to_enum(p: int) -> DatePrecision:
             if p == 11:
-                return "day"
+                return DatePrecision.DAY
             if p == 10:
-                return "month"
+                return DatePrecision.MONTH
             if p == 9:
-                return "year"
-            return "unknown"
+                return DatePrecision.YEAR
+            return DatePrecision.UNKNOWN
 
         mapping_path = Path(args.mapping)
         mapping: dict[str, dict[int, str]] = {}
@@ -718,13 +819,6 @@ def main() -> None:
                                 t.term_number = $term_number,
                                 t.name = $name,
                                 t.source_primary = "wikidata",
-                                t.start_date = $start_date,
-                                t.start_date_precision = $start_date_precision,
-                                t.start_date_raw = $start_date_raw,
-                                t.end_date = $end_date,
-                                t.end_date_precision = $end_date_precision,
-                                t.end_date_raw = $end_date_raw,
-                                t.evidence_urls = $evidence_urls,
                                 t.source_meta_json = $source_meta_json
                             """,
                             id=term_id,
@@ -732,15 +826,61 @@ def main() -> None:
                             parliament_id=parliament_id,
                             term_number=term_number,
                             name=term.name,
-                            start_date=term.start.value_iso,
-                            start_date_precision=precision_label(term.start.precision),
-                            start_date_raw=term.start.raw,
-                            end_date=term.end.value_iso,
-                            end_date_precision=precision_label(term.end.precision),
-                            end_date_raw=term.end.raw,
-                            evidence_urls=[term.evidence_url],
                             source_meta_json=json.dumps(term.source_meta, ensure_ascii=False, sort_keys=True),
                         )
+
+                        if term.start.raw:
+                            start_precision = wikidata_precision_to_enum(term.start.precision)
+                            governed_start = GovernedDate(
+                                iso_day=term.start.value_iso if start_precision == DatePrecision.DAY else None,
+                                precision=start_precision,
+                                raw=term.start.raw,
+                                source_kind="wikidata",
+                                source_url=term.evidence_url,
+                                evidence_urls=[term.evidence_url],
+                                method="wikidata_term",
+                                reason=f"From Wikidata QID {qid} (revision {revision})",
+                            )
+
+                            def apply_start(tx):
+                                return apply_governed_date(
+                                    tx,
+                                    "LegislatureTerm",
+                                    term_id,
+                                    "start_date",
+                                    governed_start,
+                                    "cli:ingest-wikidata-terms",
+                                    allow_force=False,
+                                )
+
+                            session.write_transaction(apply_start)
+
+                        if term.end.raw:
+                            end_precision = wikidata_precision_to_enum(term.end.precision)
+                            governed_end = GovernedDate(
+                                iso_day=term.end.value_iso if end_precision == DatePrecision.DAY else None,
+                                precision=end_precision,
+                                raw=term.end.raw,
+                                source_kind="wikidata",
+                                source_url=term.evidence_url,
+                                evidence_urls=[term.evidence_url],
+                                method="wikidata_term",
+                                reason=f"From Wikidata QID {qid} (revision {revision})",
+                            )
+
+                            def apply_end(tx):
+                                return apply_governed_date(
+                                    tx,
+                                    "LegislatureTerm",
+                                    term_id,
+                                    "end_date",
+                                    governed_end,
+                                    "cli:ingest-wikidata-terms",
+                                    allow_force=False,
+                                )
+
+                            session.write_transaction(apply_end)
+
                         session.run(
                             """
                             MATCH (l:Legislature {parliament_id: $parliament_id, term_number: $term_number})
@@ -770,11 +910,13 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "propagate-legislature-starts":
         sub = argparse.ArgumentParser(prog="langgraph_app.cli propagate-legislature-starts")
         sub.add_argument("--parliament-id", type=str, default="")
+        sub.add_argument("--force", action="store_true", help="Allow overwriting conflicting dates")
         args = sub.parse_args(sys.argv[2:])
 
         from neo4j import GraphDatabase
 
         from scraper.config import get_settings
+        from langgraph_app.governance.dates import DatePrecision, GovernedDate, apply_governed_date
 
         settings = get_settings()
         driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
@@ -786,7 +928,7 @@ def main() -> None:
                     where += " AND l.parliament_id = $parliament_id"
                     params["parliament_id"] = args.parliament_id
 
-                result = session.run(
+                rows = session.run(
                     f"""
                     MATCH (l:Legislature)
                     {where}
@@ -800,32 +942,347 @@ def main() -> None:
                             ELSE 99
                          END AS rank
                     ORDER BY rank ASC
-                    WITH l, head(collect(t)) AS best
-                    SET l.start_date = best.start_date,
-                        l.start_date_precision = "day",
-                        l.start_date_source = best.source_primary,
-                        l.start_date_evidence_urls = best.evidence_urls,
-                        l.start_date_source_meta_json = best.source_meta_json
-                    RETURN count(l) AS updated
+                    WITH l.id AS legislature_id, head(collect(t)) AS best
+                    RETURN legislature_id,
+                           best.start_date AS start_date,
+                           best.start_date_precision AS start_date_precision,
+                           best.start_date_raw AS start_date_raw,
+                           best.source_primary AS source_primary,
+                           best.evidence_urls AS evidence_urls,
+                           best.source_meta_json AS source_meta_json
                     """,
                     **params,
-                )
-                updated = result.single().get("updated")
-                mandate_backfilled = session.run(
+                ).data()
+
+                legislatures_updated = 0
+                for row in rows:
+                    legislature_id = row.get("legislature_id")
+                    start_date = row.get("start_date")
+                    evidence_urls = row.get("evidence_urls") or []
+                    source_primary = row.get("source_primary") or "unknown"
+                    source_url = evidence_urls[0] if evidence_urls else ""
+
+                    if not legislature_id or not start_date:
+                        continue
+
+                    governed_start = GovernedDate(
+                        iso_day=start_date,
+                        precision=DatePrecision.DAY,
+                        raw=row.get("start_date_raw"),
+                        source_kind=source_primary,
+                        source_url=source_url,
+                        evidence_urls=evidence_urls,
+                        method="propagate_from_term",
+                        reason=f"Propagated from LegislatureTerm (source: {source_primary})",
+                    )
+
+                    def apply_start(tx):
+                        return apply_governed_date(
+                            tx,
+                            "Legislature",
+                            legislature_id,
+                            "start_date",
+                            governed_start,
+                            "cli:propagate-legislature-starts",
+                            allow_force=args.force,
+                        )
+
+                    result = session.write_transaction(apply_start)
+                    if result.canonical_written:
+                        legislatures_updated += 1
+
+                mandate_rows = session.run(
                     """
                     MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
-                    WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
-                    SET m.start_date = l.start_date,
-                        m.start_date_source = "legislature"
-                    RETURN count(m) AS backfilled
-                    """
-                ).single().get("backfilled")
+                    WHERE m.start_date IS NULL AND l.start_date IS NOT NULL AND l.start_date_precision = "day"
+                    RETURN m.id AS mandate_id,
+                           l.start_date AS start_date,
+                           l.start_date_source_kind AS source_kind,
+                           l.start_date_source_url AS source_url,
+                           l.start_date_evidence_urls AS evidence_urls
+                    """,
+                ).data()
+
+                mandates_backfilled = 0
+                for row in mandate_rows:
+                    mandate_id = row.get("mandate_id")
+                    start_date = row.get("start_date")
+                    source_kind = row.get("source_kind") or "legislature"
+                    source_url = row.get("source_url") or ""
+                    evidence_urls = row.get("evidence_urls") or []
+
+                    if not mandate_id or not start_date:
+                        continue
+
+                    governed_start = GovernedDate(
+                        iso_day=start_date,
+                        precision=DatePrecision.DAY,
+                        raw=None,
+                        source_kind=source_kind,
+                        source_url=source_url,
+                        evidence_urls=evidence_urls,
+                        method="propagate_from_legislature",
+                        reason="Propagated from Legislature.start_date",
+                    )
+
+                    def apply_mandate_start(tx):
+                        return apply_governed_date(
+                            tx,
+                            "Mandate",
+                            mandate_id,
+                            "start_date",
+                            governed_start,
+                            "cli:propagate-legislature-starts",
+                            allow_force=False,
+                        )
+
+                    result = session.write_transaction(apply_mandate_start)
+                    if result.canonical_written:
+                        mandates_backfilled += 1
 
                 print(
                     json.dumps(
                         {
-                            "legislatures_updated": updated,
-                            "mandates_start_backfilled": mandate_backfilled,
+                            "legislatures_updated": legislatures_updated,
+                            "mandates_start_backfilled": mandates_backfilled,
+                        }
+                    )
+                )
+        finally:
+            driver.close()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "audit-date-conflicts":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli audit-date-conflicts")
+        sub.add_argument("--format", choices=["json", "csv"], default="json")
+        sub.add_argument("--out", type=str, default="")
+        sub.add_argument("--entity-type", type=str, choices=["Legislature", "Mandate", "LegislatureTerm"], default="")
+        sub.add_argument("--field", type=str, choices=["start_date", "end_date"], default="")
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                field = args.field or "start_date"
+                entity_type_filter = ""
+                params: dict[str, Any] = {}
+                
+                if args.entity_type:
+                    entity_type_filter = f"labels(n)[0] = $entity_type"
+                    params["entity_type"] = args.entity_type
+                else:
+                    entity_type_filter = "labels(n)[0] IN ['Legislature', 'Mandate', 'LegislatureTerm']"
+
+                query = f"""
+                    MATCH (n)
+                    WHERE {entity_type_filter} AND n.{field}_conflict = true
+                    RETURN labels(n)[0] AS entity_type,
+                           n.id AS entity_id,
+                           n.{field} AS canonical_date,
+                           n.{field}_conflict_with AS conflict_with,
+                           n.{field}_source_kind AS source_kind,
+                           n.{field}_source_url AS source_url,
+                           n.{field}_evidence_urls AS evidence_urls,
+                           n.{field}_set_at AS set_at,
+                           n.{field}_set_by AS set_by
+                    ORDER BY entity_type, entity_id
+                    """
+                
+                rows = session.run(query, **params).data()
+
+            output_path = Path(args.out) if args.out else None
+
+            if args.format == "json":
+                payload = {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "rows": rows,
+                }
+                content = json.dumps(payload, ensure_ascii=False, indent=2)
+                if output_path:
+                    output_path.write_text(content, encoding="utf-8")
+                else:
+                    print(content)
+                return
+
+            fieldnames = [
+                "entity_type",
+                "entity_id",
+                "canonical_date",
+                "conflict_with",
+                "source_kind",
+                "source_url",
+                "set_at",
+                "set_by",
+            ]
+            if output_path:
+                with output_path.open("w", encoding="utf-8", newline="") as f:
+                    w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+                    w.writeheader()
+                    for row in rows:
+                        w.writerow({k: v for k, v in row.items() if k in fieldnames})
+            else:
+                w = csv.DictWriter(sys.stdout, fieldnames=fieldnames, extrasaction="ignore")
+                w.writeheader()
+                for row in rows:
+                    w.writerow({k: v for k, v in row.items() if k in fieldnames})
+            return
+        finally:
+            driver.close()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "audit-missing-canonical-dates":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli audit-missing-canonical-dates")
+        sub.add_argument("--format", choices=["json", "csv"], default="json")
+        sub.add_argument("--out", type=str, default="")
+        sub.add_argument("--entity-type", type=str, choices=["Legislature", "Mandate"], default="")
+        sub.add_argument("--field", type=str, choices=["start_date", "end_date"], default="start_date")
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                field = args.field
+                entity_type = args.entity_type or "Legislature"
+                
+                query = f"""
+                    MATCH (n:{entity_type})
+                    WHERE n.{field} IS NULL
+                    RETURN n.id AS entity_id,
+                           n.{field}_raw AS raw_date,
+                           n.{field}_precision AS precision,
+                           n.{field}_source_kind AS source_kind,
+                           n.{field}_source_url AS source_url
+                    ORDER BY entity_id
+                    LIMIT 1000
+                    """
+                
+                rows = session.run(query).data()
+
+            output_path = Path(args.out) if args.out else None
+
+            if args.format == "json":
+                payload = {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "entity_type": entity_type,
+                    "field": field,
+                    "rows": rows,
+                }
+                content = json.dumps(payload, ensure_ascii=False, indent=2)
+                if output_path:
+                    output_path.write_text(content, encoding="utf-8")
+                else:
+                    print(content)
+                return
+
+            fieldnames = ["entity_id", "raw_date", "precision", "source_kind", "source_url"]
+            if output_path:
+                with output_path.open("w", encoding="utf-8", newline="") as f:
+                    w = csv.DictWriter(f, fieldnames=fieldnames)
+                    w.writeheader()
+                    for row in rows:
+                        w.writerow(row)
+            else:
+                w = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
+                w.writeheader()
+                for row in rows:
+                    w.writerow(row)
+            return
+        finally:
+            driver.close()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "resolve-date-conflict":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli resolve-date-conflict")
+        sub.add_argument("--entity", type=str, required=True, help="Entity type (Legislature, Mandate, LegislatureTerm)")
+        sub.add_argument("--entity-id", type=str, required=True, help="Entity ID")
+        sub.add_argument("--field", type=str, required=True, choices=["start_date", "end_date"], help="Field name")
+        sub.add_argument("--accept", type=str, required=True, help="Date to accept (YYYY-MM-DD)")
+        sub.add_argument("--evidence-url", type=str, required=True, help="Evidence URL")
+        sub.add_argument("--reason", type=str, default="", help="Reason for resolution")
+        args = sub.parse_args(sys.argv[2:])
+
+        from neo4j import GraphDatabase
+
+        from scraper.config import get_settings
+        from langgraph_app.governance.dates import DatePrecision, GovernedDate, apply_governed_date
+
+        if not __import__("re").match(r"^\d{4}-\d{2}-\d{2}$", args.accept):
+            print(f"Error: --accept must be in YYYY-MM-DD format, got {args.accept!r}", file=sys.stderr)
+            sys.exit(1)
+
+        settings = get_settings()
+        driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+        try:
+            with driver.session() as session:
+                result = session.run(
+                    f"""
+                    MATCH (n:{args.entity} {{id: $entity_id}})
+                    RETURN n.{args.field} AS current_date,
+                           n.{args.field}_conflict AS has_conflict,
+                           n.{args.field}_conflict_with AS conflict_with,
+                           n.{args.field}_source_kind AS source_kind,
+                           n.{args.field}_evidence_urls AS evidence_urls
+                    """,
+                    entity_id=args.entity_id,
+                ).single()
+
+                if not result:
+                    print(f"Error: Entity {args.entity} with id {args.entity_id} not found", file=sys.stderr)
+                    sys.exit(1)
+
+                current_date = result.get("current_date")
+                has_conflict = result.get("has_conflict", False)
+                conflict_with = result.get("conflict_with") or []
+                source_kind = result.get("source_kind") or "manual"
+                evidence_urls = result.get("evidence_urls") or []
+
+                if not has_conflict:
+                    print(f"Warning: Entity {args.entity_id} does not have a conflict flag set", file=sys.stderr)
+
+                all_evidence_urls = list(set([args.evidence_url] + evidence_urls))
+
+                governed_date = GovernedDate(
+                    iso_day=args.accept,
+                    precision=DatePrecision.DAY,
+                    raw=None,
+                    source_kind=source_kind,
+                    source_url=args.evidence_url,
+                    evidence_urls=all_evidence_urls,
+                    method="manual_resolution",
+                    reason=args.reason or f"Manual resolution of conflict (previous: {current_date}, conflict_with: {conflict_with})",
+                )
+
+                def apply_resolution(tx):
+                    return apply_governed_date(
+                        tx,
+                        args.entity,
+                        args.entity_id,
+                        args.field,
+                        governed_date,
+                        "cli:resolve-date-conflict",
+                        allow_force=True,
+                    )
+
+                result = session.write_transaction(apply_resolution)
+                print(
+                    json.dumps(
+                        {
+                            "resolved": True,
+                            "entity_type": args.entity,
+                            "entity_id": args.entity_id,
+                            "field": args.field,
+                            "previous_date": current_date,
+                            "accepted_date": args.accept,
+                            "conflict_detected": result.conflict_detected,
+                            "audit_event_id": result.audit_event_id,
                         }
                     )
                 )

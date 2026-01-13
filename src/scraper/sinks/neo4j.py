@@ -30,6 +30,7 @@ class Neo4jSink:
                 "CREATE CONSTRAINT wikipedia_person_record_id IF NOT EXISTS FOR (w:WikipediaPersonRecord) REQUIRE w.id IS UNIQUE",
                 "CREATE CONSTRAINT dip_person_record_id IF NOT EXISTS FOR (d:DipPersonRecord) REQUIRE d.id IS UNIQUE",
                 "CREATE CONSTRAINT person_link_assertion_id IF NOT EXISTS FOR (a:PersonLinkAssertion) REQUIRE a.id IS UNIQUE",
+                "CREATE CONSTRAINT audit_event_id IF NOT EXISTS FOR (e:AuditEvent) REQUIRE e.id IS UNIQUE",
             ]
             for constraint in constraints:
                 try:
@@ -44,6 +45,8 @@ class Neo4jSink:
                 "CREATE INDEX mandate_party_code IF NOT EXISTS FOR (m:Mandate) ON (m.party_code)",
                 "CREATE INDEX mandate_start_date IF NOT EXISTS FOR (m:Mandate) ON (m.start_date)",
                 "CREATE INDEX mandate_end_date IF NOT EXISTS FOR (m:Mandate) ON (m.end_date)",
+                "CREATE INDEX legislature_parliament_id IF NOT EXISTS FOR (l:Legislature) ON (l.parliament_id)",
+                "CREATE INDEX legislature_term_number IF NOT EXISTS FOR (l:Legislature) ON (l.term_number)",
             ]
             for index in indexes:
                 try:
