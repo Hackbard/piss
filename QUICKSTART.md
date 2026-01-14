@@ -135,7 +135,10 @@ docker compose run --rm --build scraper scraper validate --strict
 docker compose run --rm --build scraper scraper validate --strict --strict-completeness
 
 # JSON Output (für CI/CD): Reines JSON zu stdout, Logs zu stderr (jq-kompatibel)
-docker compose run --rm --build scraper scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
+docker compose run --rm scraper scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
+
+# Quiet Mode: Unterdrückt alle Logs (nur JSON Output)
+docker compose run --rm scraper scraper validate --json --quiet | jq '.error_count'
 ```
 
 **Was wird geprüft:**
@@ -156,7 +159,7 @@ docker compose run --rm --build scraper scraper validate --json | jq '{error_cou
 
 **Exit Codes:**
 - `0` = Keine Errors (Warnings sind OK)
-- `1` = Mindestens ein ERROR (CI-tauglich)
+- `2` = Mindestens ein ERROR (CI-tauglich)
 
 ### Schritt 4: Daten prüfen
 

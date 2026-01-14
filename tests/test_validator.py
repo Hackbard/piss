@@ -138,8 +138,39 @@ class TestDataValidator:
         assert result.has_errors()
         assert any(e["code"] == "MANDATE_DUPLICATE" for e in result.errors)
     
-    def test_overlapping_mandates_same_party(self):
-        validator = DataValidator()
+    def test_overlapping_mandates_same_party_warning(self):
+        validator = DataValidator(strict_overlaps=False)
+        result = ValidationResult(mode="integrity")
+        
+        mandates = [
+            Mandate(
+                id="test-1",
+                person_id="person-1",
+                parliament_id="parliament-1",
+                legislature_id="legislature-1",
+                start_date="2020-01-01",
+                end_date="2020-06-30",
+                party_code="SPD",
+            ),
+            Mandate(
+                id="test-2",
+                person_id="person-1",
+                parliament_id="parliament-1",
+                legislature_id="legislature-1",
+                start_date="2020-06-01",
+                end_date="2020-12-31",
+                party_code="SPD",
+            ),
+        ]
+        
+        validator.validate_mandate_overlaps(mandates, person_id="person-1", result=result)
+        result.classify_by_mode()
+        
+        assert not result.has_errors()
+        assert any(w["code"] == "MANDATE_OVERLAP_SAME_PARTY" for w in result.warnings)
+    
+    def test_overlapping_mandates_same_party_error_strict(self):
+        validator = DataValidator(strict_overlaps=True)
         result = ValidationResult()
         
         mandates = [
@@ -272,6 +303,7 @@ class TestDataValidator:
         assert is_integrity_issue("MANDATE_END_BEFORE_START") is True
         assert is_integrity_issue("MANDATE_DUPLICATE") is True
         assert is_integrity_issue("DATE_CANONICAL_WITHOUT_EVIDENCE") is True
+        assert is_integrity_issue("MANDATE_OVERLAP_SAME_PARTY") is False
         assert is_integrity_issue("MANDATE_MISSING_START_DATE") is False
     
     def test_is_completeness_issue(self):

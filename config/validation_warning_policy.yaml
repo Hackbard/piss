@@ -1,0 +1,9 @@
+version: 1
+allowed_codes:
+  - MANDATE_OVERLAP_DIFFERENT_PARTY
+ignored_codes: []
+actionable_codes:
+  - MANDATE_MISSING_START_DATE
+notes:
+  MANDATE_MISSING_START_DATE: "Missing canonical start dates – must be resolved via official sources or manual curation."
+  MANDATE_OVERLAP_DIFFERENT_PARTY: "Mandate overlaps with different parties – possible party switch, requires curation."

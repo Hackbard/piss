@@ -1,0 +1,152 @@
+name: Validate Data Quality
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    services:
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: neo4j/password
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      meilisearch:
+        image: getmeili/meilisearch:v1.5
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd "curl http://localhost:7700/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e .
+      
+      - name: Set up environment
+        run: |
+          cp .env.example .env || true
+          echo "NEO4J_URI=bolt://localhost:7687" >> .env
+          echo "NEO4J_USER=neo4j" >> .env
+          echo "NEO4J_PASSWORD=password" >> .env
+          echo "MEILI_URL=http://localhost:7700" >> .env
+          echo "MEILI_MASTER_KEY=masterKey" >> .env
+      
+      - name: Run integrity validation
+        run: |
+          VALIDATE_VIA_DOCKER=0 make validate
+        continue-on-error: false
+      
+      - name: Run governance validation
+        run: |
+          VALIDATE_VIA_DOCKER=0 make validate-governance
+        continue-on-error: true
+      
+      - name: Run warnings audit
+        if: always()
+        run: |
+          VALIDATE_VIA_DOCKER=0 make warnings-audit
+        continue-on-error: true
+      
+      - name: Upload validation artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-results
+          path: artifacts/*.json
+          retention-days: 30
+      
+      - name: Display validation summary
+        if: always()
+        run: |
+          echo "## Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f artifacts/validate.integrity.json ]; then
+            echo "### Integrity Validation" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+            import json
+            with open('artifacts/validate.integrity.json') as f:
+                d = json.load(f)
+            print(f\"- Errors: {d.get('error_count', 0)}\") >> $GITHUB_STEP_SUMMARY
+            print(f\"- Warnings: {d.get('warning_count', 0)}\") >> $GITHUB_STEP_SUMMARY
+            "
+          fi
+          if [ -f artifacts/validate.governance.json ]; then
+            echo "### Governance Validation" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+            import json
+            with open('artifacts/validate.governance.json') as f:
+                d = json.load(f)
+            print(f\"- Errors: {d.get('error_count', 0)}\") >> $GITHUB_STEP_SUMMARY
+            print(f\"- Warnings: {d.get('warning_count', 0)}\") >> $GITHUB_STEP_SUMMARY
+            "
+          fi
+          if [ -f artifacts/warnings.audit.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Top 10 Warning Codes" >> $GITHUB_STEP_SUMMARY
+            python3 << 'PY' >> $GITHUB_STEP_SUMMARY
+import json
+import sys
+try:
+    with open('artifacts/warnings.audit.json') as f:
+        audit = json.load(f)
+    by_code = audit.get('by_code', [])[:10]
+    for item in by_code:
+        code = item.get('code', 'UNKNOWN')
+        count = item.get('count', 0)
+        print(f"- **{code}**: {count}")
+except Exception as e:
+    print(f"Error reading warnings audit: {e}", file=sys.stderr)
+PY
+            if [ -f artifacts/warnings.baseline.json ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Warning Budget Comparison" >> $GITHUB_STEP_SUMMARY
+              python3 << 'PY' >> $GITHUB_STEP_SUMMARY
+import json
+import sys
+try:
+    with open('artifacts/warnings.baseline.json') as f:
+        baseline = json.load(f)
+    with open('artifacts/validate.integrity.json') as f:
+        current = json.load(f)
+    baseline_count = baseline.get('warning_count', 0)
+    current_count = current.get('warning_count', 0)
+    delta = current_count - baseline_count
+    delta_str = f"+{delta}" if delta >= 0 else str(delta)
+    print(f"- Baseline: {baseline_count} warnings")
+    print(f"- Current: {current_count} warnings")
+    print(f"- Delta: {delta_str}")
+except Exception as e:
+    print(f"Error comparing to baseline: {e}", file=sys.stderr)
+PY
+            fi
+          fi

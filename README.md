@@ -226,6 +226,50 @@ scraper validate --strict --strict-completeness [--json]
 
 # JSON Output: Pure JSON to stdout, logs to stderr (jq-compatible)
 scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
+
+# Quiet Mode: Suppress all logging (only JSON output)
+scraper validate --json --quiet | jq '.error_count'
+
+# Docker Compose
+docker compose run --rm scraper scraper validate --json | jq '{error_count, warning_count}'
+
+# Governance mode: Date governance checks (canonical/evidence/precision)
+scraper validate --mode governance [--json]
+```
+
+## CI Validation Workflow
+
+The project includes a CI-ready validation workflow using Make:
+
+```bash
+# Run integrity validation (blocking)
+make validate
+
+# Run governance validation (non-blocking by default)
+make validate-governance
+
+# Run both validations
+make validate-all
+```
+
+**Artifacts:**
+- `artifacts/validate.integrity.json` - Integrity validation results
+- `artifacts/validate.governance.json` - Governance validation results
+
+**Environment Variables:**
+- `VALIDATE_VIA_DOCKER=0` - Use direct scraper command instead of docker compose (default: 1, uses Docker)
+- `STRICT_GOVERNANCE=1` - Make governance validation blocking (default: non-blocking)
+
+**Examples:**
+```bash
+# Default: Docker-based validation (recommended)
+make validate
+
+# Local validation (requires Neo4j/Meilisearch on localhost)
+VALIDATE_VIA_DOCKER=0 make validate
+
+# Strict governance (fails on governance errors)
+STRICT_GOVERNANCE=1 make validate-governance
 ```
 
 ## LangGraph MVP: Members List CLI

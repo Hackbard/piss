@@ -97,12 +97,26 @@ scraper validate --strict --strict-completeness
 # Output als JSON (für CI/Programmierung)
 # Reines JSON zu stdout, Logs zu stderr (jq-kompatibel)
 scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
+
+# Quiet Mode: Unterdrückt alle Logs (nur JSON Output)
+scraper validate --json --quiet | jq '.error_count'
+
+# Mit Docker Compose
+docker compose run --rm scraper scraper validate --json | jq '{error_count, warning_count}'
+
+# Quiet Mode mit Docker
+docker compose run --rm scraper scraper validate --json --quiet | jq '.error_count'
 ```
+
+**Wichtig:**
+- `--json`: Reines JSON zu stdout, alle Logs zu stderr
+- `--quiet`: Unterdrückt alle Logs (nur mit `--json`)
+- Docker: Das Image wird nur gebaut, wenn es nicht existiert oder sich der Dockerfile geändert hat
 
 ### Exit Codes
 
 - **0**: Keine Errors (Warnings sind OK)
-- **1**: Mindestens ein ERROR
+- **2**: Mindestens ein ERROR
 
 **CI-tauglich:** Exit Code != 0 bei ERRORs
 
@@ -162,13 +176,29 @@ scraper validate --json | jq '{error_count, warning_count, meta: .meta}'
 ```yaml
 - name: Validate Data
   run: |
-    docker compose run --rm --build scraper scraper validate --json > validation.json
+    docker compose run --rm scraper scraper validate --json > validation.json
     jq '{error_count, warning_count, meta: .meta}' validation.json
     if [ $? -ne 0 ]; then
       echo "Validation failed"
       cat validation.json
       exit 1
     fi
+```
+
+### Docker Compose Best Practices
+
+```bash
+# Erstes Mal: Container bauen
+docker compose build scraper
+
+# Danach: Ohne Build (schneller, kein Build-Output)
+docker compose run --rm scraper scraper validate --json | jq '.error_count'
+
+# Mit Quiet Mode (keine Logs, nur JSON)
+docker compose run --rm scraper scraper validate --json --quiet | jq '.error_count'
+
+# Fehlerbehandlung
+docker compose run --rm scraper scraper validate --json --quiet | jq -e '.error_count == 0' || exit 2
 ```
 
 ### Pre-Commit Hook

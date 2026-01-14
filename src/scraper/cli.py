@@ -490,20 +490,30 @@ def validate(
     parliament: Optional[str] = Option(None, "--parliament", help="Filter by parliament ID"),
     strict: bool = Option(False, "--strict", help="Strict mode: missing evidence is ERROR"),
     strict_completeness: bool = Option(False, "--strict-completeness", help="Strict completeness: missing start_date is ERROR (default: WARNING). Equivalent to --mode all."),
-    mode: str = Option("integrity", "--mode", help="Validation mode: integrity (default), completeness, or all"),
+    strict_overlaps: bool = Option(False, "--strict-overlaps", help="Strict overlaps: mandate overlaps with same party are ERROR (default: WARNING, requires curation)"),
+    mode: str = Option("integrity", "--mode", help="Validation mode: integrity (default), completeness, all, or governance"),
     json_output: bool = Option(False, "--json", help="Output as JSON (stdout only, logs go to stderr)"),
+    quiet: bool = Option(False, "--quiet", help="Suppress all logging and non-fatal warnings (only works with --json)"),
 ) -> None:
     """Validate data quality."""
     import json
     import logging
     from datetime import date as date_type
-    from scraper.validation.validator import DataValidator, ValidationMode
+    from scraper.validation.validator import DataValidator, ValidationMode, ValidationResult
     from scraper.sinks.neo4j import Neo4jSink
     from scraper.models.domain import Mandate, Party
     
+    if quiet and not json_output:
+        typer.echo("Error: --quiet only works with --json", err=True)
+        sys.exit(2)
+    
     if json_output:
         root_logger = logging.getLogger()
-        root_logger.setLevel(logging.CRITICAL + 1)
+        if quiet:
+            root_logger.setLevel(logging.CRITICAL + 1)
+        else:
+            root_logger.setLevel(logging.ERROR)
+        
         stdout_handlers = []
         for handler in list(root_logger.handlers):
             if isinstance(handler, logging.StreamHandler):
@@ -512,20 +522,40 @@ def validate(
                     if stream is sys.stdout:
                         stdout_handlers.append(handler)
                         root_logger.removeHandler(handler)
+                    elif stream is sys.stderr:
+                        handler.setLevel(root_logger.level)
                 except (AttributeError, OSError, ValueError):
                     pass
+        
         if stdout_handlers:
             stderr_handler = logging.StreamHandler(sys.stderr)
             if stdout_handlers[0].formatter:
                 stderr_handler.setFormatter(stdout_handlers[0].formatter)
-            stderr_handler.setLevel(logging.CRITICAL + 1)
+            stderr_handler.setLevel(root_logger.level)
             root_logger.addHandler(stderr_handler)
+        
+        for logger_name in logging.Logger.manager.loggerDict:
+            logger = logging.getLogger(logger_name)
+            for handler in list(logger.handlers):
+                if isinstance(handler, logging.StreamHandler):
+                    try:
+                        stream = getattr(handler, 'stream', None)
+                        if stream is sys.stdout:
+                            logger.removeHandler(handler)
+                            stderr_handler = logging.StreamHandler(sys.stderr)
+                            if handler.formatter:
+                                stderr_handler.setFormatter(handler.formatter)
+                            stderr_handler.setLevel(root_logger.level)
+                            logger.addHandler(stderr_handler)
+                    except (AttributeError, OSError, ValueError):
+                        pass
     
-    if mode not in ["integrity", "completeness", "all"]:
-        typer.echo(f"✗ Invalid mode: {mode}. Must be one of: integrity, completeness, all", err=True)
-        sys.exit(1)
+    if mode not in ["integrity", "completeness", "all", "governance"]:
+        if not (json_output and quiet):
+            typer.echo(f"✗ Invalid mode: {mode}. Must be one of: integrity, completeness, all, governance", err=True)
+        sys.exit(2)
     
-    validation_mode: ValidationMode = mode
+    validation_mode: ValidationMode = mode if mode != "governance" else "integrity"
     if strict_completeness:
         validation_mode = "all"
     
@@ -533,8 +563,9 @@ def validate(
         from_date_obj = date_type.fromisoformat(from_date) if from_date else None
         to_date_obj = date_type.fromisoformat(to_date) if to_date else None
     except ValueError as e:
-        typer.echo(f"✗ Invalid date format: {e}", err=True)
-        sys.exit(1)
+        if not (json_output and quiet):
+            typer.echo(f"✗ Invalid date format: {e}", err=True)
+        sys.exit(2)
     
     sink = Neo4jSink(settings)
     sink.init()
@@ -569,7 +600,7 @@ def validate(
             )
             mandates.append(mandate)
         
-        if skipped_count > 0:
+        if skipped_count > 0 and not (json_output and quiet):
             typer.echo(f"⚠ Skipped {skipped_count} mandate(s) without parliament_id (legacy data)", err=True)
         
         parties_result = session.run("""
@@ -592,23 +623,37 @@ def validate(
             )
             parties.append(party)
         
-        if skipped_parties_count > 0:
+        if skipped_parties_count > 0 and not (json_output and quiet):
             typer.echo(f"⚠ Skipped {skipped_parties_count} party/parties without code (legacy data)", err=True)
-    
-    validator = DataValidator(strict_mode=strict, strict_completeness=strict_completeness, mode=validation_mode)
-    result = validator.validate_all(
-        mandates=mandates,
-        parties=parties,
-        from_date=from_date_obj,
-        to_date=to_date_obj,
-        parliament_id=parliament,
-    )
+        
+        validator = DataValidator(strict_mode=strict, strict_completeness=strict_completeness, strict_overlaps=strict_overlaps, mode=validation_mode)
+        
+        if mode == "governance":
+            result = ValidationResult(mode="integrity")
+            validator.validate_date_governance_neo4j(session, "Legislature", "start_date", result)
+            validator.validate_date_governance_neo4j(session, "Legislature", "end_date", result)
+            validator.validate_date_governance_neo4j(session, "Mandate", "start_date", result)
+            validator.validate_date_governance_neo4j(session, "Mandate", "end_date", result)
+            validator.validate_date_governance_neo4j(session, "LegislatureTerm", "start_date", result)
+            validator.validate_date_governance_neo4j(session, "LegislatureTerm", "end_date", result)
+            result.classify_by_mode()
+        else:
+            result = validator.validate_all(
+                mandates=mandates,
+                parties=parties,
+                from_date=from_date_obj,
+                to_date=to_date_obj,
+                parliament_id=parliament,
+            )
     
     try:
         import importlib.metadata
         version = importlib.metadata.version("piss")
     except Exception:
         version = None
+    
+    # Update result mode for output
+    result.mode = mode if mode != "governance" else "governance"
     
     if json_output:
         json_output_str = json.dumps(result.to_dict(version=version), ensure_ascii=False)
@@ -627,7 +672,7 @@ def validate(
             for warning in result.warnings:
                 typer.echo(f"  WARN [{warning['code']}]: {warning['message']}", err=True)
     
-    sys.exit(1 if result.has_errors() else 0)
+    sys.exit(2 if result.has_errors() else 0)
 
 
 @app.command()

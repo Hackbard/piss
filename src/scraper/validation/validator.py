@@ -19,7 +19,6 @@ def is_integrity_issue(code: str) -> bool:
         "MANDATE_END_BEFORE_START",
         "MANDATE_INVALID_START_DATE",
         "MANDATE_DUPLICATE",
-        "MANDATE_OVERLAP_SAME_PARTY",
         "DATE_CANONICAL_WITHOUT_EVIDENCE",
         "DATE_RAW_WITHOUT_PRECISION",
         "DATE_PRECISION_INVALID",
@@ -120,7 +119,7 @@ class ValidationResult:
 class DataValidator:
     """Validator for domain entities."""
     
-    def __init__(self, strict_mode: bool = False, strict_completeness: bool = False, mode: ValidationMode = "integrity"):
+    def __init__(self, strict_mode: bool = False, strict_completeness: bool = False, strict_overlaps: bool = False, mode: ValidationMode = "integrity"):
         """
         Initialize validator.
         
@@ -128,10 +127,13 @@ class DataValidator:
             strict_mode: If True, missing evidence is treated as ERROR instead of WARN
             strict_completeness: If True, missing start_date is treated as ERROR (completeness gap).
                                 If False (default), missing start_date is treated as WARNING.
+            strict_overlaps: If True, mandate overlaps with same party are treated as ERROR.
+                            If False (default), they are treated as WARNING (requires curation).
             mode: Validation mode - "integrity" (default), "completeness", or "all"
         """
         self.strict_mode = strict_mode
         self.strict_completeness = strict_completeness
+        self.strict_overlaps = strict_overlaps
         self.mode = mode
         self.known_party_codes: set[str] = set()
     
@@ -148,7 +150,7 @@ class DataValidator:
             else:
                 result.add_warning(
                     "MANDATE_MISSING_START_DATE",
-                    f"Mandate {mandate.id} is missing start_date (completeness gap)",
+                    f"Mandate {mandate.id} is missing start_date (completeness gap). Missing start_date; fixable if Legislature has day start date; otherwise needs official term start source.",
                     entity_id=mandate.id,
                     entity_type="Mandate",
                 )
@@ -251,12 +253,20 @@ class DataValidator:
                 
                 if interval_overlaps(start_a, end_a, start_b, end_b):
                     if mandate_a.party_code == mandate_b.party_code:
-                        result.add_error(
-                            "MANDATE_OVERLAP_SAME_PARTY",
-                            f"Mandates {mandate_a.id} and {mandate_b.id} overlap with same party_code ({mandate_a.party_code})",
-                            entity_id=mandate_a.id,
-                            entity_type="Mandate",
-                        )
+                        if self.strict_overlaps:
+                            result.add_error(
+                                "MANDATE_OVERLAP_SAME_PARTY",
+                                f"Mandates {mandate_a.id} and {mandate_b.id} overlap with same party_code ({mandate_a.party_code})",
+                                entity_id=mandate_a.id,
+                                entity_type="Mandate",
+                            )
+                        else:
+                            result.add_warning(
+                                "MANDATE_OVERLAP_SAME_PARTY",
+                                f"Mandates {mandate_a.id} and {mandate_b.id} overlap with same party_code ({mandate_a.party_code}) - requires curation",
+                                entity_id=mandate_a.id,
+                                entity_type="Mandate",
+                            )
                     else:
                         result.add_warning(
                             "MANDATE_OVERLAP_DIFFERENT_PARTY",
@@ -374,24 +384,62 @@ class DataValidator:
 
         rows = session.run(
             f"""
-            MATCH (n:{entity_type})
-            WHERE n.{field} IS NOT NULL
-            RETURN n.id AS entity_id,
-                   n.{field} AS canonical_date,
-                   n.{field}_precision AS precision,
-                   n.{field}_evidence_urls AS evidence_urls,
-                   n.{field}_conflict AS conflict
-            """
+            MATCH (n)
+            WHERE ANY(l IN labels(n) WHERE l = $entity_type)
+              AND n.{field} IS NOT NULL
+            OPTIONAL MATCH (n)-[:SUPPORTED_BY]->(e:Evidence)
+            OPTIONAL MATCH (n)-[:SUPPORTED_BY]->(x)
+            WHERE x.url IS NOT NULL AND trim(x.url) <> ''
+            WITH n,
+                 n.id AS entity_id,
+                 n.{field} AS canonical_date,
+                 n.{field}_precision AS precision,
+                 n.{field}_evidence_urls AS evidence_urls,
+                 n.{field}_conflict AS conflict,
+                 n['evidence_urls'] AS legacy_evidence_urls,
+                 n['{field}_source'] AS provenance_source,
+                 collect(DISTINCT e.url) AS evidence_node_urls,
+                 collect(DISTINCT x.url) AS legacy_node_urls
+            RETURN entity_id,
+                   canonical_date,
+                   precision,
+                   evidence_urls,
+                   conflict,
+                   legacy_evidence_urls,
+                   provenance_source,
+                   evidence_node_urls,
+                   legacy_node_urls
+            """,
+            entity_type=entity_type,
         ).data()
 
         for row in rows:
             entity_id = row.get("entity_id")
             evidence_urls = row.get("evidence_urls") or []
+            legacy_evidence_urls = row.get("legacy_evidence_urls")
+            provenance_source = row.get("provenance_source")
+            evidence_node_urls = [url for url in (row.get("evidence_node_urls") or []) if url]
+            legacy_node_urls = [url for url in (row.get("legacy_node_urls") or []) if url]
 
-            if not evidence_urls:
+            has_legacy_evidence_urls = False
+            if legacy_evidence_urls:
+                if isinstance(legacy_evidence_urls, list):
+                    has_legacy_evidence_urls = len([u for u in legacy_evidence_urls if u]) > 0
+                else:
+                    has_legacy_evidence_urls = str(legacy_evidence_urls).strip() != ""
+
+            has_evidence = (
+                len(evidence_urls) > 0
+                or has_legacy_evidence_urls
+                or (provenance_source and str(provenance_source).strip() != "")
+                or len(evidence_node_urls) > 0
+                or len(legacy_node_urls) > 0
+            )
+
+            if not has_evidence:
                 result.add_error(
                     "DATE_CANONICAL_WITHOUT_EVIDENCE",
-                    f"{entity_type} {entity_id} has canonical {field} but no evidence_urls",
+                    f"{entity_type} {entity_id} has canonical {field} but no evidence (checked: evidence_urls, legacy evidence_urls, {field}_source, SUPPORTED_BY relationships)",
                     entity_id=entity_id,
                     entity_type=entity_type,
                 )
@@ -406,12 +454,14 @@ class DataValidator:
 
         rows_raw = session.run(
             f"""
-            MATCH (n:{entity_type})
-            WHERE n.{field}_raw IS NOT NULL
+            MATCH (n)
+            WHERE ANY(l IN labels(n) WHERE l = $entity_type)
+              AND n.{field}_raw IS NOT NULL
             RETURN n.id AS entity_id,
                    n.{field}_raw AS raw_date,
                    n.{field}_precision AS precision
-            """
+            """,
+            entity_type=entity_type,
         ).data()
 
         for row in rows_raw:

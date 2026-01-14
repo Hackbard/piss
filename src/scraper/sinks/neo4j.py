@@ -4,7 +4,6 @@ from neo4j import GraphDatabase
 
 from scraper.config import Settings
 from scraper.utils.date_normalize import normalize_date
-from scraper.utils.day_only_dates import assert_day_invariant
 
 
 class Neo4jSink:
@@ -26,6 +25,7 @@ class Neo4jSink:
                 "CREATE CONSTRAINT legislature_term_id IF NOT EXISTS FOR (t:LegislatureTerm) REQUIRE t.id IS UNIQUE",
                 "CREATE CONSTRAINT mandate_id IF NOT EXISTS FOR (m:Mandate) REQUIRE m.id IS UNIQUE",
                 "CREATE CONSTRAINT evidence_id IF NOT EXISTS FOR (e:Evidence) REQUIRE e.id IS UNIQUE",
+                "CREATE CONSTRAINT evidence_url IF NOT EXISTS FOR (e:Evidence) REQUIRE e.url IS UNIQUE",
                 "CREATE CONSTRAINT canonical_person_id IF NOT EXISTS FOR (c:CanonicalPerson) REQUIRE c.id IS UNIQUE",
                 "CREATE CONSTRAINT wikipedia_person_record_id IF NOT EXISTS FOR (w:WikipediaPersonRecord) REQUIRE w.id IS UNIQUE",
                 "CREATE CONSTRAINT dip_person_record_id IF NOT EXISTS FOR (d:DipPersonRecord) REQUIRE d.id IS UNIQUE",
@@ -55,6 +55,26 @@ class Neo4jSink:
                     pass
 
     def upsert(self, normalized_data: Dict[str, Any]) -> None:
+        from datetime import datetime, timezone
+        from uuid import uuid4
+        
+        evidence_by_id: Dict[str, Any] = {}
+        for evidence in normalized_data.get("evidence", []):
+            evidence_by_id[evidence.id] = evidence
+        
+        batch_id = str(uuid4())
+        entity_counts = {
+            "persons": len(normalized_data.get("persons", [])),
+            "mandates": len(normalized_data.get("mandates", [])),
+            "legislatures": len(normalized_data.get("legislatures", [])),
+            "parties": len(normalized_data.get("parties", [])),
+        }
+        sample_entity_ids = {
+            "persons": [p.id for p in normalized_data.get("persons", [])[:5]],
+            "mandates": [m.id for m in normalized_data.get("mandates", [])[:5]],
+            "legislatures": [l.id for l in normalized_data.get("legislatures", [])[:5]],
+        }
+        
         with self.driver.session() as session:
             for person in normalized_data.get("persons", []):
                 # Ensure evidence_ids is derived from evidence_refs if not set
@@ -90,24 +110,26 @@ class Neo4jSink:
                 # Create EvidenceRef relationships with snippet_ref as property
                 for evidence_ref in person.evidence_refs:
                     import json
-                    # Always set snippet_ref_json: empty string if None (for consistency)
-                    # This makes the data structure consistent and queries simpler
                     snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else ""
                     
-                    session.run(
-                        """
-                        MATCH (p:Person {id: $person_id})
-                        MERGE (e:Evidence {id: $evidence_id})
-                        MERGE (p)-[r:SUPPORTED_BY {
-                            purpose: $purpose,
-                            snippet_ref_json: $snippet_ref_json
-                        }]->(e)
-                        """,
-                        person_id=person.id,
-                        evidence_id=evidence_ref.evidence_id,
-                        purpose=evidence_ref.purpose or "",
-                        snippet_ref_json=snippet_ref_json,
-                    )
+                    evidence_obj = evidence_by_id.get(evidence_ref.evidence_id)
+                    if evidence_obj:
+                        session.run(
+                            """
+                            MATCH (p:Person {id: $person_id})
+                            MERGE (e:Evidence {url: $url})
+                            ON CREATE SET e.id = $evidence_id
+                            MERGE (p)-[r:SUPPORTED_BY {
+                                purpose: $purpose,
+                                snippet_ref_json: $snippet_ref_json
+                            }]->(e)
+                            """,
+                            person_id=person.id,
+                            evidence_id=evidence_ref.evidence_id,
+                            url=evidence_obj.url,
+                            purpose=evidence_ref.purpose or "",
+                            snippet_ref_json=snippet_ref_json,
+                        )
 
             for party in normalized_data.get("parties", []):
                 session.run(
@@ -124,30 +146,36 @@ class Neo4jSink:
                 )
 
             for legislature in normalized_data.get("legislatures", []):
-                start_precision = getattr(legislature, "start_date_precision", None)
-                end_precision = getattr(legislature, "end_date_precision", None)
-                assert_day_invariant(
-                    {
+                try:
+                    from langgraph_app.governance.normalize import normalize_legislature_record
+                    props = normalize_legislature_record(legislature)
+                except ImportError:
+                    props = {
+                        "id": legislature.id,
+                        "parliament_id": legislature.parliament_id,
+                        "term_number": getattr(legislature, "term_number", None),
+                        "name": legislature.name,
                         "start_date": legislature.start_date,
-                        "start_date_precision": start_precision,
-                    },
-                    "start_date",
-                )
-                assert_day_invariant(
-                    {
                         "end_date": legislature.end_date,
-                        "end_date_precision": end_precision,
-                    },
-                    "end_date",
-                )
+                        "start_date_raw": getattr(legislature, "start_date_raw", None),
+                        "end_date_raw": getattr(legislature, "end_date_raw", None),
+                        "start_date_precision": getattr(legislature, "start_date_precision", None),
+                        "end_date_precision": getattr(legislature, "end_date_precision", None),
+                        "start_date_source": getattr(legislature, "start_date_source", None),
+                        "end_date_source": getattr(legislature, "end_date_source", None),
+                        "source_url": getattr(legislature, "source_url", None),
+                        "wikipedia_title": getattr(legislature, "wikipedia_title", None),
+                        "evidence_ids": legislature.evidence_ids,
+                    }
+                
                 session.run(
                     """
                     MERGE (l:Legislature {id: $id})
                     SET l.parliament_id = $parliament_id,
                         l.term_number = $term_number,
                         l.name = $name,
-                        l.start_date = $start_date,
-                        l.end_date = $end_date,
+                        l.start_date = CASE WHEN $start_date IS NULL THEN NULL ELSE date($start_date) END,
+                        l.end_date = CASE WHEN $end_date IS NULL THEN NULL ELSE date($end_date) END,
                         l.start_date_raw = $start_date_raw,
                         l.end_date_raw = $end_date_raw,
                         l.start_date_precision = $start_date_precision,
@@ -158,30 +186,60 @@ class Neo4jSink:
                         l.wikipedia_title = $wikipedia_title,
                         l.evidence_ids = $evidence_ids
                     """,
-                    id=legislature.id,
-                    parliament_id=legislature.parliament_id,
-                    term_number=getattr(legislature, "term_number", None),
-                    name=legislature.name,
-                    start_date=legislature.start_date,
-                    end_date=legislature.end_date,
-                    start_date_raw=getattr(legislature, "start_date_raw", None),
-                    end_date_raw=getattr(legislature, "end_date_raw", None),
-                    start_date_precision=start_precision,
-                    end_date_precision=end_precision,
-                    start_date_source=getattr(legislature, "start_date_source", None),
-                    end_date_source=getattr(legislature, "end_date_source", None),
-                    source_url=getattr(legislature, "source_url", None),
-                    wikipedia_title=getattr(legislature, "wikipedia_title", None),
-                    evidence_ids=legislature.evidence_ids,
+                    **props,
                 )
+                
+                evidence_ids = props.get("evidence_ids", [])
+                evidence_urls = []
+                for evidence_id in evidence_ids:
+                    if evidence_id in evidence_by_id:
+                        evidence_urls.append(evidence_by_id[evidence_id].url)
+                
+                source_url = props.get("source_url") or props.get("start_date_source")
+                if source_url and source_url not in evidence_urls:
+                    evidence_urls.append(source_url)
+                
+                for url in evidence_urls:
+                    if url:
+                        session.run(
+                            """
+                            MATCH (l:Legislature {id: $legislature_id})
+                            MERGE (e:Evidence {url: $url})
+                            MERGE (l)-[:SUPPORTED_BY {purpose: 'legislature_source'}]->(e)
+                            """,
+                            legislature_id=legislature.id,
+                            url=url,
+                        )
 
             for mandate in normalized_data.get("mandates", []):
-                mandate_evidence_ids = mandate.evidence_ids
-                if not mandate_evidence_ids and mandate.evidence_refs:
-                    mandate_evidence_ids = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
-                
-                start_date_normalized = normalize_date(mandate.start_date) if mandate.start_date else None
-                end_date_normalized = normalize_date(mandate.end_date) if mandate.end_date else None
+                try:
+                    from langgraph_app.governance.normalize import normalize_mandate_record
+                    props = normalize_mandate_record(mandate)
+                except ImportError:
+                    mandate_evidence_ids = mandate.evidence_ids
+                    if not mandate_evidence_ids and mandate.evidence_refs:
+                        mandate_evidence_ids = list(set([ref.evidence_id for ref in mandate.evidence_refs]))
+                    start_date_normalized = normalize_date(mandate.start_date) if mandate.start_date else None
+                    end_date_normalized = normalize_date(mandate.end_date) if mandate.end_date else None
+                    props = {
+                        "id": mandate.id,
+                        "person_id": mandate.person_id,
+                        "parliament_id": mandate.parliament_id,
+                        "legislature_id": mandate.legislature_id,
+                        "party_code": mandate.party_code,
+                        "wahlkreis": getattr(mandate, "wahlkreis", None),
+                        "start_date": start_date_normalized,
+                        "end_date": end_date_normalized,
+                        "start_date_raw": getattr(mandate, "start_date_raw", None),
+                        "end_date_raw": getattr(mandate, "end_date_raw", None),
+                        "start_date_precision": getattr(mandate, "start_date_precision", None),
+                        "end_date_precision": getattr(mandate, "end_date_precision", None),
+                        "start_date_source": getattr(mandate, "start_date_source", None),
+                        "end_date_source": getattr(mandate, "end_date_source", None),
+                        "role": getattr(mandate, "role", None),
+                        "notes": getattr(mandate, "notes", None),
+                        "evidence_ids": mandate_evidence_ids,
+                    }
                 
                 session.run(
                     """
@@ -191,45 +249,42 @@ class Neo4jSink:
                         m.legislature_id = $legislature_id,
                         m.party_code = $party_code,
                         m.wahlkreis = $wahlkreis,
-                        m.start_date = $start_date,
-                        m.end_date = $end_date,
+                        m.start_date = CASE WHEN $start_date IS NULL THEN NULL ELSE date($start_date) END,
+                        m.end_date = CASE WHEN $end_date IS NULL THEN NULL ELSE date($end_date) END,
+                        m.start_date_raw = $start_date_raw,
+                        m.end_date_raw = $end_date_raw,
+                        m.start_date_precision = $start_date_precision,
+                        m.end_date_precision = $end_date_precision,
+                        m.start_date_source = $start_date_source,
+                        m.end_date_source = $end_date_source,
                         m.role = $role,
                         m.notes = $notes,
                         m.evidence_ids = $evidence_ids
-                    REMOVE m.start_date_raw, m.end_date_raw, m.start_date_source, m.end_date_source
                     """,
-                    id=mandate.id,
-                    person_id=mandate.person_id,
-                    parliament_id=mandate.parliament_id,
-                    legislature_id=mandate.legislature_id,
-                    party_code=mandate.party_code,
-                    wahlkreis=mandate.wahlkreis,
-                    start_date=start_date_normalized,
-                    end_date=end_date_normalized,
-                    role=mandate.role,
-                    notes=mandate.notes,
-                    evidence_ids=mandate_evidence_ids,
+                    **props,
                 )
                 
-                if mandate.start_date_raw:
-                    session.run(
-                        """
-                        MATCH (m:Mandate {id: $id})
-                        SET m.start_date_raw = $start_date_raw
-                        """,
-                        id=mandate.id,
-                        start_date_raw=mandate.start_date_raw,
-                    )
+                evidence_ids = props.get("evidence_ids", [])
+                evidence_urls = []
+                for evidence_id in evidence_ids:
+                    if evidence_id in evidence_by_id:
+                        evidence_urls.append(evidence_by_id[evidence_id].url)
                 
-                if mandate.end_date_raw:
-                    session.run(
-                        """
-                        MATCH (m:Mandate {id: $id})
-                        SET m.end_date_raw = $end_date_raw
-                        """,
-                        id=mandate.id,
-                        end_date_raw=mandate.end_date_raw,
-                    )
+                source_url = props.get("start_date_source")
+                if source_url and source_url not in evidence_urls:
+                    evidence_urls.append(source_url)
+                
+                for url in evidence_urls:
+                    if url:
+                        session.run(
+                            """
+                            MATCH (m:Mandate {id: $mandate_id})
+                            MERGE (e:Evidence {url: $url})
+                            MERGE (m)-[:SUPPORTED_BY {purpose: 'mandate_source'}]->(e)
+                            """,
+                            mandate_id=mandate.id,
+                            url=url,
+                        )
                 
                 if mandate.legislature_id:
                     session.run(
@@ -237,22 +292,6 @@ class Neo4jSink:
                         MATCH (m:Mandate {id: $mandate_id})
                         MATCH (l:Legislature {id: $legislature_id})
                         MERGE (m)-[:IN_LEGISLATURE]->(l)
-                        WITH m, l
-                        WHERE m.start_date IS NULL AND l.start_date IS NOT NULL
-                        SET m.start_date = l.start_date,
-                            m.start_date_source = "legislature"
-                        """,
-                        mandate_id=mandate.id,
-                        legislature_id=mandate.legislature_id,
-                    )
-                    
-                    session.run(
-                        """
-                        MATCH (m:Mandate {id: $mandate_id})
-                        MATCH (l:Legislature {id: $legislature_id})
-                        WHERE m.end_date IS NULL AND l.end_date IS NOT NULL
-                        SET m.end_date = l.end_date,
-                            m.end_date_source = "legislature"
                         """,
                         mandate_id=mandate.id,
                         legislature_id=mandate.legislature_id,
@@ -261,24 +300,26 @@ class Neo4jSink:
                 # Create EvidenceRef relationships with snippet_ref as property
                 for evidence_ref in mandate.evidence_refs:
                     import json
-                    # Always set snippet_ref_json: empty string if None (for consistency)
-                    # This makes the data structure consistent and queries simpler
                     snippet_ref_json = json.dumps(evidence_ref.snippet_ref, sort_keys=True) if evidence_ref.snippet_ref else ""
                     
-                    session.run(
-                        """
-                        MATCH (m:Mandate {id: $mandate_id})
-                        MERGE (e:Evidence {id: $evidence_id})
-                        MERGE (m)-[r:SUPPORTED_BY {
-                            purpose: $purpose,
-                            snippet_ref_json: $snippet_ref_json
-                        }]->(e)
-                        """,
-                        mandate_id=mandate.id,
-                        evidence_id=evidence_ref.evidence_id,
-                        purpose=evidence_ref.purpose or "",
-                        snippet_ref_json=snippet_ref_json,
-                    )
+                    evidence_obj = evidence_by_id.get(evidence_ref.evidence_id)
+                    if evidence_obj:
+                        session.run(
+                            """
+                            MATCH (m:Mandate {id: $mandate_id})
+                            MERGE (e:Evidence {url: $url})
+                            ON CREATE SET e.id = $evidence_id
+                            MERGE (m)-[r:SUPPORTED_BY {
+                                purpose: $purpose,
+                                snippet_ref_json: $snippet_ref_json
+                            }]->(e)
+                            """,
+                            mandate_id=mandate.id,
+                            evidence_id=evidence_ref.evidence_id,
+                            url=evidence_obj.url,
+                            purpose=evidence_ref.purpose or "",
+                            snippet_ref_json=snippet_ref_json,
+                        )
 
                 session.run(
                     """
@@ -473,9 +514,9 @@ class Neo4jSink:
             for evidence in normalized_data.get("evidence", []):
                 session.run(
                     """
-                    MERGE (e:Evidence {id: $id})
-                    SET e.url = $url,
-                        e.endpoint_kind = $endpoint_kind,
+                    MERGE (e:Evidence {url: $url})
+                    ON CREATE SET e.id = $id
+                    SET e.endpoint_kind = $endpoint_kind,
                         e.page_title = $page_title,
                         e.page_id = $page_id,
                         e.revision_id = $revision_id,
@@ -494,6 +535,34 @@ class Neo4jSink:
                     retrieved_at=evidence.retrieved_at,
                     sha256=evidence.sha256,
                     content_hash=evidence.content_hash,
+                )
+            
+            if self.settings.import_audit:
+                from datetime import datetime, timezone
+                from uuid import uuid4
+                
+                session.run(
+                    """
+                    CREATE (e:AuditEvent {
+                        id: $audit_event_id,
+                        at: $at,
+                        actor: $actor,
+                        action: 'import_batch',
+                        entity_type: 'ImportBatch',
+                        entity_id: $batch_id,
+                        field: null,
+                        previous: null,
+                        next: null,
+                        source_url: null,
+                        evidence_urls: [],
+                        reason: $reason
+                    })
+                    """,
+                    audit_event_id=str(uuid4()),
+                    at=datetime.now(timezone.utc).isoformat(),
+                    actor="sink:neo4j:upsert",
+                    batch_id=batch_id,
+                    reason=f"Import batch: {entity_counts} entities. Sample IDs: {sample_entity_ids}",
                 )
 
     def close(self) -> None:

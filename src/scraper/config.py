@@ -38,6 +38,8 @@ class Settings(BaseSettings):
         default="https://search.dip.bundestag.de/api/v1", alias="DIP_BASE_URL"
     )
     dip_max_wahlperiode: int = Field(default=50, alias="DIP_MAX_WAHLPERIODE")
+    
+    import_audit: bool = Field(default=False, alias="PISS_IMPORT_AUDIT")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
