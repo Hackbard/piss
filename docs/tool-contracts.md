@@ -35,9 +35,15 @@ Sucht Mandate mit Evidence-by-default.
   "offset": 0,
   "sort": "start_date",
   "sort_dir": "ASC",
-  "strict_evidence": true
+  "strict_evidence": true,
+  "active_only": false,
+  "as_of": "2020-01-01"
 }
 ```
+
+**Request Parameters:**
+- `active_only` (optional, bool): When `true`, excludes mandates with `start_date=NULL` and returns telemetry in `meta`.
+- `as_of` (optional, string, YYYY-MM-DD): Stichtag for `active_only=true` queries. If omitted and `active_only=true`, uses coverage-based clamping.
 
 **Response:**
 ```json
@@ -48,10 +54,15 @@ Sucht Mandate mit Evidence-by-default.
     "request_id": "550e8400-e29b-41d4-a716-446655440000",
     "result_hash": "a1b2c3d4e5f6...",
     "data_version": "git:abc123def456",
-    "warnings": []
+    "warnings": [],
+    "active_only": true,
+    "as_of": "2020-01-01",
+    "coverage_degraded": true,
+    "excluded_due_to_missing_start_date_count": 123,
+    "excluded_due_to_missing_legislature_start_date_count": 45
   },
   "applied_filter": { ... },
-  "total": 42,
+  "total": null,
   "rows": [
     {
       "person_id": "person-123",
@@ -71,6 +82,15 @@ Sucht Mandate mit Evidence-by-default.
   ]
 }
 ```
+
+**Response Meta Telemetry (when `active_only=true`):**
+- `active_only` (bool): Indicates that `active_only=true` was used in the request.
+- `as_of` (string, YYYY-MM-DD): The effective stichtag used for filtering (may be clamped to data coverage).
+- `coverage_degraded` (bool, optional): `true` if data coverage is incomplete (e.g., missing legislature start dates).
+- `excluded_due_to_missing_start_date_count` (int, optional): Number of mandates excluded because `mandate.start_date IS NULL`.
+- `excluded_due_to_missing_legislature_start_date_count` (int, optional): Number of mandates excluded because the legislature has no day-precision `start_date`.
+
+**Note:** When `active_only=false`, these telemetry fields may be omitted from `meta`.
 
 ### POST /api/tools/legislatures/stats
 

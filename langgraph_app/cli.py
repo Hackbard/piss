@@ -1238,11 +1238,12 @@ def main() -> None:
                     """
                     MATCH (m:Mandate)-[:IN_LEGISLATURE]->(l:Legislature)
                     WHERE m.start_date IS NULL AND l.start_date IS NOT NULL AND l.start_date_precision = "day"
+                    OPTIONAL MATCH (l)-[:SUPPORTED_BY]->(e:Evidence)
+                    WITH m, l, collect(DISTINCT e.url) AS evidence_urls
                     RETURN m.id AS mandate_id,
                            l.start_date AS start_date,
-                           l.start_date_source_kind AS source_kind,
-                           l.start_date_source_url AS source_url,
-                           l.start_date_evidence_urls AS evidence_urls
+                           coalesce(trim(toString(l.start_date_source)), '') AS source_url,
+                           evidence_urls
                     """,
                 ).data()
 
@@ -1250,18 +1251,20 @@ def main() -> None:
                 for row in mandate_rows:
                     mandate_id = row.get("mandate_id")
                     start_date = row.get("start_date")
-                    source_kind = row.get("source_kind") or "legislature"
                     source_url = row.get("source_url") or ""
                     evidence_urls = row.get("evidence_urls") or []
 
                     if not mandate_id or not start_date:
                         continue
 
+                    if not source_url and evidence_urls:
+                        source_url = evidence_urls[0]
+
                     governed_start = GovernedDate(
                         iso_day=start_date,
                         precision=DatePrecision.DAY,
                         raw=None,
-                        source_kind=source_kind,
+                        source_kind="propagate_from_legislature",
                         source_url=source_url,
                         evidence_urls=evidence_urls,
                         method="propagate_from_legislature",
@@ -2242,10 +2245,14 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "audit-mandate-missing-starts":
         sub = argparse.ArgumentParser(prog="langgraph_app.cli audit-mandate-missing-starts")
         sub.add_argument("--parliament-id", type=str, default="", help="Filter by parliament_id")
-        sub.add_argument("--limit", type=int, default=1000, help="Limit for query results")
-        sub.add_argument("--top", type=int, default=20, help="Top N samples per category")
+        sub.add_argument("--sample-limit", type=int, default=20, help="Limit for sample rows")
+        sub.add_argument("--top-terms", type=int, default=50, help="Top N parliament terms to show")
         sub.add_argument("--output", type=str, default="", help="Output JSON file path")
         args = sub.parse_args(sys.argv[2:])
+
+        import logging
+        for name in ("neo4j", "neo4j.notifications"):
+            logging.getLogger(name).setLevel(logging.ERROR)
 
         from neo4j import GraphDatabase
         from scraper.config import get_settings
@@ -2258,103 +2265,153 @@ def main() -> None:
         try:
             with driver.session() as session:
                 where_clause = "WHERE m.start_date IS NULL"
-                params: dict[str, Any] = {"limit": args.limit}
+                params: dict[str, Any] = {
+                    "sample_limit": args.sample_limit,
+                    "top_terms": args.top_terms,
+                }
                 if args.parliament_id:
                     where_clause += " AND m.parliament_id = $parliament_id"
                     params["parliament_id"] = args.parliament_id
 
-                query = f"""
+                query_total = f"""
+                MATCH (m:Mandate)
+                {where_clause}
+                RETURN count(m) AS total_missing
+                """
+                result_total = session.run(query_total, **params).single()
+                total_missing = result_total["total_missing"] if result_total else 0
+
+                query_by_term = f"""
                 MATCH (m:Mandate)
                 {where_clause}
                 OPTIONAL MATCH (m)-[:IN_LEGISLATURE]->(l)
-                OPTIONAL MATCH (m)-[:HELD]->(p:Person)
-                OPTIONAL MATCH (l)-[:SUPPORTED_BY]->(e:Evidence)
-                WITH m, l, p,
-                     collect(DISTINCT coalesce(e.url, e.source_url)) AS evidence_node_urls
-                WITH m, l, p, evidence_node_urls,
-                     coalesce(l.start_date, '') AS legislature_start_date,
-                     coalesce(l['start_date_precision'], '') AS legislature_start_precision,
-                     coalesce(l['start_date_source'], '') AS legislature_start_source,
-                     coalesce(l['start_date_evidence_urls'], []) AS legislature_evidence_urls,
-                     CASE 
-                       WHEN l IS NOT NULL AND EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }} THEN true
-                       WHEN l IS NOT NULL AND EXISTS {{ (l)-[:SUPPORTED_BY]->(x) WHERE x.url IS NOT NULL }} THEN true
-                       WHEN l IS NOT NULL AND coalesce(trim(l['start_date_source']), '') <> '' THEN true
-                       WHEN l IS NOT NULL AND size(coalesce(l['start_date_evidence_urls'], [])) > 0 THEN true
-                       ELSE false
-                     END AS has_legislature_evidence
                 RETURN
-                    m.id AS mandate_id,
-                    coalesce(p.name, '') AS person_name,
-                    m.parliament_id AS parliament_id,
-                    coalesce(l.id, '') AS legislature_id,
-                    coalesce(l.name, l.parliament, '') AS legislature_name,
-                    coalesce(l.term_number, -1) AS term_number,
-                    legislature_start_date,
-                    legislature_start_precision,
-                    legislature_start_source,
-                    legislature_evidence_urls,
-                    evidence_node_urls,
-                    has_legislature_evidence
-                LIMIT $limit
+                  m.parliament_id AS parliament_id,
+                  coalesce(l.term_number, -1) AS term_number,
+                  count(m) AS count
+                ORDER BY count DESC
+                LIMIT $top_terms
                 """
-                rows = session.run(query, **params).data()
+                rows_by_term = session.run(query_by_term, **params).data()
+                by_parliament_term_list = [
+                    {
+                        "parliament_id": row["parliament_id"],
+                        "term_number": row["term_number"],
+                        "count": row["count"],
+                    }
+                    for row in rows_by_term
+                ]
 
-                def classify_root_cause(row: dict) -> str:
-                    legislature_id = row.get("legislature_id", "")
-                    legislature_start_date = row.get("legislature_start_date", "")
-                    legislature_start_precision = row.get("legislature_start_precision", "")
-                    has_legislature_evidence = row.get("has_legislature_evidence", False)
+                query_by_root_cause = f"""
+                MATCH (m:Mandate)
+                {where_clause}
+                OPTIONAL MATCH (m)-[:IN_LEGISLATURE]->(l)
+                WITH
+                  m, l,
+                  CASE
+                    WHEN l IS NULL THEN 'missing_legislature_link'
+                    WHEN l.start_date IS NULL OR coalesce(l.start_date_precision, '') <> 'day' THEN 'legislature_missing_start_date'
+                    WHEN l.start_date IS NOT NULL AND coalesce(l.start_date_precision, '') = 'day' AND NOT EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }} THEN 'legislature_missing_evidence'
+                    ELSE 'backfillable_from_legislature'
+                  END AS root_cause
+                RETURN
+                  root_cause,
+                  count(m) AS count
+                ORDER BY count DESC
+                """
+                rows_by_root_cause = session.run(query_by_root_cause, **params).data()
+                by_root_cause = {row["root_cause"]: row["count"] for row in rows_by_root_cause}
 
+                def classify_root_cause(
+                    legislature_id: str,
+                    legislature_start_date: str,
+                    legislature_start_precision: str,
+                    has_legislature_evidence: bool,
+                ) -> str:
                     if not legislature_id or legislature_id == "":
                         return "missing_legislature_link"
-                    
                     if not legislature_start_date or legislature_start_date == "":
                         return "legislature_missing_start_date"
-                    
                     if legislature_start_precision != "day":
-                        return "legislature_start_not_day_precision"
-                    
+                        return "legislature_missing_start_date"
                     if not has_legislature_evidence:
-                        return "legislature_start_missing_evidence"
-                    
+                        return "legislature_missing_evidence"
                     return "backfillable_from_legislature"
 
-                classified = defaultdict(list)
-                by_parliament_term = defaultdict(int)
-                by_root_cause = defaultdict(int)
+                query_samples = f"""
+                MATCH (m:Mandate)
+                {where_clause}
+                OPTIONAL MATCH (m)-[:IN_LEGISLATURE]->(l)
+                OPTIONAL MATCH (p1:Person)-[:HAS_MANDATE]->(m)
+                OPTIONAL MATCH (p2:Person)-[:HELD]->(m)
+                OPTIONAL MATCH (m)-[:HELD]->(p3:Person)
+                OPTIONAL MATCH (l)-[:SUPPORTED_BY]->(e:Evidence)
+                WITH m, l,
+                     coalesce(p1.name, p2.name, p3.name, '') AS person_name,
+                     collect(DISTINCT e.url) AS legislature_evidence_urls,
+                     EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }} AS has_legislature_evidence,
+                     coalesce(trim(toString(l.start_date_source)), '') AS legislature_start_source,
+                     coalesce(toString(l.start_date_precision), '') AS legislature_start_precision
+                RETURN
+                  m.id AS mandate_id,
+                  person_name,
+                  m.parliament_id AS parliament_id,
+                  coalesce(l.id, '') AS legislature_id,
+                  coalesce(l.name, l.parliament, '') AS legislature_name,
+                  coalesce(l.term_number, -1) AS term_number,
+                  coalesce(toString(l.start_date), '') AS legislature_start_date,
+                  legislature_start_precision,
+                  legislature_start_source,
+                  legislature_evidence_urls,
+                  has_legislature_evidence
+                ORDER BY parliament_id, term_number, mandate_id
+                LIMIT $sample_limit
+                """
+                rows_samples = session.run(query_samples, **params).data()
 
-                for row in rows:
-                    root_cause = classify_root_cause(row)
-                    classified[root_cause].append(row)
-                    by_root_cause[root_cause] += 1
-                    
-                    parliament_id = row.get("parliament_id", "")
-                    term_number = row.get("term_number", -1)
-                    if parliament_id and term_number >= 0:
-                        by_parliament_term[f"{parliament_id}:{term_number}"] += 1
-
-                samples: dict[str, list[dict[str, Any]]] = {}
-                for root_cause, items in classified.items():
-                    samples[root_cause] = items[:args.top]
-
-                by_parliament_term_list = [
-                    {"parliament_id": k.split(":")[0], "term_number": int(k.split(":")[1]), "count": v}
-                    for k, v in sorted(by_parliament_term.items(), key=lambda x: x[1], reverse=True)
-                ]
+                samples_by_root_cause: dict[str, list[dict[str, Any]]] = defaultdict(list)
+                for row in rows_samples:
+                    evidence_urls_raw = row.get("legislature_evidence_urls", [])
+                    evidence_node_urls = [url for url in evidence_urls_raw if url and url.strip()]
+                    has_legislature_evidence = row.get("has_legislature_evidence", False)
+                    root_cause = classify_root_cause(
+                        row.get("legislature_id", ""),
+                        row.get("legislature_start_date", ""),
+                        row.get("legislature_start_precision", ""),
+                        has_legislature_evidence,
+                    )
+                    sample_row = {
+                        "mandate_id": row.get("mandate_id"),
+                        "person_name": row.get("person_name", ""),
+                        "parliament_id": row.get("parliament_id"),
+                        "legislature_id": row.get("legislature_id", ""),
+                        "legislature_name": row.get("legislature_name", ""),
+                        "term_number": row.get("term_number", -1),
+                        "legislature_start_date": row.get("legislature_start_date", ""),
+                        "legislature_start_precision": row.get("legislature_start_precision", ""),
+                        "legislature_start_source": row.get("legislature_start_source", ""),
+                        "legislature_evidence_urls": evidence_node_urls,
+                        "has_legislature_evidence": has_legislature_evidence,
+                    }
+                    samples_by_root_cause[root_cause].append(sample_row)
 
                 payload = {
                     "generated_at": dt_module.datetime.now(dt_module.timezone.utc).isoformat(),
-                    "total_missing": len(rows),
-                    "by_root_cause": dict(by_root_cause),
-                    "by_parliament_term": by_parliament_term_list[:50],
-                    "samples": {k: v[:args.top] for k, v in samples.items()},
+                    "meta": {
+                        "top_terms": args.top_terms,
+                        "sample_limit": args.sample_limit,
+                    },
+                    "total_missing": total_missing,
+                    "by_root_cause": by_root_cause,
+                    "by_parliament_term": by_parliament_term_list,
+                    "samples": dict(samples_by_root_cause),
                 }
 
                 if args.output:
                     output_path = Path(args.output)
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                    print(f"Output written to {output_path}", file=sys.stderr)
 
                 print(json.dumps(payload, ensure_ascii=False, indent=2))
         finally:
@@ -2392,21 +2449,17 @@ def main() -> None:
                      collect(DISTINCT coalesce(e.url, e.source_url)) AS evidence_node_urls
                 WITH m, l, evidence_node_urls,
                      l.start_date AS legislature_start_date,
-                     coalesce(l['start_date_source'], '') AS legislature_start_source,
-                     coalesce(l['start_date_evidence_urls'], []) AS legislature_evidence_urls
+                     coalesce(trim(toString(l.start_date_source)), '') AS legislature_start_source
                 WHERE legislature_start_date IS NOT NULL
                   AND (
                     legislature_start_source <> '' 
-                    OR size(legislature_evidence_urls) > 0 
                     OR size(evidence_node_urls) > 0
                     OR EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }}
-                    OR EXISTS {{ (l)-[:SUPPORTED_BY]->(x) WHERE x.url IS NOT NULL }}
                   )
                 RETURN
                     m.id AS mandate_id,
                     legislature_start_date,
                     legislature_start_source,
-                    legislature_evidence_urls,
                     evidence_node_urls
                 """
                 rows = session.run(query, **params).data()
@@ -2419,7 +2472,7 @@ def main() -> None:
                     mandate_id = row.get("mandate_id")
                     start_date = row.get("legislature_start_date")
                     source_url = row.get("legislature_start_source", "").strip()
-                    evidence_urls = (row.get("legislature_evidence_urls") or []) + (row.get("evidence_node_urls") or [])
+                    evidence_urls = row.get("evidence_node_urls") or []
                     evidence_urls = [url for url in evidence_urls if url and url.strip()]
 
                     if not mandate_id or not start_date:
@@ -2511,17 +2564,10 @@ def main() -> None:
                      coalesce(l.id, '') AS legislature_id,
                      coalesce(l.name, l.parliament, '') AS legislature_name,
                      coalesce(l.term_number, -1) AS term_number,
-                     coalesce(l.start_date, '') AS legislature_start_date,
-                     coalesce(l['start_date_precision'], '') AS legislature_start_precision,
-                     coalesce(l['start_date_source'], '') AS legislature_start_source,
-                     coalesce(l['start_date_evidence_urls'], []) AS legislature_evidence_urls,
-                     CASE 
-                       WHEN l IS NOT NULL AND EXISTS { (l)-[:SUPPORTED_BY]->(:Evidence) } THEN true
-                       WHEN l IS NOT NULL AND EXISTS { (l)-[:SUPPORTED_BY]->(x) WHERE x.url IS NOT NULL } THEN true
-                       WHEN l IS NOT NULL AND coalesce(trim(l['start_date_source']), '') <> '' THEN true
-                       WHEN l IS NOT NULL AND size(coalesce(l['start_date_evidence_urls'], [])) > 0 THEN true
-                       ELSE false
-                     END AS has_legislature_evidence
+                     coalesce(toString(l.start_date), '') AS legislature_start_date,
+                     coalesce(toString(l.start_date_precision), '') AS legislature_start_precision,
+                     coalesce(trim(toString(l.start_date_source)), '') AS legislature_start_source,
+                     EXISTS { (l)-[:SUPPORTED_BY]->(:Evidence) } AS has_legislature_evidence
                 WHERE l.id IS NOT NULL AND l.id <> ''
                   AND (legislature_start_date = '' 
                        OR legislature_start_precision <> 'day'
@@ -2536,8 +2582,8 @@ def main() -> None:
                     legislature_start_date,
                     legislature_start_precision,
                     legislature_start_source,
-                    legislature_evidence_urls,
-                    evidence_node_urls
+                    evidence_node_urls,
+                    has_legislature_evidence
                 """
                 rows = session.run(query).data()
 
@@ -2568,7 +2614,7 @@ def main() -> None:
                     if len(grouped[key]["sample_mandate_ids"]) < 10:
                         grouped[key]["sample_mandate_ids"].append(row.get("mandate_id", ""))
 
-                    evidence_urls = (row.get("legislature_evidence_urls") or []) + (row.get("evidence_node_urls") or [])
+                    evidence_urls = row.get("evidence_node_urls") or []
                     for url in evidence_urls:
                         if url and url.strip() and url not in grouped[key]["source_candidates"]:
                             grouped[key]["source_candidates"].append(url)
@@ -2589,6 +2635,73 @@ def main() -> None:
                 print(json.dumps(payload, ensure_ascii=False, indent=2))
         finally:
             driver.close()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "export-term-start-curation-queue":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli export-term-start-curation-queue")
+        sub.add_argument("--output", type=str, default="artifacts/term_starts.queue.yaml", help="Output YAML file path")
+        sub.add_argument("--min-mandates", type=int, default=1, help="Minimum mandates count to include")
+        sub.add_argument("--top", type=int, default=200, help="Limit number of terms exported")
+        sub.add_argument("--parliament-ids", type=str, default="", help="Comma-separated parliament IDs filter")
+        args = sub.parse_args(sys.argv[2:])
+
+        from langgraph_app.curation.term_starts import export_term_start_curation_queue
+        from pathlib import Path
+
+        parliament_ids = None
+        if args.parliament_ids:
+            parliament_ids = [pid.strip() for pid in args.parliament_ids.split(",") if pid.strip()]
+
+        output_path = Path(args.output)
+        result = export_term_start_curation_queue(
+            output_path=output_path,
+            min_mandates=args.min_mandates,
+            top=args.top,
+            parliament_ids=parliament_ids,
+        )
+
+        print(f"Exported {len(result['terms'])} terms to {output_path}", file=sys.stderr)
+        print(json.dumps({"exported_terms": len(result["terms"]), "output_path": str(output_path)}, indent=2))
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "apply-term-start-overrides":
+        sub = argparse.ArgumentParser(prog="langgraph_app.cli apply-term-start-overrides")
+        sub.add_argument("--input", type=str, required=True, help="Input YAML file path")
+        sub.add_argument("--dry-run", action="store_true", help="Show what would be changed without making changes")
+        sub.add_argument("--only-parliament-ids", type=str, default="", help="Comma-separated parliament IDs filter")
+        sub.add_argument("--only-term", type=str, default="", help="Single term filter (format: parliament_id:term_number)")
+        sub.add_argument("--strict", action="store_true", default=True, help="Fail on errors (default: true)")
+        sub.add_argument("--no-strict", dest="strict", action="store_false", help="Continue on errors")
+        args = sub.parse_args(sys.argv[2:])
+
+        from langgraph_app.curation.term_starts import apply_term_start_overrides
+        from pathlib import Path
+
+        only_parliament_ids = None
+        if args.only_parliament_ids:
+            only_parliament_ids = [pid.strip() for pid in args.only_parliament_ids.split(",") if pid.strip()]
+
+        only_term = None
+        if args.only_term:
+            only_term = args.only_term
+
+        input_path = Path(args.input)
+        if not input_path.exists():
+            print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+            sys.exit(1)
+
+        result = apply_term_start_overrides(
+            input_path=input_path,
+            dry_run=args.dry_run,
+            only_parliament_ids=only_parliament_ids,
+            only_term=only_term,
+            strict=args.strict,
+        )
+
+        if args.dry_run:
+            print("DRY RUN - No changes made", file=sys.stderr)
+
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         return
 
     known_commands = {
@@ -2613,6 +2726,8 @@ def main() -> None:
         "audit-mandate-missing-starts",
         "fix-mandate-starts-from-legislature",
         "export-curation-queue",
+        "export-term-start-curation-queue",
+        "apply-term-start-overrides",
     }
 
     if len(sys.argv) > 1:

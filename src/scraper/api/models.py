@@ -74,6 +74,11 @@ class ToolMeta(BaseModel):
     result_hash: Optional[str] = None
     data_version: Optional[str] = None
     warnings: list[str] = Field(default_factory=list)
+    active_only: Optional[bool] = None
+    as_of: Optional[str] = None
+    coverage_degraded: Optional[bool] = None
+    excluded_due_to_missing_start_date_count: Optional[int] = None
+    excluded_due_to_missing_legislature_start_date_count: Optional[int] = None
 
 
 class MandateRowResponse(BaseModel):

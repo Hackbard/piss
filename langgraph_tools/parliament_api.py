@@ -83,11 +83,19 @@ class ParliamentAPIClient:
         sort: str = "person_name",
         sort_dir: str = "ASC",
         strict_evidence: bool = True,
+        active_only: Optional[bool] = None,
+        as_of: Optional[str] = None,
     ) -> dict:
         """
         Search mandates.
         
         Returns dict with meta, applied_filter, total, rows.
+        When active_only=true, meta may contain telemetry fields:
+        - active_only: bool
+        - as_of: str (YYYY-MM-DD)
+        - coverage_degraded: bool
+        - excluded_due_to_missing_start_date_count: int
+        - excluded_due_to_missing_legislature_start_date_count: int
         """
         payload = {
             "parliament_id": parliament_id,
@@ -102,16 +110,39 @@ class ParliamentAPIClient:
             "sort": sort,
             "sort_dir": sort_dir,
             "strict_evidence": strict_evidence,
+            "active_only": active_only,
+            "as_of": as_of,
         }
         
         payload = {k: v for k, v in payload.items() if v is not None}
         
-        return await self._request(
+        result = await self._request(
             "POST",
             "/api/tools/mandates/search",
             json_data=payload,
             tool_name="mandates.search",
         )
+        
+        if "tool" in result and "data" in result:
+            response_preview = json.dumps(result, ensure_ascii=False)[:200]
+            raise ParliamentAPIError(
+                f"Legacy response shape detected for mandates.search. "
+                f"Update piss_laravel tool gateway / mandates.search response shape expected: {{meta, applied_filter, rows}}. "
+                f"Response preview: {response_preview}",
+                "mandates.search",
+                None,
+            )
+        
+        if "meta" not in result or "applied_filter" not in result or "rows" not in result:
+            response_preview = json.dumps(result, ensure_ascii=False)[:200]
+            raise ParliamentAPIError(
+                f"Invalid response shape for mandates.search. Expected {{meta, applied_filter, rows}}. "
+                f"Response preview: {response_preview}",
+                "mandates.search",
+                None,
+            )
+        
+        return result
 
     async def legislature_stats(
         self,

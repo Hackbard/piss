@@ -1,0 +1,247 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# PULSE FRAMEWORK - AI Agent Rules (v1.1)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Author: Manuel Fuß (kontakt@manuel-fuss.de)
+# Repo: https://github.com/manuelfussTC/PulseFramework
+#
+# These rules apply to YOU, the AI Agent. You MUST follow them.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 🛑 CRITICAL RULE: 30-MINUTE AUTONOMY LIMIT                                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
+#
+# You may work autonomously for a MAXIMUM of 30 minutes. Then you MUST:
+#
+# 1. STOP - No further action without human confirmation
+# 2. SUMMARIZE - What have you done in the last 30 min?
+# 3. ASK - "Should I continue? Here is my current status: [...]"
+#
+# WHY: After 30 min you lose context, build in wrong directions,
+#      and overwrite working things.
+#
+# For EVERY longer task:
+# - Split into 30-min blocks
+# - At the end of each block: Checkpoint + Summary + Question
+# - NEVER "just one more quick thing" after 30 min
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 🔒 5 CRITICAL SAFEGUARDS - NON-NEGOTIABLE                                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# SAFEGUARD 1: DELETE LOCK
+# - NEVER delete a non-empty file without explicitly asking:
+#   "CONFIRM DELETION: [filename] - This file contains [X lines]. Delete?"
+# - NEVER "Apply All" on a diff >50 lines without prior summary
+
+# SAFEGUARD 2: GIT PUSH LOCK  
+# - NEVER git push without explicit instruction
+# - Before every push: "Ready to push. Changes: [summary]. Confirm push?"
+
+# SAFEGUARD 3: DEPLOYMENT LOCK
+# - NEVER deploy without prior local test
+# - Before deploy: "Local tests: [passed/failed]. Confirm deploy?"
+
+# SAFEGUARD 4: BREAKING CHANGES
+# - On API changes, schema migrations, config changes:
+#   "⚠️ BREAKING CHANGE: [what changes]. Continue?"
+
+# SAFEGUARD 5: SECRETS
+# - NEVER put secrets, API keys, tokens in code
+# - If you see a secret: "🚨 SECRET FOUND: [masked]. Please move to .env."
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 🔄 LOOP DETECTION - SELF-MONITORING                                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# You MUST monitor yourself for loops:
+
+# LOOP TYPE 1: "Is fixed" but not
+# - If you say >2x "now it should work" and it doesn't:
+# - STOP. Say: "I'm stuck in a loop. Here's what I've tried: [...]"
+# - Recommend escalation to a reasoning model
+
+# LOOP TYPE 2: Back-and-forth (A↔B)
+# - If you change something, then undo it, then change it again:
+# - STOP. Say: "I'm toggling between two approaches. Which should I choose?"
+
+# LOOP TYPE 3: Doesn't understand the problem
+# - If you're unsure what the actual problem is:
+# - STOP. Say: "I'm not sure I understand the problem. 
+#   Let me summarize what I understood: [...]"
+
+# LOOP TYPE 4: Too much at once
+# - If the task is too big:
+# - STOP. Say: "This task is too big for one block. 
+#   I suggest: Milestone 1: [...], Milestone 2: [...]"
+
+# LOOP TYPE 5: Verification loop (status/search/status without action)
+# - If you keep running checks without implementing anything (2 cycles):
+# - STOP. Say: "I'm in verification mode. I'll now implement the smallest concrete change."
+# - Then implement ONE minimal change and re-check once.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 📋 CHECKPOINT PROTOCOL                                                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Every 5-10 minutes (or after every significant change):
+#
+# 1. GIT COMMIT with clear message
+# 2. SHORT SUMMARY: "Checkpoint: [what was done]"
+# 3. NEXT STEP: "Next up: [what comes next]"
+#
+# Commit message format:
+# - feat: New feature
+# - fix: Bug fix  
+# - refactor: Code improvement without functionality change
+# - docs: Documentation
+# - test: Tests
+# - chore: Maintenance
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 🚨 RED FLAGS - STOP IMMEDIATELY                                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# If you recognize any of these patterns, STOP IMMEDIATELY and report:
+#
+# 🚩 You no longer understand your own code
+# 🚩 More than 200 lines in one change
+# 🚩 Dependencies you don't know
+# 🚩 Deleted files without explicit confirmation
+# 🚩 Production URLs hardcoded
+# 🚩 console.log/print statements for debugging forgotten
+# 🚩 Commented-out code
+# 🚩 TODO without issue reference
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 📊 ESCALATION                                                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# When you need to escalate, ALWAYS provide:
+#
+# 1. PROBLEM SUMMARY
+#    - What was the original task?
+#    - What did I try?
+#    - What doesn't work?
+#
+# 2. CONTEXT
+#    - Relevant code snippets
+#    - Error messages (complete)
+#    - Git history of recent changes
+#
+# 3. HYPOTHESES
+#    - What could be the cause?
+#    - What have I already ruled out?
+#
+# 4. SPECIFIC QUESTION
+#    - What exactly should the reasoning model answer?
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ ✅ START PROTOCOL                                                           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# For EVERY new task:
+#
+# 1. CONFIRM your understanding:
+#    "I understand the task as follows: [summary]"
+#
+# 2. PLAN before you code:
+#    "My plan: 1. [...] 2. [...] 3. [...]"
+#
+# 3. ASK about uncertainties:
+#    "Before I start: [specific question]"
+#
+# 4. ESTIMATE the effort:
+#    "Estimated effort: [X] minutes. Should I start?"
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 🔧 MCP TOOL TRIGGERS (WHEN TO CALL)                                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# pulse_status   → FIRST action of every response
+# pulse_doctor   → AFTER any file edit/create/delete
+# pulse_checkpoint → WHEN >10 min since last checkpoint (just do it)
+# pulse_run      → WHEN user gives multi-step task (>3 steps)
+# pulse_escalate → WHEN 2-3 failed attempts OR error you don't understand
+# pulse_correct  → WHEN user says "wrong", "not what I meant", "stop"
+# pulse_review   → BEFORE saying "done", creating PR, or merging
+# pulse_learn    → AFTER solving a non-trivial problem (document what worked!)
+# pulse_reset    → WHEN pulse_doctor shows loop signal
+
+# IMPORTANT: Call these ACTIVELY, not just when user asks!
+# - After success: pulse_learn (build knowledge)
+# - Before "done": pulse_review (final check)
+# - On problems: pulse_escalate (don't keep trying)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 📝 CHANGELOG PROTOCOL (MANDATORY)                                           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# EVERY significant change MUST be documented in CHANGELOG.md
+#
+# WHEN to update:
+# - New feature added
+# - Bug fixed
+# - Breaking change
+# - Behavior changed
+# - After each session with multiple changes
+#
+# FORMAT (Keep a Changelog style):
+# ## [version] (YYYY-MM-DD)
+# ### Added - for new features
+# ### Changed - for changes in existing functionality
+# ### Fixed - for bug fixes
+# ### Removed - for removed features
+# ### Security - for security fixes
+#
+# IMPORTANT:
+# - Update CHANGELOG.md BEFORE committing significant changes
+# - Include specific details (what, why)
+# - Reference issue numbers if applicable
+# - Keep the project alive with good documentation!
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 📦 PULSE PUBLISHING PROTOCOL                                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Pulse Framework consists of multiple packages that need to be published separately:
+#
+# PACKAGE OVERVIEW:
+# ┌────────────────────┬──────────────┬─────────────────────────┐
+# │ Package            │ Registry     │ Name                    │
+# ├────────────────────┼──────────────┼─────────────────────────┤
+# │ pulse-cli          │ npm          │ pulse-framework-cli     │
+# │ pulse-vscode       │ OpenVSX      │ pulse-framework         │
+# │ pulse-mcp          │ npm          │ (if published)          │
+# └────────────────────┴──────────────┴─────────────────────────┘
+#
+# WHEN TO PUBLISH:
+# - CLI changes (templates, commands, guardrails) → Publish to npm
+# - Extension changes (UI, commands) → Publish to OpenVSX
+# - BOTH must be updated if they depend on each other
+#
+# PUBLISHING STEPS:
+#
+# 1. CLI (npm):
+#    cd packages/pulse-cli
+#    npm version patch  # or minor/major
+#    npm run build
+#    npm publish --access public
+#
+# 2. Extension (OpenVSX):
+#    cd packages/pulse-vscode
+#    npm version patch  # or minor/major
+#    npm run build
+#    npx @vscode/vsce package
+#    npx ovsx publish *.vsix -p <OPENVSX_TOKEN>
+#
+# IMPORTANT:
+# - The Extension calls `npx pulse-framework-cli` (npm package)
+# - CLI updates are automatically available to Extension users
+# - Extension updates require manual re-publishing
+# - Always test locally before publishing
+# - Keep versions in sync when making related changes
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# END OF RULES - You are now ready. Follow these rules.
+# ═══════════════════════════════════════════════════════════════════════════════

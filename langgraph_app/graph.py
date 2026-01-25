@@ -689,8 +689,10 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
     results_by_parliament: dict[str, list[dict[str, Any]]] = {}
     errors_by_parliament: dict[str, str] = {}
     all_meta_urls: set[str] = set()
+    telemetry_by_parliament: dict[str, dict[str, Any]] = {}
     
     limit = tool_base_input.get("limit", 200)
+    active_only = tool_base_input.get("active_only", False)
     
     coverage_by_pid: dict[str, dict[str, Any]] = {}
     if coverage_data:
@@ -727,6 +729,9 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
                 if as_of_for_parliament:
                     page_input["from_date"] = as_of_for_parliament
                     page_input["to_date"] = as_of_for_parliament
+                    if active_only:
+                        page_input["active_only"] = True
+                        page_input["as_of"] = as_of_for_parliament
                 
                 result = members_list(**page_input)
                 
@@ -745,6 +750,20 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
                     for key in ("members", "rows", "items", "results"):
                         if key in parliament_meta:
                             del parliament_meta[key]
+                
+                if active_only and "meta" in result and parliament_id not in telemetry_by_parliament:
+                    meta = result.get("meta", {})
+                    telemetry: dict[str, Any] = {}
+                    if "as_of" in meta:
+                        telemetry["as_of"] = meta["as_of"]
+                    if "coverage_degraded" in meta:
+                        telemetry["coverage_degraded"] = meta["coverage_degraded"]
+                    if "excluded_due_to_missing_start_date_count" in meta:
+                        telemetry["excluded_missing_start"] = meta["excluded_due_to_missing_start_date_count"]
+                    if "excluded_due_to_missing_legislature_start_date_count" in meta:
+                        telemetry["excluded_missing_leg_start"] = meta["excluded_due_to_missing_legislature_start_date_count"]
+                    if telemetry:
+                        telemetry_by_parliament[parliament_id] = telemetry
                 
                 result_urls = set(_extract_urls(result.get("evidence_urls") or result.get("sources")))
                 all_meta_urls.update(result_urls)
@@ -765,6 +784,7 @@ def members_list_call_tool_node(state: MembersListMvpState) -> dict[str, Any]:
         "results_by_parliament": results_by_parliament,
         "errors_by_parliament": errors_by_parliament,
         "evidence_urls": list(all_meta_urls),
+        "telemetry_by_parliament": telemetry_by_parliament,
     }
     
     return {"tool_result": tool_result}
@@ -937,17 +957,37 @@ def _format_output_text_grouped(
     headline = f"{party}-Mitglieder ({scope_desc}) [{date_part}]"
     lines: list[str] = [headline, f"Gesamtanzahl: {total_count}", ""]
     
+    telemetry_by_parliament = tool_result.get("telemetry_by_parliament", {})
+    
     for parliament_id in sorted(parliament_ids):
         members = results_by_parliament.get(parliament_id, [])
         if not members:
             continue
         
         parliament_name = PARLIAMENT_NAMES.get(parliament_id, parliament_id)
-        as_of_str = ""
-        if as_of_by_parliament and parliament_id in as_of_by_parliament:
+        count_str = f"{parliament_name}: {len(members)}"
+        
+        telemetry_parts: list[str] = []
+        if active_only:
+            telemetry = telemetry_by_parliament.get(parliament_id, {})
+            if "as_of" in telemetry:
+                as_of_de = _format_date_de(telemetry["as_of"])
+                telemetry_parts.append(f"as_of={as_of_de}")
+            if "excluded_missing_start" in telemetry:
+                telemetry_parts.append(f"excluded_missing_start={telemetry['excluded_missing_start']}")
+            if "excluded_missing_leg_start" in telemetry:
+                telemetry_parts.append(f"excluded_missing_leg_start={telemetry['excluded_missing_leg_start']}")
+            if "coverage_degraded" in telemetry and telemetry["coverage_degraded"]:
+                telemetry_parts.append("coverage_degraded=true")
+        
+        if not telemetry_parts and as_of_by_parliament and parliament_id in as_of_by_parliament:
             as_of_de = _format_date_de(as_of_by_parliament[parliament_id])
-            as_of_str = f" (Stichtag: {as_of_de})"
-        lines.append(f"{parliament_name}: {len(members)}{as_of_str}")
+            telemetry_parts.append(f"as_of={as_of_de}")
+        
+        if telemetry_parts:
+            count_str += f" ({', '.join(telemetry_parts)})"
+        
+        lines.append(count_str)
         
         for m in members:
             lines.append(f"  {format_member_row(m)}")
@@ -1237,13 +1277,33 @@ def _format_output_md_grouped(
         "",
     ]
     
+    telemetry_by_parliament = tool_result.get("telemetry_by_parliament", {})
+    
     for parliament_id in sorted(parliament_ids):
         members = results_by_parliament.get(parliament_id, [])
         if not members:
             continue
         
         parliament_name = PARLIAMENT_NAMES.get(parliament_id, parliament_id)
-        lines.append(f"## {parliament_name} ({parliament_id}): {len(members)}")
+        count_str = f"## {parliament_name} ({parliament_id}): {len(members)}"
+        
+        telemetry_parts: list[str] = []
+        if active_only:
+            telemetry = telemetry_by_parliament.get(parliament_id, {})
+            if "as_of" in telemetry:
+                as_of_de = _format_date_de(telemetry["as_of"])
+                telemetry_parts.append(f"as_of={as_of_de}")
+            if "excluded_missing_start" in telemetry:
+                telemetry_parts.append(f"excluded_missing_start={telemetry['excluded_missing_start']}")
+            if "excluded_missing_leg_start" in telemetry:
+                telemetry_parts.append(f"excluded_missing_leg_start={telemetry['excluded_missing_leg_start']}")
+            if "coverage_degraded" in telemetry and telemetry["coverage_degraded"]:
+                telemetry_parts.append("coverage_degraded=true")
+        
+        if telemetry_parts:
+            count_str += f" ({', '.join(telemetry_parts)})"
+        
+        lines.append(count_str)
         lines.append("")
         
         for m in members:

@@ -6,6 +6,7 @@ services:
       - ./data/cache:/data/cache
       - ./data/exports:/data/exports
       - ./config:/app/config:ro
+      - ./artifacts:/app/artifacts
     depends_on:
       neo4j:
         condition: service_healthy

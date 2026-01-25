@@ -41,6 +41,8 @@ def members_list(
     limit: int = 200,
     offset: int = 0,
     strict_evidence: bool = True,
+    active_only: bool | None = None,
+    as_of: str | None = None,
 ) -> dict[str, Any]:
     url = f"{TOOL_BASE_URL.rstrip('/')}/members/list"
     payload: dict[str, Any] = {
@@ -52,6 +54,10 @@ def members_list(
         "offset": offset,
         "strict_evidence": strict_evidence,
     }
+    if active_only is not None:
+        payload["active_only"] = active_only
+    if as_of is not None:
+        payload["as_of"] = as_of
 
     try:
         response = httpx.post(url, json=payload, timeout=30.0)

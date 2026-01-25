@@ -1,4 +1,4 @@
-.PHONY: validate validate-governance validate-all warnings-audit warnings-baseline warnings-check build
+.PHONY: validate validate-governance validate-all warnings-audit warnings-baseline warnings-check build curation-apply
 
 validate:
 	@./scripts/validate.sh
@@ -51,3 +51,12 @@ warnings-check:
 
 build:
 	docker compose build scraper
+
+curation-apply:
+	@echo "Applying term start overrides..."
+	@docker compose run --rm scraper python -m langgraph_app.cli apply-term-start-overrides --input artifacts/term_starts.queue.yaml || exit 1
+	@echo "Propagating legislature starts..."
+	@docker compose run --rm scraper python -m langgraph_app.cli propagate-legislature-starts || exit 1
+	@echo "Running validation..."
+	@VALIDATE_VIA_DOCKER=1 make validate-all || exit 1
+	@echo "✓ Curation apply completed"

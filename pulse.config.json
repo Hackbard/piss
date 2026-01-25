@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "projectType": "unknown",
+  "enforcement": "mixed",
+  "notifications": "both",
+  "thresholds": {
+    "warnMaxFilesChanged": 15,
+    "warnMaxLinesChanged": 400,
+    "warnMaxDeletions": 50
+  },
+  "patterns": {
+    "secret": [
+      "AKIA[0-9A-Z]{16}",
+      "ASIA[0-9A-Z]{16}",
+      "ghp_[A-Za-z0-9]{36}",
+      "github_pat_[A-Za-z0-9_]{80,}",
+      "sk_(live|test)_[A-Za-z0-9]{16,}",
+      "AIzaSy[A-Za-z0-9_-]{30,}",
+      "(?i)(api[_-]?key|secret|token|password)\\s*[:=]\\s*['\\\"][^'\\\"]{8,}['\\\"]",
+      "(?i)-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----"
+    ],
+    "prodUrl": [
+      "https?://(?!localhost\\b)(?!127\\.0\\.0\\.1\\b)(?!0\\.0\\.0\\.0\\b)(?!example\\.com\\b)[^\\s'\\\"]+"
+    ]
+  },
+  "commands": {
+    "test": ""
+  },
+  "preset": "backend",
+  "checkpointReminderMinutes": 30
+}

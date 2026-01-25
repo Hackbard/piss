@@ -19,6 +19,27 @@ class ToolContractViolation(Exception):
         self.request_id = request_id
 
 
+class LegacyResponseShapeError(Exception):
+    """Raised when encountering old {tool, data} response shape."""
+
+    def __init__(
+        self,
+        tool_name: str,
+        request_url: str,
+        response_preview: str,
+    ):
+        message = (
+            f"Legacy response shape detected for {tool_name}. "
+            f"Update piss_laravel tool gateway / {tool_name} response shape expected: {{meta, applied_filter, rows}}. "
+            f"Request URL: {request_url}. "
+            f"Response preview: {response_preview[:200]}"
+        )
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.request_url = request_url
+        self.response_preview = response_preview
+
+
 class ToolsClient:
     """HTTP client for Tool API with contract validation."""
 
@@ -129,6 +150,15 @@ class ToolsClient:
                 response.raise_for_status()
                 result = response.json()
 
+                if tool_name == "mandates.search":
+                    if "tool" in result and "data" in result:
+                        response_preview = json.dumps(result, ensure_ascii=False)[:200]
+                        raise LegacyResponseShapeError(tool_name, url, response_preview)
+                    
+                    if "meta" not in result or "applied_filter" not in result or "rows" not in result:
+                        response_preview = json.dumps(result, ensure_ascii=False)[:200]
+                        raise LegacyResponseShapeError(tool_name, url, response_preview)
+
                 request_id = result.get("meta", {}).get("request_id")
                 self._validate_response(tool_name, result, request_id)
 
@@ -173,6 +203,8 @@ class ToolsClient:
         sort: str = "person_name",
         sort_dir: str = "ASC",
         strict_evidence: bool = True,
+        active_only: Optional[bool] = None,
+        as_of: Optional[str] = None,
     ) -> dict[str, Any]:
         """Search mandates."""
         payload = {
@@ -188,6 +220,8 @@ class ToolsClient:
             "sort": sort,
             "sort_dir": sort_dir,
             "strict_evidence": strict_evidence,
+            "active_only": active_only,
+            "as_of": as_of,
         }
 
         payload = {k: v for k, v in payload.items() if v is not None}

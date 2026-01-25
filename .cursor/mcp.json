@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "pulse": {
+      "command": "/Users/benjaminklein/workspace/_private/piss/.pulse/run-mcp.sh",
+      "args": [],
+      "env": {
+        "PULSE_PROJECT_ROOT": "/Users/benjaminklein/workspace/_private/piss"
+      }
+    }
+  }
+}
