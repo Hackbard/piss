@@ -2310,6 +2310,7 @@ def main() -> None:
                   m, l,
                   CASE
                     WHEN l IS NULL THEN 'missing_legislature_link'
+                    WHEN coalesce(l.start_date_day_unresolvable, false) = true THEN 'legislature_start_day_unresolvable'
                     WHEN l.start_date IS NULL OR coalesce(l.start_date_precision, '') <> 'day' THEN 'legislature_missing_start_date'
                     WHEN l.start_date IS NOT NULL AND coalesce(l.start_date_precision, '') = 'day' AND NOT EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }} THEN 'legislature_missing_evidence'
                     ELSE 'backfillable_from_legislature'
@@ -2327,9 +2328,12 @@ def main() -> None:
                     legislature_start_date: str,
                     legislature_start_precision: str,
                     has_legislature_evidence: bool,
+                    legislature_start_day_unresolvable: bool = False,
                 ) -> str:
                     if not legislature_id or legislature_id == "":
                         return "missing_legislature_link"
+                    if legislature_start_day_unresolvable:
+                        return "legislature_start_day_unresolvable"
                     if not legislature_start_date or legislature_start_date == "":
                         return "legislature_missing_start_date"
                     if legislature_start_precision != "day":
@@ -2351,7 +2355,8 @@ def main() -> None:
                      collect(DISTINCT e.url) AS legislature_evidence_urls,
                      EXISTS {{ (l)-[:SUPPORTED_BY]->(:Evidence) }} AS has_legislature_evidence,
                      coalesce(trim(toString(l.start_date_source)), '') AS legislature_start_source,
-                     coalesce(toString(l.start_date_precision), '') AS legislature_start_precision
+                     coalesce(toString(l.start_date_precision), '') AS legislature_start_precision,
+                     coalesce(l.start_date_day_unresolvable, false) AS legislature_start_day_unresolvable
                 RETURN
                   m.id AS mandate_id,
                   person_name,
@@ -2363,7 +2368,8 @@ def main() -> None:
                   legislature_start_precision,
                   legislature_start_source,
                   legislature_evidence_urls,
-                  has_legislature_evidence
+                  has_legislature_evidence,
+                  legislature_start_day_unresolvable
                 ORDER BY parliament_id, term_number, mandate_id
                 LIMIT $sample_limit
                 """
@@ -2374,11 +2380,13 @@ def main() -> None:
                     evidence_urls_raw = row.get("legislature_evidence_urls", [])
                     evidence_node_urls = [url for url in evidence_urls_raw if url and url.strip()]
                     has_legislature_evidence = row.get("has_legislature_evidence", False)
+                    legislature_start_day_unresolvable = row.get("legislature_start_day_unresolvable", False)
                     root_cause = classify_root_cause(
                         row.get("legislature_id", ""),
                         row.get("legislature_start_date", ""),
                         row.get("legislature_start_precision", ""),
                         has_legislature_evidence,
+                        legislature_start_day_unresolvable,
                     )
                     sample_row = {
                         "mandate_id": row.get("mandate_id"),
@@ -2392,6 +2400,7 @@ def main() -> None:
                         "legislature_start_source": row.get("legislature_start_source", ""),
                         "legislature_evidence_urls": evidence_node_urls,
                         "has_legislature_evidence": has_legislature_evidence,
+                        "legislature_start_day_unresolvable": legislature_start_day_unresolvable,
                     }
                     samples_by_root_cause[root_cause].append(sample_row)
 
