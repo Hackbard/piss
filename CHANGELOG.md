@@ -14,3 +14,8 @@
 - `docker-compose.pis.yml` for a Meilisearch-only local setup.
 - Basic unit tests for `pis.models`.
 
+### Added
+- Deterministic PIS ID helpers in `src/pis/ids.py`.
+- JSONL snapshot writer in `src/pis/io/jsonl.py`.
+- Reusable file-based HTTP JSON cache in `src/pis/utils/http_cache.py`.
+
