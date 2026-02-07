@@ -19,3 +19,6 @@
 - JSONL snapshot writer in `src/pis/io/jsonl.py`.
 - Reusable file-based HTTP JSON cache in `src/pis/utils/http_cache.py`.
 
+### Added
+- Wikidata/Wikipedia PoC pipeline: `pis poc wikidata-persons` (SPARQL fetch + optional MediaWiki intro enrichment + JSONL snapshots + optional Meilisearch index `pis_persons`).
+
