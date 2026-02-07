@@ -32,3 +32,6 @@
 ### Added
 - Temporal QA helper (`src/pis/qa/temporal.py`) to detect overlapping role intervals (basis for time-axis reports).
 
+### Changed
+- Wikidata↔DIP reconcile PoC now supports conservative fuzzy name matching (still high-precision; emits candidates for review).
+

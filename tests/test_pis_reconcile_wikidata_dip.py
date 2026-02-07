@@ -30,7 +30,7 @@ def _dip(pid: str, name: str) -> Person:
 
 def test_reconcile_accepts_unique_exact_name_match_and_merges_sources():
     wd = _wd("wd1", "Max Mustermann")
-    dip = _dip("dip1", "Max Mustermann")
+    dip = _dip("dip1", "Dr. Max Mustermann")
 
     canonical, report = reconcile_wikidata_dip(wikidata_persons=[wd], dip_persons=[dip])
     assert len(report.accepted_links) == 1

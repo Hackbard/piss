@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from pis.models import Person
 
 
 def _norm_name(name: str) -> str:
-    return " ".join(name.lower().replace("ß", "ss").split())
+    n = name.lower().replace("ß", "ss")
+    # remove common academic titles at beginning
+    n = re.sub(r"^(prof\.?\s+)?dr\.?\s+", "", n).strip()
+    # normalize punctuation/whitespace
+    n = re.sub(r"[()]", " ", n)
+    n = re.sub(r"[^a-z0-9äöü\s\-]", " ", n)
+    n = re.sub(r"\s+", " ", n).strip()
+    return n
 
 
 @dataclass(frozen=True)
@@ -40,13 +49,11 @@ def reconcile_wikidata_dip(
     - DIP-only persons remain separate canonical persons.
     """
 
-    wd_by_norm: dict[str, list[Person]] = {}
+    wd_norm: dict[str, str] = {p.pis_person_id: _norm_name(p.display_name) for p in wikidata_persons}
+    wd_by_last: dict[str, list[Person]] = {}
     for p in wikidata_persons:
-        wd_by_norm.setdefault(_norm_name(p.display_name), []).append(p)
-
-    dip_by_norm: dict[str, list[Person]] = {}
-    for p in dip_persons:
-        dip_by_norm.setdefault(_norm_name(p.display_name), []).append(p)
+        last = (wd_norm[p.pis_person_id].split() or [""])[-1]
+        wd_by_last.setdefault(last, []).append(p)
 
     accepted: list[LinkCandidate] = []
     pending: list[LinkCandidate] = []
@@ -55,43 +62,56 @@ def reconcile_wikidata_dip(
     dip_matched_ids: set[str] = set()
     wd_matched_ids: set[str] = set()
 
-    for norm, dips in dip_by_norm.items():
-        wds = wd_by_norm.get(norm, [])
-        if not wds:
+    for dip in dip_persons:
+        dip_n = _norm_name(dip.display_name)
+        last = (dip_n.split() or [""])[-1]
+        candidates = wd_by_last.get(last, wikidata_persons)
+
+        scored: list[tuple[float, Person, str]] = []
+        for wd in candidates:
+            wd_n = wd_norm[wd.pis_person_id]
+            if dip_n == wd_n and dip_n:
+                scored.append((1.0, wd, "exact_normalized_name"))
+                continue
+            if not dip_n or not wd_n:
+                continue
+            ratio = SequenceMatcher(a=dip_n, b=wd_n).ratio()
+            scored.append((ratio, wd, "name_similarity"))
+
+        scored.sort(key=lambda t: t[0], reverse=True)
+        top = scored[:3]
+        for score, wd, reason in top:
+            pending.append(
+                LinkCandidate(
+                    dip_pis_person_id=dip.pis_person_id,
+                    wikidata_pis_person_id=wd.pis_person_id,
+                    score=float(score),
+                    reason=reason,
+                )
+            )
+
+        if not scored:
             continue
-        # Only auto-accept strict 1:1
-        if len(dips) == 1 and len(wds) == 1:
-            dip = dips[0]
-            wd = wds[0]
+
+        best_score, best_wd, best_reason = scored[0]
+        second = scored[1][0] if len(scored) > 1 else 0.0
+        if best_score >= min_score and (best_score - second) >= 0.02:
             cand = LinkCandidate(
                 dip_pis_person_id=dip.pis_person_id,
-                wikidata_pis_person_id=wd.pis_person_id,
-                score=1.0,
-                reason="exact_normalized_name_1to1",
+                wikidata_pis_person_id=best_wd.pis_person_id,
+                score=float(best_score),
+                reason=f"accepted:{best_reason}",
             )
             accepted.append(cand)
             dip_matched_ids.add(dip.pis_person_id)
-            wd_matched_ids.add(wd.pis_person_id)
+            wd_matched_ids.add(best_wd.pis_person_id)
 
-            # Merge: keep WD as canonical, append DIP sources and identifiers if missing.
-            merged = merged_by_wd_id[wd.pis_person_id]
+            merged = merged_by_wd_id[best_wd.pis_person_id]
             merged.sources.extend(dip.sources)
             if merged.external_ids.dip_person_id is None:
                 merged.external_ids.dip_person_id = dip.external_ids.dip_person_id
             merged.facts.setdefault("reconcile", {})
             merged.facts["reconcile"]["dip_linked_by"] = cand.reason
-        else:
-            # ambiguous mapping
-            for dip in dips:
-                for wd in wds:
-                    pending.append(
-                        LinkCandidate(
-                            dip_pis_person_id=dip.pis_person_id,
-                            wikidata_pis_person_id=wd.pis_person_id,
-                            score=0.5,
-                            reason="ambiguous_name",
-                        )
-                    )
 
     dip_unmatched = [p.pis_person_id for p in dip_persons if p.pis_person_id not in dip_matched_ids]
     wd_unmatched = [p.pis_person_id for p in wikidata_persons if p.pis_person_id not in wd_matched_ids]
