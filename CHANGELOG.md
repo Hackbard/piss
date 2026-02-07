@@ -8,3 +8,9 @@
 - Restored offline/backward-compatible members-list parsing helpers in `langgraph_app/graph.py` to keep MVP runner tests working.
 - Clamp `evidence_urls` to `max_sources` in `_merge_member_rows` even when only a single row exists.
 
+### Added
+- PIS CLI entrypoint (`pis`) with `health` and `schema` commands.
+- `.env.example` for local development.
+- `docker-compose.pis.yml` for a Meilisearch-only local setup.
+- Basic unit tests for `pis.models`.
+

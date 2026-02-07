@@ -35,6 +35,7 @@ dev = [
 
 [project.scripts]
 scraper = "scraper.cli:app"
+pis = "pis.cli:app"
 
 [build-system]
 requires = ["hatchling"]

@@ -2,6 +2,24 @@
 
 Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit persistenter Disk-Cache-Haltung, Offline-Tests, optionalen Sinks nach Neo4j und Meilisearch, und maximaler Reproduzierbarkeit/Provenance.
 
+## PIS – Politisches Informations System (neu)
+
+Dieses Repository wird um **PIS** erweitert: ein kanonischer Daten- und Retrieval-Layer für politische Akteure in **Deutschland** (Bund/Land/Bundesrat) mit **genau 1 kanonischem Person-Datensatz pro realer Person**, transparenter **Provenance** und Meilisearch-Indexing für RAG.
+
+- Architektur: `docs/architecture.md`
+- Annahmen: `docs/assumptions.md`
+- Datenmodell (Pydantic): `src/pis/models.py`
+
+### Local Setup (PIS / Meilisearch-only)
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.pis.yml up -d
+python3 -m pip install -e ".[dev]"
+pis health
+pis schema person > /tmp/pis.person.schema.json
+```
+
 ## Features
 
 - **Deterministisches Scraping**: Reproduzierbare Ergebnisse durch deterministische Seeds und UUID5-basierte IDs
