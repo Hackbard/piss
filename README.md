@@ -2,6 +2,57 @@
 
 Deterministisches, nachvollziehbares Scraping von Wikipedia-Parlamentsseiten mit persistenter Disk-Cache-Haltung, Offline-Tests, optionalen Sinks nach Neo4j und Meilisearch, und maximaler Reproduzierbarkeit/Provenance.
 
+## PIS – Politisches Informations System (neu)
+
+Dieses Repository wird um **PIS** erweitert: ein kanonischer Daten- und Retrieval-Layer für politische Akteure in **Deutschland** (Bund/Land/Bundesrat) mit **genau 1 kanonischem Person-Datensatz pro realer Person**, transparenter **Provenance** und Meilisearch-Indexing für RAG.
+
+- Architektur: `docs/architecture.md`
+- Annahmen: `docs/assumptions.md`
+- Datenmodell (Pydantic): `src/pis/models.py`
+
+### Local Setup (PIS / Meilisearch-only)
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.pis.yml up -d
+python3 -m pip install -e ".[dev]"
+pis health
+pis schema person > /tmp/pis.person.schema.json
+```
+
+### Wikidata/Wikipedia PoC (End-to-End)
+
+```bash
+# Small run (cached; writes JSONL snapshots under data/pis/)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --no-write-meili
+
+# With Wikipedia lead/intro enrichment (MediaWiki API)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --with-wikipedia-intro --no-write-meili
+
+# Index into Meilisearch (index: pis_persons)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --write-meili
+```
+
+### DIP (Bundestag) PoC (Official Source)
+
+Voraussetzung: `DIP_API_KEY` ist in `.env` gesetzt (siehe `docs/assumptions.md`).
+
+```bash
+# Fetch persons for Wahlperiode 19, write snapshots (no indexing)
+python3 -m pis poc dip-persons --wp 19 --no-write-meili
+
+# Index unreconciled source persons into Meilisearch (separate index)
+python3 -m pis poc dip-persons --wp 19 --write-meili --index-name pis_person_sources
+```
+
+### RAG Retrieval Helper
+
+```bash
+# Query canonical index (requires Meilisearch running and indexed data)
+python3 -m pis rag retrieve "Scholz" --limit 5
+python3 -m pis rag retrieve "Scholz" --limit 5 --filter-expr "external_ids.wikidata_qid = Q317521"
+```
+
 ## Features
 
 - **Deterministisches Scraping**: Reproduzierbare Ergebnisse durch deterministische Seeds und UUID5-basierte IDs
