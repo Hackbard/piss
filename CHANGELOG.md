@@ -22,4 +22,5 @@
 ### Added
 - Wikidata/Wikipedia PoC pipeline: `pis poc wikidata-persons` (SPARQL fetch + optional MediaWiki intro enrichment + JSONL snapshots + optional Meilisearch index `pis_persons`).
 - Canonical uniqueness guard: duplicates are separated and written as `*.dupes.persons.jsonl` instead of silently indexing duplicates.
+- DIP (Bundestag) connector PoC: `pis poc dip-persons` (DIP `/person` ingestion + snapshots + optional indexing into `pis_person_sources`).
 

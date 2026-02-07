@@ -8,12 +8,13 @@ from pis.settings import PisSettings
 
 
 class PisMeiliIndexer:
-    def __init__(self, settings: PisSettings):
+    def __init__(self, settings: PisSettings, *, index_name: str = "pis_persons"):
         self.settings = settings
+        self.index_name = index_name
         self.client = meilisearch.Client(settings.meili_url, settings.meili_master_key)
 
     def init(self) -> None:
-        idx = self.client.index("pis_persons")
+        idx = self.client.index(self.index_name)
         idx.update_settings(
             {
                 "searchableAttributes": [
@@ -40,6 +41,6 @@ class PisMeiliIndexer:
         )
 
     def upsert_persons(self, docs: Iterable[dict[str, Any]]) -> None:
-        idx = self.client.index("pis_persons")
+        idx = self.client.index(self.index_name)
         idx.update_documents(list(docs), primary_key="pis_person_id")
 

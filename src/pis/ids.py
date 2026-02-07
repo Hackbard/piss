@@ -17,6 +17,10 @@ def pis_person_id_from_wikidata_qid(qid: str) -> str:
     return uuid5_str(NAMESPACE_PIS_PERSON, f"wikidata:{qid_norm}")
 
 
+def pis_person_id_from_dip_person_id(dip_person_id: int) -> str:
+    return uuid5_str(NAMESPACE_PIS_PERSON, f"dip:{int(dip_person_id)}")
+
+
 def pis_membership_id(pis_person_id: str, parliament_code: str, term_key: str, start: str, end: str) -> str:
     key = f"{pis_person_id}|{parliament_code.strip().upper()}|{term_key.strip()}|{start}|{end}"
     return uuid5_str(NAMESPACE_PIS_MEMBERSHIP, key)

@@ -8,10 +8,13 @@ import meilisearch
 import typer
 
 from pis.index.meili import PisMeiliIndexer
+from pis.ingest.dip import fetch_person_pages as fetch_dip_person_pages
+from pis.ingest.dip import parse_person_page
 from pis.ingest.mediawiki import fetch_intro
 from pis.ingest.wikidata import fetch_politicians_de
 from pis.io.jsonl import write_jsonl
 from pis.models import Person
+from pis.normalize.dip import dip_row_to_person
 from pis.normalize.wikidata import person_to_index_doc, wikidata_row_to_person
 from pis.reconcile.dedupe import dedupe_persons_by_pis_id
 from pis.settings import PisSettings
@@ -133,7 +136,7 @@ def poc_wikidata_persons(
         write_jsonl(dupes_out, [p.model_dump(mode="json") for p in deduped.dupe_persons])
 
     if write_meili:
-        indexer = PisMeiliIndexer(settings)
+        indexer = PisMeiliIndexer(settings, index_name="pis_persons")
         indexer.init()
         indexer.upsert_persons([person_to_index_doc(p) for p in deduped.unique_persons])
 
@@ -148,6 +151,104 @@ def poc_wikidata_persons(
                 "canonical_jsonl": str(canonical_out),
                 "dupes_jsonl": str(dupes_out) if deduped.dupe_persons else None,
                 "meili_indexed": bool(write_meili),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+@poc_app.command("dip-persons")
+def poc_dip_persons(
+    wahlperiode: list[int] = typer.Option([19], "--wahlperiode", "--wp", help="One or more Bundestag Wahlperioden (e.g. --wp 19 --wp 20)"),
+    limit: int = typer.Option(100, help="DIP page size"),
+    max_pages: int | None = typer.Option(None, help="Stop after N pages (for quick PoC runs)"),
+    write_meili: bool = typer.Option(False, help="Index into Meilisearch (default index: pis_person_sources)"),
+    index_name: str = typer.Option("pis_person_sources", help="Meilisearch index name for unreconciled/source persons"),
+    force: bool = typer.Option(False, help="Ignore HTTP cache and refetch"),
+    out_dir: Path | None = typer.Option(None, help="Override output dir (defaults to settings.pis_*_dir)"),
+) -> None:
+    """PoC: DIP /person → Person (source records) → JSONL snapshots → (optional) Meilisearch."""
+    settings = PisSettings()
+    settings.ensure_dirs()
+
+    pages = fetch_dip_person_pages(
+        settings=settings,
+        wahlperioden=wahlperiode,
+        limit=limit,
+        force=force,
+        max_pages=max_pages,
+    )
+    fetched_at = utc_now()
+
+    base_out = out_dir or settings.pis_data_dir
+    raw_dir = (base_out / "raw").resolve()
+    norm_dir = (base_out / "normalized").resolve()
+    canonical_dir = (base_out / "canonical").resolve()
+    reports_dir = (base_out / "reports").resolve()
+    for d in (raw_dir, norm_dir, canonical_dir, reports_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    wp_key = "-".join(str(w) for w in wahlperiode)
+    run_key = f"dip_persons_wp{wp_key}_limit{limit}_{pages[0].cache_key[:8] if pages else 'empty'}"
+    raw_pages_out = raw_dir / f"{run_key}.pages.jsonl"
+    norm_out = norm_dir / f"{run_key}.persons.jsonl"
+    canonical_out = canonical_dir / f"{run_key}.persons.jsonl"
+    dupes_out = reports_dir / f"{run_key}.dupes.persons.jsonl"
+
+    # Raw manifest: one line per fetched page (cache pointers).
+    write_jsonl(
+        raw_pages_out,
+        [
+            {
+                "url": p.url,
+                "status_code": p.status_code,
+                "retrieved_at": p.retrieved_at,
+                "sha256": p.sha256,
+                "cache_key": p.cache_key,
+                "cache_raw_path": str(p.raw_path),
+                "cache_metadata_path": str(p.metadata_path),
+            }
+            for p in pages
+        ],
+    )
+
+    persons: list[Person] = []
+    for page in pages:
+        parsed = parse_person_page(page.data)
+        for r in parsed.persons:
+            persons.append(
+                dip_row_to_person(
+                    row=r,
+                    fetched_at=fetched_at,
+                    raw_snapshot_path=str(page.raw_path),
+                    normalized_snapshot_path=str(norm_out),
+                    source_url=page.url,
+                )
+            )
+
+    write_jsonl(norm_out, [p.model_dump(mode="json") for p in persons])
+    deduped = dedupe_persons_by_pis_id(persons)
+    write_jsonl(canonical_out, [p.model_dump(mode="json") for p in deduped.unique_persons])
+    if deduped.dupe_persons:
+        write_jsonl(dupes_out, [p.model_dump(mode="json") for p in deduped.dupe_persons])
+
+    if write_meili:
+        indexer = PisMeiliIndexer(settings, index_name=index_name)
+        indexer.init()
+        indexer.upsert_persons([person_to_index_doc(p) for p in deduped.unique_persons])
+
+    typer.echo(
+        json.dumps(
+            {
+                "count": len(persons),
+                "wahlperioden": wahlperiode,
+                "raw_pages_jsonl": str(raw_pages_out),
+                "normalized_jsonl": str(norm_out),
+                "canonical_jsonl": str(canonical_out),
+                "dupes_jsonl": str(dupes_out) if deduped.dupe_persons else None,
+                "meili_indexed": bool(write_meili),
+                "meili_index": index_name if write_meili else None,
             },
             ensure_ascii=False,
             indent=2,

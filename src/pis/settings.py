@@ -26,6 +26,10 @@ class PisSettings(BaseSettings):
     meili_url: str = "http://localhost:7700"
     meili_master_key: str = "masterKey"
 
+    # DIP (Bundestag) - official federal source
+    dip_base_url: str = "https://search.dip.bundestag.de/api/v1"
+    dip_api_key: str | None = None
+
     def ensure_dirs(self) -> None:
         for p in (
             self.pis_data_dir,

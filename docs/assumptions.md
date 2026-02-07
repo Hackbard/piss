@@ -4,6 +4,8 @@ Dieses Dokument hält Annahmen fest, die (noch) nicht vollständig durch verifiz
 
 ### Bundesquellen / “Bundes-API”
 - **DIP (Deutscher Bundestag)** wird als primäre offizielle Bundesquelle angenommen (OpenAPI, API-Key erforderlich). Referenz: `https://search.dip.bundestag.de/api/v1/swagger-ui/`.
+- **Genutzte DIP Endpunkte (PoC)**:
+  - `GET /person` (Personenliste; Filter `f.wahlperiode`; Cursor-Pagination)
 - Coverage/Qualität für:
   - **Mandate**: DIP liefert Personen/rollenbezogene Daten, aber nicht zwingend alle Landtage/Bundesrat.
   - **Legislaturperioden**: DIP deckt Wahlperioden des Bundestages ab; für Landtage/Bundesrat sind weitere Quellen nötig.

@@ -33,6 +33,18 @@ python3 -m pis poc wikidata-persons --limit 50 --offset 0 --with-wikipedia-intro
 python3 -m pis poc wikidata-persons --limit 50 --offset 0 --write-meili
 ```
 
+### DIP (Bundestag) PoC (Official Source)
+
+Voraussetzung: `DIP_API_KEY` ist in `.env` gesetzt (siehe `docs/assumptions.md`).
+
+```bash
+# Fetch persons for Wahlperiode 19, write snapshots (no indexing)
+python3 -m pis poc dip-persons --wp 19 --no-write-meili
+
+# Index unreconciled source persons into Meilisearch (separate index)
+python3 -m pis poc dip-persons --wp 19 --write-meili --index-name pis_person_sources
+```
+
 ## Features
 
 - **Deterministisches Scraping**: Reproduzierbare Ergebnisse durch deterministische Seeds und UUID5-basierte IDs
