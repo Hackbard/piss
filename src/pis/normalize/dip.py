@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pis.ids import pis_person_id_from_dip_person_id
 from pis.ingest.dip import DipPersonRow
@@ -32,7 +32,7 @@ def dip_row_to_person(
     source_url: str | None,
 ) -> Person:
     pis_person_id = pis_person_id_from_dip_person_id(row.dip_person_id)
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     return Person(
         pis_person_id=pis_person_id,
         display_name=_display_name(row),

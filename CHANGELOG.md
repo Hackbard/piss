@@ -25,3 +25,6 @@
 - DIP (Bundestag) connector PoC: `pis poc dip-persons` (DIP `/person` ingestion + snapshots + optional indexing into `pis_person_sources`).
 - Reconciliation PoC: `pis poc reconcile-wikidata-dip` (conservative 1:1 name-based merge + reports + optional indexing into canonical `pis_persons`).
 
+### Changed
+- PIS codebase aligned to Ruff typing/import conventions (StrEnum + modern type hints).
+

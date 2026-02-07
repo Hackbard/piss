@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, date, datetime
+from typing import Any
 
 from pis.ids import pis_person_id_from_wikidata_qid
 from pis.ingest.wikidata import WikidataPersonRow
 from pis.models import ExternalPersonIds, Person, PersonSource, SourceSystem
 
 
-def _parse_date(iso: Optional[str]) -> Optional[date]:
+def _parse_date(iso: str | None) -> date | None:
     if not iso:
         return None
     try:
@@ -37,7 +37,7 @@ def wikidata_row_to_person(
             extra={"dewiki_title": row.dewiki_title},
         )
     ]
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     return Person(
         pis_person_id=pis_person_id,
         display_name=row.label,

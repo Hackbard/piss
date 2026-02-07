@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:

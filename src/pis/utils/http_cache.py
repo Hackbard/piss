@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
@@ -29,7 +30,7 @@ class CachedHttpResponse:
     data: Any
 
 
-def _request_key(method: str, url: str, params: Optional[Mapping[str, Any]], json_body: Any) -> str:
+def _request_key(method: str, url: str, params: Mapping[str, Any] | None, json_body: Any) -> str:
     return sha256_json(
         {
             "method": method.upper(),
@@ -63,8 +64,8 @@ def cached_get_json(
     client: httpx.Client,
     cache_dir: Path,
     url: str,
-    params: Optional[Mapping[str, Any]] = None,
-    headers: Optional[Mapping[str, str]] = None,
+    params: Mapping[str, Any] | None = None,
+    headers: Mapping[str, str] | None = None,
     timeout_seconds: float = 30.0,
     force: bool = False,
     rate_limit_rps: float = 1.0,
@@ -77,9 +78,9 @@ def cached_get_json(
     metadata_path = entry_dir / "metadata.json"
 
     if not force and raw_path.exists() and metadata_path.exists():
-        with open(raw_path, "r", encoding="utf-8") as f:
+        with open(raw_path, encoding="utf-8") as f:
             data = json.load(f)
-        with open(metadata_path, "r", encoding="utf-8") as f:
+        with open(metadata_path, encoding="utf-8") as f:
             meta = json.load(f)
         return CachedHttpResponse(
             url=url,

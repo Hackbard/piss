@@ -13,14 +13,13 @@ from pis.ingest.dip import parse_person_page
 from pis.ingest.mediawiki import fetch_intro
 from pis.ingest.wikidata import fetch_politicians_de
 from pis.io.jsonl import write_jsonl
-from pis.models import Person
+from pis.models import Person, PersonSource, SourceSystem
 from pis.normalize.dip import dip_row_to_person
 from pis.normalize.wikidata import person_to_index_doc, wikidata_row_to_person
 from pis.reconcile.dedupe import dedupe_persons_by_pis_id
 from pis.reconcile.wikidata_dip import reconcile_wikidata_dip
 from pis.settings import PisSettings
 from pis.utils.time import utc_now
-
 
 app = typer.Typer(add_completion=False, help="PIS – Politisches Informations System (CLI)")
 poc_app = typer.Typer(add_completion=False, help="Proof-of-concept pipelines (Wikidata/Wikipedia)")
@@ -62,12 +61,16 @@ def pipeline() -> None:
 
 @poc_app.command("wikidata-persons")
 def poc_wikidata_persons(
-    limit: int = typer.Option(50, help="Page size for Wikidata SPARQL LIMIT"),
-    offset: int = typer.Option(0, help="Wikidata SPARQL OFFSET (pagination)"),
-    with_wikipedia_intro: bool = typer.Option(True, help="Fetch Wikipedia intro via MediaWiki API when dewiki title exists"),
-    write_meili: bool = typer.Option(False, help="Index into Meilisearch (pis_persons)"),
-    force: bool = typer.Option(False, help="Ignore HTTP cache and refetch"),
-    out_dir: Path | None = typer.Option(None, help="Override output dir (defaults to settings.pis_*_dir)"),
+    limit: int = typer.Option(50, help="Page size for Wikidata SPARQL LIMIT"),  # noqa: B008
+    offset: int = typer.Option(0, help="Wikidata SPARQL OFFSET (pagination)"),  # noqa: B008
+    with_wikipedia_intro: bool = typer.Option(  # noqa: B008
+        True, help="Fetch Wikipedia intro via MediaWiki API when dewiki title exists"
+    ),
+    write_meili: bool = typer.Option(False, help="Index into Meilisearch (pis_persons)"),  # noqa: B008
+    force: bool = typer.Option(False, help="Ignore HTTP cache and refetch"),  # noqa: B008
+    out_dir: Path | None = typer.Option(  # noqa: B008
+        None, help="Override output dir (defaults to settings.pis_*_dir)"
+    ),
 ) -> None:
     """End-to-end PoC: Wikidata SPARQL → canonical Person → JSONL snapshots → (optional) Meilisearch."""
     settings = PisSettings()
@@ -112,8 +115,6 @@ def poc_wikidata_persons(
                 p.external_ids.wikipedia_title = intro.title
                 p.facts["wikipedia_intro"] = intro.extract
                 # Attach an additional provenance record for Wikipedia intro.
-                from pis.models import PersonSource, SourceSystem
-
                 p.sources.append(
                     PersonSource(
                         source_system=SourceSystem.WIKIPEDIA,
@@ -161,13 +162,24 @@ def poc_wikidata_persons(
 
 @poc_app.command("dip-persons")
 def poc_dip_persons(
-    wahlperiode: list[int] = typer.Option([19], "--wahlperiode", "--wp", help="One or more Bundestag Wahlperioden (e.g. --wp 19 --wp 20)"),
-    limit: int = typer.Option(100, help="DIP page size"),
-    max_pages: int | None = typer.Option(None, help="Stop after N pages (for quick PoC runs)"),
-    write_meili: bool = typer.Option(False, help="Index into Meilisearch (default index: pis_person_sources)"),
-    index_name: str = typer.Option("pis_person_sources", help="Meilisearch index name for unreconciled/source persons"),
-    force: bool = typer.Option(False, help="Ignore HTTP cache and refetch"),
-    out_dir: Path | None = typer.Option(None, help="Override output dir (defaults to settings.pis_*_dir)"),
+    wahlperiode: list[int] = typer.Option(  # noqa: B008
+        [19],
+        "--wahlperiode",
+        "--wp",
+        help="One or more Bundestag Wahlperioden (e.g. --wp 19 --wp 20)",
+    ),
+    limit: int = typer.Option(100, help="DIP page size"),  # noqa: B008
+    max_pages: int | None = typer.Option(None, help="Stop after N pages (for quick PoC runs)"),  # noqa: B008
+    write_meili: bool = typer.Option(  # noqa: B008
+        False, help="Index into Meilisearch (default index: pis_person_sources)"
+    ),
+    index_name: str = typer.Option(  # noqa: B008
+        "pis_person_sources", help="Meilisearch index name for unreconciled/source persons"
+    ),
+    force: bool = typer.Option(False, help="Ignore HTTP cache and refetch"),  # noqa: B008
+    out_dir: Path | None = typer.Option(  # noqa: B008
+        None, help="Override output dir (defaults to settings.pis_*_dir)"
+    ),
 ) -> None:
     """PoC: DIP /person → Person (source records) → JSONL snapshots → (optional) Meilisearch."""
     settings = PisSettings()
@@ -259,11 +271,19 @@ def poc_dip_persons(
 
 @poc_app.command("reconcile-wikidata-dip")
 def poc_reconcile_wikidata_dip(
-    wikidata_jsonl: Path = typer.Option(..., help="Path to Wikidata canonical persons JSONL (from poc wikidata-persons)"),
-    dip_jsonl: Path = typer.Option(..., help="Path to DIP canonical persons JSONL (from poc dip-persons)"),
-    write_meili: bool = typer.Option(False, help="Index reconciled canonical persons into Meilisearch (pis_persons)"),
-    force: bool = typer.Option(False, help="Unused (kept for consistency)"),
-    out_dir: Path | None = typer.Option(None, help="Override output dir (defaults to settings.pis_*_dir)"),
+    wikidata_jsonl: Path = typer.Option(  # noqa: B008
+        ..., help="Path to Wikidata canonical persons JSONL (from poc wikidata-persons)"
+    ),
+    dip_jsonl: Path = typer.Option(  # noqa: B008
+        ..., help="Path to DIP canonical persons JSONL (from poc dip-persons)"
+    ),
+    write_meili: bool = typer.Option(  # noqa: B008
+        False, help="Index reconciled canonical persons into Meilisearch (pis_persons)"
+    ),
+    force: bool = typer.Option(False, help="Unused (kept for consistency)"),  # noqa: B008
+    out_dir: Path | None = typer.Option(  # noqa: B008
+        None, help="Override output dir (defaults to settings.pis_*_dir)"
+    ),
 ) -> None:
     """Reconcile two source snapshots into canonical persons (multi-source), emit reports, optionally index."""
     _ = force

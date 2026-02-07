@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
 from pis.settings import PisSettings
 from pis.utils.http_cache import CachedHttpResponse, cached_get_json
-
 
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 
@@ -38,9 +37,9 @@ OFFSET {int(offset)}
 class WikidataPersonRow:
     qid: str
     label: str
-    birth_date: Optional[str]
-    death_date: Optional[str]
-    dewiki_title: Optional[str]
+    birth_date: str | None
+    death_date: str | None
+    dewiki_title: str | None
 
 
 def _extract_qid(uri: str) -> str:

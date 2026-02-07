@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
 from pis.settings import PisSettings
 from pis.utils.http_cache import CachedHttpResponse, cached_get_json
-
 
 MEDIAWIKI_API_URL = "https://de.wikipedia.org/w/api.php"
 
@@ -16,11 +15,11 @@ MEDIAWIKI_API_URL = "https://de.wikipedia.org/w/api.php"
 class MediaWikiIntro:
     pageid: int
     title: str
-    url: Optional[str]
-    extract: Optional[str]
+    url: str | None
+    extract: str | None
 
 
-def _parse_intro(data: dict[str, Any]) -> Optional[MediaWikiIntro]:
+def _parse_intro(data: dict[str, Any]) -> MediaWikiIntro | None:
     pages = data.get("query", {}).get("pages", {})
     if not isinstance(pages, dict) or not pages:
         return None
@@ -32,7 +31,12 @@ def _parse_intro(data: dict[str, Any]) -> Optional[MediaWikiIntro]:
     title = str(page.get("title"))
     url = page.get("canonicalurl") or page.get("fullurl")
     extract = page.get("extract")
-    return MediaWikiIntro(pageid=pageid, title=title.replace(" ", "_"), url=str(url) if url else None, extract=str(extract) if extract else None)
+    return MediaWikiIntro(
+        pageid=pageid,
+        title=title.replace(" ", "_"),
+        url=str(url) if url else None,
+        extract=str(extract) if extract else None,
+    )
 
 
 def fetch_intro(
@@ -40,7 +44,7 @@ def fetch_intro(
     settings: PisSettings,
     title: str,
     force: bool = False,
-) -> tuple[CachedHttpResponse, Optional[MediaWikiIntro]]:
+) -> tuple[CachedHttpResponse, MediaWikiIntro | None]:
     settings.ensure_dirs()
     params = {
         "action": "query",
