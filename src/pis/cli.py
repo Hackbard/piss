@@ -13,6 +13,7 @@ from pis.ingest.wikidata import fetch_politicians_de
 from pis.io.jsonl import write_jsonl
 from pis.models import Person
 from pis.normalize.wikidata import person_to_index_doc, wikidata_row_to_person
+from pis.reconcile.dedupe import dedupe_persons_by_pis_id
 from pis.settings import PisSettings
 from pis.utils.time import utc_now
 
@@ -85,6 +86,7 @@ def poc_wikidata_persons(
     raw_out = raw_dir / f"{run_key}.sparql.json"
     norm_out = norm_dir / f"{run_key}.persons.jsonl"
     canonical_out = canonical_dir / f"{run_key}.persons.jsonl"
+    dupes_out = (base_out / "reports").resolve() / f"{run_key}.dupes.persons.jsonl"
 
     # Store raw query response as a run snapshot too (in addition to cache).
     raw_out.write_text(json.dumps(cached.data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -125,12 +127,15 @@ def poc_wikidata_persons(
 
     # Write normalized + canonical snapshots (canonical == persons for this PoC; reconcile comes later).
     write_jsonl(norm_out, normalized_rows)
-    write_jsonl(canonical_out, normalized_rows)
+    deduped = dedupe_persons_by_pis_id(persons)
+    write_jsonl(canonical_out, [p.model_dump(mode="json") for p in deduped.unique_persons])
+    if deduped.dupe_persons:
+        write_jsonl(dupes_out, [p.model_dump(mode="json") for p in deduped.dupe_persons])
 
     if write_meili:
         indexer = PisMeiliIndexer(settings)
         indexer.init()
-        indexer.upsert_persons([person_to_index_doc(p) for p in persons])
+        indexer.upsert_persons([person_to_index_doc(p) for p in deduped.unique_persons])
 
     typer.echo(
         json.dumps(
@@ -141,6 +146,7 @@ def poc_wikidata_persons(
                 "run_raw_snapshot": str(raw_out),
                 "normalized_jsonl": str(norm_out),
                 "canonical_jsonl": str(canonical_out),
+                "dupes_jsonl": str(dupes_out) if deduped.dupe_persons else None,
                 "meili_indexed": bool(write_meili),
             },
             ensure_ascii=False,
