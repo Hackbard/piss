@@ -17,6 +17,7 @@ from pis.models import Person
 from pis.normalize.dip import dip_row_to_person
 from pis.normalize.wikidata import person_to_index_doc, wikidata_row_to_person
 from pis.reconcile.dedupe import dedupe_persons_by_pis_id
+from pis.reconcile.wikidata_dip import reconcile_wikidata_dip
 from pis.settings import PisSettings
 from pis.utils.time import utc_now
 
@@ -249,6 +250,79 @@ def poc_dip_persons(
                 "dupes_jsonl": str(dupes_out) if deduped.dupe_persons else None,
                 "meili_indexed": bool(write_meili),
                 "meili_index": index_name if write_meili else None,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+@poc_app.command("reconcile-wikidata-dip")
+def poc_reconcile_wikidata_dip(
+    wikidata_jsonl: Path = typer.Option(..., help="Path to Wikidata canonical persons JSONL (from poc wikidata-persons)"),
+    dip_jsonl: Path = typer.Option(..., help="Path to DIP canonical persons JSONL (from poc dip-persons)"),
+    write_meili: bool = typer.Option(False, help="Index reconciled canonical persons into Meilisearch (pis_persons)"),
+    force: bool = typer.Option(False, help="Unused (kept for consistency)"),
+    out_dir: Path | None = typer.Option(None, help="Override output dir (defaults to settings.pis_*_dir)"),
+) -> None:
+    """Reconcile two source snapshots into canonical persons (multi-source), emit reports, optionally index."""
+    _ = force
+    settings = PisSettings()
+    settings.ensure_dirs()
+
+    base_out = out_dir or settings.pis_data_dir
+    canonical_dir = (base_out / "canonical").resolve()
+    reports_dir = (base_out / "reports").resolve()
+    canonical_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    from pis.io.jsonl import read_jsonl
+    from pis.models import Person
+
+    wd_persons = [Person(**row) for row in read_jsonl(wikidata_jsonl)]
+    dip_persons = [Person(**row) for row in read_jsonl(dip_jsonl)]
+
+    canonical, report = reconcile_wikidata_dip(wikidata_persons=wd_persons, dip_persons=dip_persons)
+    deduped = dedupe_persons_by_pis_id(canonical)
+
+    run_key = f"reconcile_wikidata_dip_{wikidata_jsonl.stem}_{dip_jsonl.stem}"
+    canonical_out = canonical_dir / f"{run_key}.persons.jsonl"
+    dupes_out = reports_dir / f"{run_key}.dupes.persons.jsonl"
+    accepted_out = reports_dir / f"{run_key}.accepted_links.jsonl"
+    pending_out = reports_dir / f"{run_key}.pending_links.jsonl"
+    missing_out = reports_dir / f"{run_key}.missing.json"
+
+    write_jsonl(canonical_out, [p.model_dump(mode="json") for p in deduped.unique_persons])
+    if deduped.dupe_persons:
+        write_jsonl(dupes_out, [p.model_dump(mode="json") for p in deduped.dupe_persons])
+
+    write_jsonl(accepted_out, [c.__dict__ for c in report.accepted_links])
+    write_jsonl(pending_out, [c.__dict__ for c in report.pending_links])
+    missing_out.write_text(
+        json.dumps(
+            {"dip_unmatched": report.dip_unmatched, "wikidata_unmatched": report.wikidata_unmatched},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    if write_meili:
+        indexer = PisMeiliIndexer(settings, index_name="pis_persons")
+        indexer.init()
+        indexer.upsert_persons([person_to_index_doc(p) for p in deduped.unique_persons])
+
+    typer.echo(
+        json.dumps(
+            {
+                "canonical_count": len(deduped.unique_persons),
+                "accepted_links": len(report.accepted_links),
+                "pending_links": len(report.pending_links),
+                "canonical_jsonl": str(canonical_out),
+                "accepted_links_jsonl": str(accepted_out),
+                "pending_links_jsonl": str(pending_out),
+                "missing_json": str(missing_out),
+                "meili_indexed": bool(write_meili),
             },
             ensure_ascii=False,
             indent=2,

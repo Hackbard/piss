@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:
@@ -25,4 +25,13 @@ def append_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:
             f.write("\n")
             n += 1
     return n
+
+
+def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            yield json.loads(line)
 
