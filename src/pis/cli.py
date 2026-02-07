@@ -16,6 +16,8 @@ from pis.io.jsonl import write_jsonl
 from pis.models import Person, PersonSource, SourceSystem
 from pis.normalize.dip import dip_row_to_person
 from pis.normalize.wikidata import person_to_index_doc, wikidata_row_to_person
+from pis.rag.persona import ensure_persona
+from pis.rag.retrieve import dumps_context, retrieve_persons
 from pis.reconcile.dedupe import dedupe_persons_by_pis_id
 from pis.reconcile.wikidata_dip import reconcile_wikidata_dip
 from pis.settings import PisSettings
@@ -24,6 +26,8 @@ from pis.utils.time import utc_now
 app = typer.Typer(add_completion=False, help="PIS – Politisches Informations System (CLI)")
 poc_app = typer.Typer(add_completion=False, help="Proof-of-concept pipelines (Wikidata/Wikipedia)")
 app.add_typer(poc_app, name="poc")
+rag_app = typer.Typer(add_completion=False, help="RAG helpers (build + retrieve)")
+app.add_typer(rag_app, name="rag")
 
 
 @app.command()
@@ -127,7 +131,7 @@ def poc_wikidata_persons(
                     )
                 )
 
-        persons.append(p)
+        persons.append(ensure_persona(p))
         normalized_rows.append(p.model_dump(mode="json"))
 
     # Write normalized + canonical snapshots (canonical == persons for this PoC; reconcile comes later).
@@ -240,6 +244,7 @@ def poc_dip_persons(
                 )
             )
 
+    persons = [ensure_persona(p) for p in persons]
     write_jsonl(norm_out, [p.model_dump(mode="json") for p in persons])
     deduped = dedupe_persons_by_pis_id(persons)
     write_jsonl(canonical_out, [p.model_dump(mode="json") for p in deduped.unique_persons])
@@ -303,6 +308,7 @@ def poc_reconcile_wikidata_dip(
     dip_persons = [Person(**row) for row in read_jsonl(dip_jsonl)]
 
     canonical, report = reconcile_wikidata_dip(wikidata_persons=wd_persons, dip_persons=dip_persons)
+    canonical = [ensure_persona(p) for p in canonical]
     deduped = dedupe_persons_by_pis_id(canonical)
 
     run_key = f"reconcile_wikidata_dip_{wikidata_jsonl.stem}_{dip_jsonl.stem}"
@@ -348,4 +354,18 @@ def poc_reconcile_wikidata_dip(
             indent=2,
         )
     )
+
+
+@rag_app.command("retrieve")
+def rag_retrieve(
+    query: str = typer.Argument(..., help="Keyword query"),
+    limit: int = typer.Option(5, help="Top-k"),  # noqa: B008
+    filter_expr: str | None = typer.Option(None, help="Meilisearch filter expression"),  # noqa: B008
+) -> None:
+    try:
+        ctx = retrieve_persons(query=query, limit=limit, filter_expr=filter_expr)
+    except Exception as e:  # noqa: BLE001
+        typer.echo(f"Meilisearch query failed: {e}", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(dumps_context(ctx))
 

@@ -45,6 +45,14 @@ python3 -m pis poc dip-persons --wp 19 --no-write-meili
 python3 -m pis poc dip-persons --wp 19 --write-meili --index-name pis_person_sources
 ```
 
+### RAG Retrieval Helper
+
+```bash
+# Query canonical index (requires Meilisearch running and indexed data)
+python3 -m pis rag retrieve "Scholz" --limit 5
+python3 -m pis rag retrieve "Scholz" --limit 5 --filter-expr "external_ids.wikidata_qid = Q317521"
+```
+
 ## Features
 
 - **Deterministisches Scraping**: Reproduzierbare Ergebnisse durch deterministische Seeds und UUID5-basierte IDs

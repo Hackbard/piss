@@ -24,6 +24,7 @@
 - Canonical uniqueness guard: duplicates are separated and written as `*.dupes.persons.jsonl` instead of silently indexing duplicates.
 - DIP (Bundestag) connector PoC: `pis poc dip-persons` (DIP `/person` ingestion + snapshots + optional indexing into `pis_person_sources`).
 - Reconciliation PoC: `pis poc reconcile-wikidata-dip` (conservative 1:1 name-based merge + reports + optional indexing into canonical `pis_persons`).
+ - RAG helpers: `pis rag retrieve` and `src/pis/rag/retrieve.py` for compact JSON context packages.
 
 ### Changed
 - PIS codebase aligned to Ruff typing/import conventions (StrEnum + modern type hints).
