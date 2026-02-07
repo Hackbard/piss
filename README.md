@@ -20,6 +20,19 @@ pis health
 pis schema person > /tmp/pis.person.schema.json
 ```
 
+### Wikidata/Wikipedia PoC (End-to-End)
+
+```bash
+# Small run (cached; writes JSONL snapshots under data/pis/)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --no-write-meili
+
+# With Wikipedia lead/intro enrichment (MediaWiki API)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --with-wikipedia-intro --no-write-meili
+
+# Index into Meilisearch (index: pis_persons)
+python3 -m pis poc wikidata-persons --limit 50 --offset 0 --write-meili
+```
+
 ## Features
 
 - **Deterministisches Scraping**: Reproduzierbare Ergebnisse durch deterministische Seeds und UUID5-basierte IDs
