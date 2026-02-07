@@ -29,3 +29,6 @@
 ### Changed
 - PIS codebase aligned to Ruff typing/import conventions (StrEnum + modern type hints).
 
+### Added
+- Temporal QA helper (`src/pis/qa/temporal.py`) to detect overlapping role intervals (basis for time-axis reports).
+
