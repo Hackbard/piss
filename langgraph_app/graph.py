@@ -342,6 +342,47 @@ def _parse_date_range(question: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _parse_members_list_tool_input(question: str) -> dict[str, Any]:
+    """Legacy deterministic tool-input parser (offline).
+
+    This function exists for backward compatibility with older MVP flows and offline tests.
+    It does not use the LLM and only extracts parameters that are explicitly mentioned.
+    """
+    q = question.lower()
+
+    party_code: str | None = None
+    # Prefer longest match to avoid accidental substring hits.
+    matched_party: tuple[int, str] | None = None
+    for alias, code in PARTY_ALIASES.items():
+        if _alias_matches(alias, q):
+            candidate = (len(alias), code)
+            if matched_party is None or candidate[0] > matched_party[0]:
+                matched_party = candidate
+    if matched_party:
+        party_code = matched_party[1]
+
+    matched_parl: tuple[int, str] | None = None
+    for alias, pid in PARLIAMENT_ALIASES.items():
+        if _alias_matches(alias, q):
+            candidate = (len(alias), pid)
+            if matched_parl is None or candidate[0] > matched_parl[0]:
+                matched_parl = candidate
+    parliament_id = matched_parl[1] if matched_parl else None
+
+    from_date, to_date = _parse_date_range(question)
+
+    out: dict[str, Any] = {
+        "parliament_id": parliament_id,
+        "party_code": party_code,
+        "from_date": from_date,
+        "to_date": to_date,
+        "limit": 200,
+        "offset": 0,
+        "strict_evidence": True,
+    }
+    return out
+
+
 def _parse_members_list_plan(question: str) -> dict[str, Any]:
     """Parse question into plan with parliament_ids, active_only, and base_input.
     
@@ -619,11 +660,27 @@ def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
     This node always uses the LLM (Ollama) for parameter extraction.
     If the LLM fails or returns invalid JSON, a clear error message is returned.
     """
+    # Backward-compatible legacy mode: if the caller uses the old MVP state shape,
+    # keep behavior deterministic/offline and populate `tool_input`.
+    if "tool_input" in state:
+        question = state.get("question", "")
+        tool_input = _parse_members_list_tool_input(question)
+        missing: list[str] = []
+        if not tool_input.get("parliament_id"):
+            missing.append("Parlament")
+        if not tool_input.get("party_code"):
+            missing.append("Partei")
+        if missing:
+            return {
+                "tool_input": None,
+                "answer": f"Welche {' / '.join(missing)} soll ich abfragen? Bitte spezifizieren Sie: {' / '.join(missing)}.",
+            }
+        return {"tool_input": tool_input, "answer": None}
+
+    # New mode (LLM-based, multi-parliament capable)
     result = members_list_plan_llm_node(state)
-    
     if result.get("answer"):
         return result
-    
     if not result.get("parliament_ids") or not result.get("tool_base_input"):
         return {
             "parliament_ids": [],
@@ -637,7 +694,6 @@ def members_list_plan_node(state: MembersListMvpState) -> dict[str, Any]:
                 "Bitte Ollama prüfen oder Frage präzisieren."
             ),
         }
-    
     return result
 
 
@@ -650,7 +706,11 @@ def _merge_member_rows(rows: list[dict[str, Any]], max_sources: int = 20) -> lis
             continue
         
         if person_id not in by_person_id:
-            by_person_id[person_id] = row.copy()
+            first = row.copy()
+            first_urls = set(_extract_urls(first.get("evidence_urls") or first.get("sources") or first.get("evidence")))
+            if first_urls:
+                first["evidence_urls"] = list(first_urls)[:max_sources]
+            by_person_id[person_id] = first
             continue
         
         existing = by_person_id[person_id]
@@ -1420,6 +1480,23 @@ def _format_output_json(
 def members_list_answer_node(state: MembersListMvpState) -> dict[str, Any]:
     if state.get("answer"):
         return {}
+
+    # Legacy single-parliament flow: tool_result contains "members" list.
+    tool_result_legacy = state.get("tool_result")
+    tool_input_legacy = state.get("tool_input")
+    if isinstance(tool_input_legacy, dict) and isinstance(tool_result_legacy, dict):
+        members = tool_result_legacy.get("members")
+        if isinstance(members, list):
+            output_format = state.get("output_format", "text")
+            sources_mode = state.get("sources_mode", "top")
+            max_sources = state.get("max_sources", 20)
+            if output_format == "json":
+                answer = _format_output_json(members, tool_input_legacy, tool_result_legacy, sources_mode, max_sources)
+            elif output_format == "md":
+                answer = _format_output_md(members, tool_input_legacy, tool_result_legacy, sources_mode, max_sources)
+            else:
+                answer = _format_output_text(members, tool_input_legacy, tool_result_legacy, sources_mode, max_sources)
+            return {"answer": answer}
 
     tool_result = state.get("tool_result") or {}
     tool_base_input = state.get("tool_base_input") or {}
